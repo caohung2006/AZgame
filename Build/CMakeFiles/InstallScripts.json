@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/HungCao/Project/AZgame/Build/cmake_install.cmake",
+		"C:/HungCao/Project/AZgame/Build/box2d/cmake_install.cmake",
+		"C:/HungCao/Project/AZgame/Build/box2d/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

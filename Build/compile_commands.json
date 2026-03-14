@@ -1,0 +1,308 @@
+[
+{
+  "directory": "C:/HungCao/Project/AZgame/Build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\main.cpp.obj -c C:\\HungCao\\Project\\AZgame\\main.cpp",
+  "file": "C:/HungCao/Project/AZgame/main.cpp",
+  "output": "CMakeFiles/AZgame.dir/main.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\world.cpp.obj -c C:\\HungCao\\Project\\AZgame\\world.cpp",
+  "file": "C:/HungCao/Project/AZgame/world.cpp",
+  "output": "CMakeFiles/AZgame.dir/world.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\gamemap.cpp.obj -c C:\\HungCao\\Project\\AZgame\\gamemap.cpp",
+  "file": "C:/HungCao/Project/AZgame/gamemap.cpp",
+  "output": "CMakeFiles/AZgame.dir/gamemap.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\render.cpp.obj -c C:\\HungCao\\Project\\AZgame\\render.cpp",
+  "file": "C:/HungCao/Project/AZgame/render.cpp",
+  "output": "CMakeFiles/AZgame.dir/render.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\tank.cpp.obj -c C:\\HungCao\\Project\\AZgame\\tank.cpp",
+  "file": "C:/HungCao/Project/AZgame/tank.cpp",
+  "output": "CMakeFiles/AZgame.dir/tank.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\bullet.cpp.obj -c C:\\HungCao\\Project\\AZgame\\bullet.cpp",
+  "file": "C:/HungCao/Project/AZgame/bullet.cpp",
+  "output": "CMakeFiles/AZgame.dir/bullet.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_broad_phase.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_broad_phase.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_broad_phase.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_broad_phase.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_chain_shape.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_chain_shape.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_chain_shape.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_chain_shape.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_circle_shape.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_circle_shape.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_circle_shape.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_circle_shape.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_collide_circle.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_collide_circle.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_collide_circle.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_collide_circle.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_collide_edge.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_collide_edge.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_collide_edge.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_collide_edge.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_collide_polygon.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_collide_polygon.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_collide_polygon.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_collide_polygon.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_collision.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_collision.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_collision.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_collision.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_distance.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_distance.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_distance.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_distance.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_dynamic_tree.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_dynamic_tree.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_dynamic_tree.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_dynamic_tree.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_edge_shape.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_edge_shape.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_edge_shape.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_edge_shape.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_polygon_shape.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_polygon_shape.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_polygon_shape.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_polygon_shape.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\collision\\b2_time_of_impact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\collision\\b2_time_of_impact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/collision/b2_time_of_impact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/collision/b2_time_of_impact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\common\\b2_block_allocator.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\common\\b2_block_allocator.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/common/b2_block_allocator.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/common/b2_block_allocator.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\common\\b2_draw.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\common\\b2_draw.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/common/b2_draw.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/common/b2_draw.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\common\\b2_math.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\common\\b2_math.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/common/b2_math.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/common/b2_math.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\common\\b2_settings.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\common\\b2_settings.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/common/b2_settings.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/common/b2_settings.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\common\\b2_stack_allocator.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\common\\b2_stack_allocator.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/common/b2_stack_allocator.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/common/b2_stack_allocator.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\common\\b2_timer.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\common\\b2_timer.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/common/b2_timer.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/common/b2_timer.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_body.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_body.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_body.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_body.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_chain_circle_contact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_chain_circle_contact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_chain_circle_contact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_chain_circle_contact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_chain_polygon_contact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_chain_polygon_contact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_chain_polygon_contact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_chain_polygon_contact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_circle_contact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_circle_contact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_circle_contact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_circle_contact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_contact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_contact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_contact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_contact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_contact_manager.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_contact_manager.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_contact_manager.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_contact_manager.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_contact_solver.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_contact_solver.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_contact_solver.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_contact_solver.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_distance_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_distance_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_distance_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_distance_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_edge_circle_contact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_edge_circle_contact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_edge_circle_contact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_edge_circle_contact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_edge_polygon_contact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_edge_polygon_contact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_edge_polygon_contact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_edge_polygon_contact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_fixture.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_fixture.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_fixture.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_fixture.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_friction_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_friction_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_friction_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_friction_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_gear_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_gear_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_gear_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_gear_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_island.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_island.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_island.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_island.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_motor_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_motor_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_motor_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_motor_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_mouse_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_mouse_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_mouse_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_mouse_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_polygon_circle_contact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_polygon_circle_contact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_polygon_circle_contact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_polygon_circle_contact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_polygon_contact.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_polygon_contact.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_polygon_contact.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_polygon_contact.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_prismatic_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_prismatic_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_prismatic_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_prismatic_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_pulley_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_pulley_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_pulley_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_pulley_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_revolute_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_revolute_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_revolute_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_revolute_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_weld_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_weld_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_weld_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_weld_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_wheel_joint.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_wheel_joint.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_wheel_joint.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_wheel_joint.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_world.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_world.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_world.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_world.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\dynamics\\b2_world_callbacks.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\dynamics\\b2_world_callbacks.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/dynamics/b2_world_callbacks.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/dynamics/b2_world_callbacks.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/box2d.dir/includes_CXX.rsp -g -std=c++11 -fvisibility=hidden -fno-keep-inline-dllexport -o CMakeFiles\\box2d.dir\\rope\\b2_rope.cpp.obj -c C:\\HungCao\\Project\\AZgame\\box2d\\src\\rope\\b2_rope.cpp",
+  "file": "C:/HungCao/Project/AZgame/box2d/src/rope/b2_rope.cpp",
+  "output": "box2d/src/CMakeFiles/box2d.dir/rope/b2_rope.cpp.obj"
+}
+]

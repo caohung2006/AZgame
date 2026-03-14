@@ -1,0 +1,90 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"box2d/src/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 139,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 147,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 160,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 10
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"box2d/bin/libbox2d.a"
+			],
+			"targetId" : "box2d::@1702ee254ed0382960a7",
+			"targetIndex" : 1,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/box2d",
+			"exportName" : "box2dConfig",
+			"exportTargets" : 
+			[
+				{
+					"id" : "box2d::@1702ee254ed0382960a7",
+					"index" : 1
+				}
+			],
+			"paths" : 
+			[
+				"box2d/src/CMakeFiles/Export/1f7e0de6fbfb5d20e365871ec89ce73e/box2dConfig.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/box2d",
+			"paths" : 
+			[
+				"Build/box2d/src/box2dConfigVersion.cmake"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "box2d/src",
+		"source" : "box2d/src"
+	}
+}
