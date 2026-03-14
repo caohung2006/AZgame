@@ -49,15 +49,12 @@ void Tank::Move() {
         // Dùng IsKeyPressed để đảm bảo mỗi lần bấm chỉ bắn 1 viên (không bị bắn liên thanh)
         if (IsKeyPressed(KEY_Q)) {
             // Tính toạ độ mũi nòng súng để đạn không xuất hiện từ giữa thân xe (tránh tự bắn trúng mình)
-            b2Vec2 spawnPos = body->GetPosition();
-            spawnPos.x += forwardDir.x * (35.0f / SCALE);
-            spawnPos.y += forwardDir.y * (35.0f / SCALE);
-
+            // Vị trí = Vị trí xe + Hướng * Khoảng cách (35 pixel)
+            b2Vec2 spawnPos = body->GetPosition() + (35.0f / SCALE) * forwardDir;
+            
             // Tính toán vận tốc đạn bắn ra (gấp khoảng 2.5 lần tốc độ xe tăng)
-            b2Vec2 bulletVel = forwardDir;
-            bulletVel.x *= 15.0f;
-            bulletVel.y *= 15.0f;
-
+            b2Vec2 bulletVel = 15.0f * forwardDir;
+            
             bullets.push_back(new Bullet(spawnPos, bulletVel));
         }
 }
