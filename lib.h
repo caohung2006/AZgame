@@ -8,6 +8,9 @@ using namespace std;
 
 const float SCALE = 30.0f;
 
+// Định nghĩa kích thước màn hình chung cho toàn bộ Project
+const int SCREEN_WIDTH = 1024;
+const int SCREEN_HEIGHT = 768;
 
 // 1. Đưa định nghĩa class Tank sang file header để các file khác nhận diện được
 class Tank {
@@ -31,6 +34,6 @@ extern vector<b2Body*> walls;
 extern Tank tank; // 2. Báo cho hệ thống biết biến tank có tồn tại
 extern vector<Bullet*> bullets; // Danh sách chứa các viên đạn
 
-void map();
-void WorldAZ();
-void Render();
+void BuildMap();
+void RunGame();
+void DrawGame();

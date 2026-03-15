@@ -2,11 +2,11 @@
 
 b2World world(b2Vec2(0.0f, 0.0f));
 
-void WorldAZ() {
-    InitWindow(1024, 768, "Top Down WASD Movement");
+void RunGame() {
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Top Down WASD Movement");
     SetTargetFPS(90);
 
-    map();         // Tạo tường vật lý
+    BuildMap();    // Xây dựng mê cung
     tank.Init();   // Khởi tạo xe tăng vào thế giới
 
     while (!WindowShouldClose()) {
@@ -17,8 +17,8 @@ void WorldAZ() {
         // Sử dụng GetFrameTime() để đồng bộ thời gian vật lý với FPS thực tế
         world.Step(GetFrameTime(), 6, 2);
 
-        // ===== RENDER =====
-        Render();
+        // Vẽ các thành phần ra màn hình
+        DrawGame();
       
     }
     CloseWindow();

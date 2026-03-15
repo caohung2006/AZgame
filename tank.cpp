@@ -1,58 +1,60 @@
 #include "lib.h"
 
-// Hàm Init: Sẽ chạy 1 lần khi bạn tạo đối tượng Tank
+// Hàm khởi tạo: Chạy 1 lần duy nhất để thiết lập thông số cho xe tăng khi bắt đầu game
 void Tank::Init() {
-        b2BodyDef tankDef;                                    // hàm thuộc tính
-        tankDef.type = b2_dynamicBody;                        // kiểu của vật thể
-        tankDef.position.Set(400.0f / SCALE, 300.0f / SCALE); // vị trí ban đầu
-        tankDef.linearDamping = 10.0f;                        // giảm trượt
+        b2BodyDef tankDef; // Định nghĩa các thuộc tính vật lý cơ bản cho xe tăng
+        tankDef.type = b2_dynamicBody; // Đặt là vật thể động (có thể di chuyển, bị đẩy lùi và nảy)
+        tankDef.position.Set((SCREEN_WIDTH / 2.0f) / SCALE, (SCREEN_HEIGHT / 2.0f) / SCALE); // Đặt vị trí sinh ra ở chính giữa màn hình
+        tankDef.linearDamping = 10.0f; // Lực cản (ma sát mặt đất) giúp xe tự dừng lại dần khi nhả phím di chuyển
 
-        body = world.CreateBody(&tankDef);                    // cho vào thế giới
+        body = world.CreateBody(&tankDef); // Đưa xe tăng vào thế giới mô phỏng vật lý Box2D
 
-        // Hitbox
+        // --- Cấu hình Hitbox (Khu vực va chạm) ---
         b2PolygonShape shape;
-        shape.SetAsBox(13.0f / SCALE, 15.0f / SCALE); // Đổi nửa chiều rộng thành 13 (Tổng rộng 26, dài 30)
+        shape.SetAsBox(13.0f / SCALE, 15.0f / SCALE); // Thiết lập hitbox hình chữ nhật (Kích thước thực: Rộng 26, Dài 30)
 
         b2FixtureDef fix;
         fix.shape = &shape;
         fix.density = 1.0f;
         fix.friction = 0.0f;
 
-        body->CreateFixture(&fix);
+        body->CreateFixture(&fix); // Gắn hitbox và các thuộc tính (khối lượng, ma sát) vào thân xe tăng
 }
 
-// Hàm Move: dùng để gọi mỗi khung hình
+// Hàm xử lý logic: Lắng nghe phím bấm để di chuyển và bắn đạn (được gọi liên tục mỗi khung hình)
 void Tank::Move() {
 
-        // ===== INPUT =====
+        // --- 1. THIẾT LẬP TỐC ĐỘ ---
         float moveSpeed = 6.0f;
         float turnSpeed = 3.0f; // Tốc độ xoay (radians/giây)
 
-        // 1. Xử lý xoay (Phím A và D)
+        // --- 2. XỬ LÝ XOAY (Phím A và D) ---
         float angularVel = 0.0f;
         if (IsKeyDown(KEY_A)) angularVel += turnSpeed; // Xoay trái
         if (IsKeyDown(KEY_D)) angularVel -= turnSpeed; // Xoay phải
         body->SetAngularVelocity(angularVel);
 
-        // 2. Xử lý tiến lùi (Phím W và S) theo hướng đang quay mặt
+        // --- 3. XỬ LÝ TIẾN LÙI (Phím W và S) ---
         b2Vec2 vel(0.0f, 0.0f);
-        float currentAngle = body->GetAngle();
-        // Tính toán véc tơ hướng lên dựa theo góc hiện tại
+        float currentAngle = body->GetAngle(); // Lấy góc xoay hiện tại của thân xe
+        
+        // Dùng lượng giác (sin, cos) để tính ra hướng mũi tên chỉ thẳng về phía trước mặt xe tăng
         b2Vec2 forwardDir(-sinf(currentAngle), cosf(currentAngle));
 
+        // Cộng/trừ vận tốc dọc theo hướng chỉ định để tiến hoặc lùi
         if (IsKeyDown(KEY_W)) { vel.x += forwardDir.x * moveSpeed; vel.y += forwardDir.y * moveSpeed; }
         if (IsKeyDown(KEY_S)) { vel.x -= forwardDir.x * moveSpeed; vel.y -= forwardDir.y * moveSpeed; }
 
         body->SetLinearVelocity(vel);
 
-        // 3. Xử lý bắn đạn (Phím Q)
-        // Dùng IsKeyPressed để đảm bảo mỗi lần bấm chỉ bắn 1 viên (không bị bắn liên thanh)
+        // --- 4. XỬ LÝ BẮN ĐẠN (Phím Q) ---
+        // Sử dụng IsKeyPressed (chỉ nhận 1 lần chạm) giúp người chơi không bị xả đạn liên tục nếu lỡ giữ phím
         if (IsKeyPressed(KEY_Q)) {
-            // Tính toạ độ mũi nòng súng để đạn không xuất hiện từ giữa thân xe (tránh tự bắn trúng mình)
-            // Vị trí = Vị trí xe + Hướng * Khoảng cách (Giảm xuống 25 pixel cho khớp nòng súng mới)
+            // Đẩy vị trí sinh ra đạn ra xa 25 pixel theo hướng nòng súng
+            // Việc này cực kỳ quan trọng để tránh lỗi vật lý: đạn sinh ra ở giữa xe và tự va chạm với chính xe tăng
             b2Vec2 spawnPos = body->GetPosition() + (25.0f / SCALE) * forwardDir;
             
-            // Tính toán vận tốc đạn bắn ra (gấp khoảng 2.5 lần tốc độ xe tăng)
+            // Gán vận tốc cho đạn bay thẳng theo hướng nòng súng (Tốc độ bay: 15.0f)
             b2Vec2 bulletVel = 15.0f * forwardDir;
             
             bullets.push_back(new Bullet(spawnPos, bulletVel));

@@ -1,6 +1,7 @@
 #include "lib.h"
 
 int main() {
-    WorldAZ();
+    // Khởi chạy vòng lặp chính của trò chơi
+    RunGame();
     return 0;
 }
