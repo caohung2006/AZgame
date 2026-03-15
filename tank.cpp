@@ -11,7 +11,7 @@ void Tank::Init() {
 
         // Hitbox
         b2PolygonShape shape;
-        shape.SetAsBox(20.0f / SCALE, 20.0f / SCALE);
+        shape.SetAsBox(13.0f / SCALE, 15.0f / SCALE); // Đổi nửa chiều rộng thành 13 (Tổng rộng 26, dài 30)
 
         b2FixtureDef fix;
         fix.shape = &shape;
@@ -49,14 +49,18 @@ void Tank::Move() {
         // Dùng IsKeyPressed để đảm bảo mỗi lần bấm chỉ bắn 1 viên (không bị bắn liên thanh)
         if (IsKeyPressed(KEY_Q)) {
             // Tính toạ độ mũi nòng súng để đạn không xuất hiện từ giữa thân xe (tránh tự bắn trúng mình)
-            // Vị trí = Vị trí xe + Hướng * Khoảng cách (35 pixel)
-            b2Vec2 spawnPos = body->GetPosition() + (35.0f / SCALE) * forwardDir;
+            // Vị trí = Vị trí xe + Hướng * Khoảng cách (Giảm xuống 25 pixel cho khớp nòng súng mới)
+            b2Vec2 spawnPos = body->GetPosition() + (25.0f / SCALE) * forwardDir;
             
             // Tính toán vận tốc đạn bắn ra (gấp khoảng 2.5 lần tốc độ xe tăng)
             b2Vec2 bulletVel = 15.0f * forwardDir;
             
             bullets.push_back(new Bullet(spawnPos, bulletVel));
         }
+}
+
+void Tank::Info() {
+
 }
 
 Tank tank;

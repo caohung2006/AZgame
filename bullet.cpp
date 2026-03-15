@@ -13,7 +13,7 @@ Bullet::Bullet(b2Vec2 position, b2Vec2 velocity) {
     body = world.CreateBody(&def);
 
     b2CircleShape shape;
-    shape.m_radius = 4.0f / SCALE; // Bán kính viên đạn
+    shape.m_radius = 3.0f / SCALE; // Giảm bán kính hitbox đạn xuống 3.0
 
     b2FixtureDef fix;
     fix.shape = &shape;
@@ -27,10 +27,9 @@ Bullet::Bullet(b2Vec2 position, b2Vec2 velocity) {
     body->SetLinearVelocity(velocity);
 }
 
-void Bullet::Draw() {
+pair<float, float> Bullet::Info() {
     b2Vec2 pos = body->GetPosition();
     float x = pos.x * SCALE;
     float y = 600 - pos.y * SCALE;
-    
-    DrawCircle(x, y, 4.0f, BLACK); // Vẽ viên đạn màu đen
+    return {x, y};
 }

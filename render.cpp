@@ -35,17 +35,17 @@ void Render() {
     float x = pos.x * SCALE;
     float y = 600 - pos.y * SCALE;
 
-    Rectangle pRec = { x, y, 40, 40 };
-    Vector2 pOrigin = { 20, 20 };
+    Rectangle pRec = { x, y, 26, 30 }; // Đổi kích thước hình vẽ thành 26x30
+    Vector2 pOrigin = { 13, 15 };      // Tâm xoay tương ứng là 13 và 15
     DrawRectanglePro(pRec, pOrigin, -pAngle * RAD2DEG, RED); // Vẽ thân xe
 
     // Vẽ nòng súng (để nhìn rõ hướng đang quay mặt)
-    Vector2 endPoint = { x - sinf(pAngle) * 30.0f, y - cosf(pAngle) * 30.0f };
+    Vector2 endPoint = { x - sinf(pAngle) * 22.0f, y - cosf(pAngle) * 22.0f }; // Thu ngắn nòng súng lại còn 22
     DrawLineEx((Vector2) { x, y }, endPoint, 4.0f, BLACK);
 
     // Vẽ tất cả các viên đạn
     for (Bullet* bullet : bullets) {
-        bullet->Draw();
+        DrawCircle(bullet->Info().first, bullet->Info().second, 3.0f, BLACK); // Đổi bán kính đạn thành 3.0
     }
 
     DrawText("WASD to move", 10, 10, 20, BLACK);

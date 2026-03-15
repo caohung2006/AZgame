@@ -3,7 +3,7 @@
 b2World world(b2Vec2(0.0f, 0.0f));
 
 void WorldAZ() {
-    InitWindow(800, 600, "Top Down WASD Movement");
+    InitWindow(1024, 768, "Top Down WASD Movement");
     SetTargetFPS(90);
 
     map();         // Tạo tường vật lý
