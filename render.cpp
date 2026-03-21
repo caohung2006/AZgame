@@ -28,21 +28,31 @@ void DrawGame() {
         DrawRectanglePro(rec, origin, angle * RAD2DEG, GRAY);
     }
 
-    // Vẽ người chơi (Xe tăng)
-    b2Vec2 pos = tank.body->GetPosition();
-    float pAngle = tank.body->GetAngle();
+    // Khởi tạo Texture một lần duy nhất (Tránh load ảnh liên tục mỗi khung hình gây tràn RAM)
+    static Texture2D tankTexture = { 0 };
+    if (tankTexture.id == 0) {
+        tankTexture = LoadTexture("C:\\HungCao\\Project\\AZgame\\t-green-norm.png");
+    }
 
-    float x = pos.x * SCALE;
-    float y = SCREEN_HEIGHT - pos.y * SCALE; // Tự động lật trục Y
+    // Vẽ tất cả người chơi (Xe tăng)
+    for (Tank* t : tanks) {
+        b2Vec2 pos = t->body->GetPosition();
+        float pAngle = t->body->GetAngle();
 
-    Rectangle pRec = { x, y, 26, 30 }; // Đổi kích thước hình vẽ thành 26x30
-    Vector2 pOrigin = { 13, 15 };      // Tâm xoay tương ứng là 13 và 15
-    DrawRectanglePro(pRec, pOrigin, -pAngle * RAD2DEG, RED); // Vẽ thân xe
+        float x = pos.x * SCALE;
+        float y = SCREEN_HEIGHT - pos.y * SCALE; // Tự động lật trục Y
 
-    // Vẽ nòng súng (để nhìn rõ hướng đang quay mặt)
-    Vector2 endPoint = { x - sinf(pAngle) * 22.0f, y - cosf(pAngle) * 22.0f }; // Thu ngắn nòng súng lại còn 22
-    DrawLineEx((Vector2) { x, y }, endPoint, 4.0f, BLACK);
+        Rectangle sourceRec = { 0.0f, 0.0f, (float)tankTexture.width, (float)tankTexture.height };
+        Rectangle destRec = { x, y, 28.0f, 42.0f };
+        Vector2 origin = { 14.0f, 21.0f };
 
+        DrawTexturePro(tankTexture, sourceRec, destRec, origin, -pAngle * RAD2DEG, WHITE);
+    }
+
+    // --- VẼ HỐ ĐEN (BLACK HOLE) ---
+    // DrawCircle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 15.0f, Fade(PURPLE, 0.6f));
+    // DrawCircleLines(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 17.0f, PURPLE);
+    // DrawText("BLACK HOLE", SCREEN_WIDTH / 2 - 35, SCREEN_HEIGHT / 2 - 25, 10, PURPLE);
     
     // Vẽ tất cả các viên đạn
 
@@ -54,6 +64,15 @@ void DrawGame() {
     }
 
     DrawText("WASD to move", 10, 10, 20, BLACK);
+
+    // --- VẼ ĐIỂM SỐ Ở PHÍA DƯỚI MÀN HÌNH ---
+    int sectionWidth = SCREEN_WIDTH / numPlayersGlobal; // Chia đều không gian hiển thị cho số người chơi
+    for (int i = 0; i < numPlayersGlobal; i++) {
+        const char* scoreText = TextFormat("Player %d: %d", i + 1, playerScores[i]);
+        int textWidth = MeasureText(scoreText, 24); // Đo chiều rộng chữ để canh giữa đoạn
+        int textX = (i * sectionWidth) + (sectionWidth / 2) - (textWidth / 2); // Toạ độ X căn giữa từng cột
+        DrawText(scoreText, textX, SCREEN_HEIGHT - 40, 24, DARKBLUE);
+    }
 
     EndDrawing();
 }

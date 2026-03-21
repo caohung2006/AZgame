@@ -71,41 +71,26 @@ include CMakeFiles/AZgame.dir/flags.make
 CMakeFiles/AZgame.dir/codegen:
 .PHONY : CMakeFiles/AZgame.dir/codegen
 
-CMakeFiles/AZgame.dir/main.cpp.obj: CMakeFiles/AZgame.dir/flags.make
-CMakeFiles/AZgame.dir/main.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
-CMakeFiles/AZgame.dir/main.cpp.obj: C:/HungCao/Project/AZgame/main.cpp
-CMakeFiles/AZgame.dir/main.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/AZgame.dir/main.cpp.obj"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/main.cpp.obj -MF CMakeFiles\AZgame.dir\main.cpp.obj.d -o CMakeFiles\AZgame.dir\main.cpp.obj -c C:\HungCao\Project\AZgame\main.cpp
+CMakeFiles/AZgame.dir/bullet.cpp.obj: CMakeFiles/AZgame.dir/flags.make
+CMakeFiles/AZgame.dir/bullet.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
+CMakeFiles/AZgame.dir/bullet.cpp.obj: C:/HungCao/Project/AZgame/bullet.cpp
+CMakeFiles/AZgame.dir/bullet.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/AZgame.dir/bullet.cpp.obj"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/bullet.cpp.obj -MF CMakeFiles\AZgame.dir\bullet.cpp.obj.d -o CMakeFiles\AZgame.dir\bullet.cpp.obj -c C:\HungCao\Project\AZgame\bullet.cpp
 
-CMakeFiles/AZgame.dir/main.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AZgame.dir/main.cpp.i"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\HungCao\Project\AZgame\main.cpp > CMakeFiles\AZgame.dir\main.cpp.i
+CMakeFiles/AZgame.dir/bullet.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AZgame.dir/bullet.cpp.i"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\HungCao\Project\AZgame\bullet.cpp > CMakeFiles\AZgame.dir\bullet.cpp.i
 
-CMakeFiles/AZgame.dir/main.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/main.cpp.s"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\main.cpp -o CMakeFiles\AZgame.dir\main.cpp.s
-
-CMakeFiles/AZgame.dir/world.cpp.obj: CMakeFiles/AZgame.dir/flags.make
-CMakeFiles/AZgame.dir/world.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
-CMakeFiles/AZgame.dir/world.cpp.obj: C:/HungCao/Project/AZgame/world.cpp
-CMakeFiles/AZgame.dir/world.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/AZgame.dir/world.cpp.obj"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/world.cpp.obj -MF CMakeFiles\AZgame.dir\world.cpp.obj.d -o CMakeFiles\AZgame.dir\world.cpp.obj -c C:\HungCao\Project\AZgame\world.cpp
-
-CMakeFiles/AZgame.dir/world.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AZgame.dir/world.cpp.i"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\HungCao\Project\AZgame\world.cpp > CMakeFiles\AZgame.dir\world.cpp.i
-
-CMakeFiles/AZgame.dir/world.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/world.cpp.s"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\world.cpp -o CMakeFiles\AZgame.dir\world.cpp.s
+CMakeFiles/AZgame.dir/bullet.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/bullet.cpp.s"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\bullet.cpp -o CMakeFiles\AZgame.dir\bullet.cpp.s
 
 CMakeFiles/AZgame.dir/gamemap.cpp.obj: CMakeFiles/AZgame.dir/flags.make
 CMakeFiles/AZgame.dir/gamemap.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
 CMakeFiles/AZgame.dir/gamemap.cpp.obj: C:/HungCao/Project/AZgame/gamemap.cpp
 CMakeFiles/AZgame.dir/gamemap.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/AZgame.dir/gamemap.cpp.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/AZgame.dir/gamemap.cpp.obj"
 	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/gamemap.cpp.obj -MF CMakeFiles\AZgame.dir\gamemap.cpp.obj.d -o CMakeFiles\AZgame.dir\gamemap.cpp.obj -c C:\HungCao\Project\AZgame\gamemap.cpp
 
 CMakeFiles/AZgame.dir/gamemap.cpp.i: cmake_force
@@ -116,11 +101,41 @@ CMakeFiles/AZgame.dir/gamemap.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/gamemap.cpp.s"
 	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\gamemap.cpp -o CMakeFiles\AZgame.dir\gamemap.cpp.s
 
+CMakeFiles/AZgame.dir/init.cpp.obj: CMakeFiles/AZgame.dir/flags.make
+CMakeFiles/AZgame.dir/init.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
+CMakeFiles/AZgame.dir/init.cpp.obj: C:/HungCao/Project/AZgame/init.cpp
+CMakeFiles/AZgame.dir/init.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/AZgame.dir/init.cpp.obj"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/init.cpp.obj -MF CMakeFiles\AZgame.dir\init.cpp.obj.d -o CMakeFiles\AZgame.dir\init.cpp.obj -c C:\HungCao\Project\AZgame\init.cpp
+
+CMakeFiles/AZgame.dir/init.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AZgame.dir/init.cpp.i"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\HungCao\Project\AZgame\init.cpp > CMakeFiles\AZgame.dir\init.cpp.i
+
+CMakeFiles/AZgame.dir/init.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/init.cpp.s"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\init.cpp -o CMakeFiles\AZgame.dir\init.cpp.s
+
+CMakeFiles/AZgame.dir/main.cpp.obj: CMakeFiles/AZgame.dir/flags.make
+CMakeFiles/AZgame.dir/main.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
+CMakeFiles/AZgame.dir/main.cpp.obj: C:/HungCao/Project/AZgame/main.cpp
+CMakeFiles/AZgame.dir/main.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/AZgame.dir/main.cpp.obj"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/main.cpp.obj -MF CMakeFiles\AZgame.dir\main.cpp.obj.d -o CMakeFiles\AZgame.dir\main.cpp.obj -c C:\HungCao\Project\AZgame\main.cpp
+
+CMakeFiles/AZgame.dir/main.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AZgame.dir/main.cpp.i"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\HungCao\Project\AZgame\main.cpp > CMakeFiles\AZgame.dir\main.cpp.i
+
+CMakeFiles/AZgame.dir/main.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/main.cpp.s"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\main.cpp -o CMakeFiles\AZgame.dir\main.cpp.s
+
 CMakeFiles/AZgame.dir/render.cpp.obj: CMakeFiles/AZgame.dir/flags.make
 CMakeFiles/AZgame.dir/render.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
 CMakeFiles/AZgame.dir/render.cpp.obj: C:/HungCao/Project/AZgame/render.cpp
 CMakeFiles/AZgame.dir/render.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/AZgame.dir/render.cpp.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/AZgame.dir/render.cpp.obj"
 	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/render.cpp.obj -MF CMakeFiles\AZgame.dir\render.cpp.obj.d -o CMakeFiles\AZgame.dir\render.cpp.obj -c C:\HungCao\Project\AZgame\render.cpp
 
 CMakeFiles/AZgame.dir/render.cpp.i: cmake_force
@@ -135,7 +150,7 @@ CMakeFiles/AZgame.dir/tank.cpp.obj: CMakeFiles/AZgame.dir/flags.make
 CMakeFiles/AZgame.dir/tank.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
 CMakeFiles/AZgame.dir/tank.cpp.obj: C:/HungCao/Project/AZgame/tank.cpp
 CMakeFiles/AZgame.dir/tank.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/AZgame.dir/tank.cpp.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/AZgame.dir/tank.cpp.obj"
 	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/tank.cpp.obj -MF CMakeFiles\AZgame.dir\tank.cpp.obj.d -o CMakeFiles\AZgame.dir\tank.cpp.obj -c C:\HungCao\Project\AZgame\tank.cpp
 
 CMakeFiles/AZgame.dir/tank.cpp.i: cmake_force
@@ -146,46 +161,48 @@ CMakeFiles/AZgame.dir/tank.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/tank.cpp.s"
 	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\tank.cpp -o CMakeFiles\AZgame.dir\tank.cpp.s
 
-CMakeFiles/AZgame.dir/bullet.cpp.obj: CMakeFiles/AZgame.dir/flags.make
-CMakeFiles/AZgame.dir/bullet.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
-CMakeFiles/AZgame.dir/bullet.cpp.obj: C:/HungCao/Project/AZgame/bullet.cpp
-CMakeFiles/AZgame.dir/bullet.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/AZgame.dir/bullet.cpp.obj"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/bullet.cpp.obj -MF CMakeFiles\AZgame.dir\bullet.cpp.obj.d -o CMakeFiles\AZgame.dir\bullet.cpp.obj -c C:\HungCao\Project\AZgame\bullet.cpp
+CMakeFiles/AZgame.dir/world.cpp.obj: CMakeFiles/AZgame.dir/flags.make
+CMakeFiles/AZgame.dir/world.cpp.obj: CMakeFiles/AZgame.dir/includes_CXX.rsp
+CMakeFiles/AZgame.dir/world.cpp.obj: C:/HungCao/Project/AZgame/world.cpp
+CMakeFiles/AZgame.dir/world.cpp.obj: CMakeFiles/AZgame.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/AZgame.dir/world.cpp.obj"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AZgame.dir/world.cpp.obj -MF CMakeFiles\AZgame.dir\world.cpp.obj.d -o CMakeFiles\AZgame.dir\world.cpp.obj -c C:\HungCao\Project\AZgame\world.cpp
 
-CMakeFiles/AZgame.dir/bullet.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AZgame.dir/bullet.cpp.i"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\HungCao\Project\AZgame\bullet.cpp > CMakeFiles\AZgame.dir\bullet.cpp.i
+CMakeFiles/AZgame.dir/world.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AZgame.dir/world.cpp.i"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\HungCao\Project\AZgame\world.cpp > CMakeFiles\AZgame.dir\world.cpp.i
 
-CMakeFiles/AZgame.dir/bullet.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/bullet.cpp.s"
-	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\bullet.cpp -o CMakeFiles\AZgame.dir\bullet.cpp.s
+CMakeFiles/AZgame.dir/world.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AZgame.dir/world.cpp.s"
+	C:\msys64\ucrt64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\HungCao\Project\AZgame\world.cpp -o CMakeFiles\AZgame.dir\world.cpp.s
 
 # Object files for target AZgame
 AZgame_OBJECTS = \
-"CMakeFiles/AZgame.dir/main.cpp.obj" \
-"CMakeFiles/AZgame.dir/world.cpp.obj" \
+"CMakeFiles/AZgame.dir/bullet.cpp.obj" \
 "CMakeFiles/AZgame.dir/gamemap.cpp.obj" \
+"CMakeFiles/AZgame.dir/init.cpp.obj" \
+"CMakeFiles/AZgame.dir/main.cpp.obj" \
 "CMakeFiles/AZgame.dir/render.cpp.obj" \
 "CMakeFiles/AZgame.dir/tank.cpp.obj" \
-"CMakeFiles/AZgame.dir/bullet.cpp.obj"
+"CMakeFiles/AZgame.dir/world.cpp.obj"
 
 # External object files for target AZgame
 AZgame_EXTERNAL_OBJECTS =
 
-AZgame.exe: CMakeFiles/AZgame.dir/main.cpp.obj
-AZgame.exe: CMakeFiles/AZgame.dir/world.cpp.obj
+AZgame.exe: CMakeFiles/AZgame.dir/bullet.cpp.obj
 AZgame.exe: CMakeFiles/AZgame.dir/gamemap.cpp.obj
+AZgame.exe: CMakeFiles/AZgame.dir/init.cpp.obj
+AZgame.exe: CMakeFiles/AZgame.dir/main.cpp.obj
 AZgame.exe: CMakeFiles/AZgame.dir/render.cpp.obj
 AZgame.exe: CMakeFiles/AZgame.dir/tank.cpp.obj
-AZgame.exe: CMakeFiles/AZgame.dir/bullet.cpp.obj
+AZgame.exe: CMakeFiles/AZgame.dir/world.cpp.obj
 AZgame.exe: CMakeFiles/AZgame.dir/build.make
 AZgame.exe: box2d/bin/libbox2d.a
 AZgame.exe: C:/msys64/ucrt64/lib/libraylib.dll.a
 AZgame.exe: CMakeFiles/AZgame.dir/linkLibs.rsp
 AZgame.exe: CMakeFiles/AZgame.dir/objects1.rsp
 AZgame.exe: CMakeFiles/AZgame.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX executable AZgame.exe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX executable AZgame.exe"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles\AZgame.dir\link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

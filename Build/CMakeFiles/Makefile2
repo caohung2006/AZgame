@@ -125,12 +125,12 @@ box2d/src/clean: box2d/src/CMakeFiles/box2d.dir/clean
 CMakeFiles/AZgame.dir/all: box2d/src/CMakeFiles/box2d.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\AZgame.dir\build.make CMakeFiles/AZgame.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\AZgame.dir\build.make CMakeFiles/AZgame.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=1,2,3,4,5,6,7 "Built target AZgame"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=1,2,3,4,5,6,7,8 "Built target AZgame"
 .PHONY : CMakeFiles/AZgame.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/AZgame.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\HungCao\Project\AZgame\Build\CMakeFiles 53
+	$(CMAKE_COMMAND) -E cmake_progress_start C:\HungCao\Project\AZgame\Build\CMakeFiles 54
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/AZgame.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:\HungCao\Project\AZgame\Build\CMakeFiles 0
 .PHONY : CMakeFiles/AZgame.dir/rule
@@ -142,7 +142,7 @@ AZgame: CMakeFiles/AZgame.dir/rule
 # codegen rule for target.
 CMakeFiles/AZgame.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\AZgame.dir\build.make CMakeFiles/AZgame.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=1,2,3,4,5,6,7 "Finished codegen for target AZgame"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=1,2,3,4,5,6,7,8 "Finished codegen for target AZgame"
 .PHONY : CMakeFiles/AZgame.dir/codegen
 
 # clean rule for target.
@@ -157,7 +157,7 @@ CMakeFiles/AZgame.dir/clean:
 box2d/src/CMakeFiles/box2d.dir/all:
 	$(MAKE) $(MAKESILENT) -f box2d\src\CMakeFiles\box2d.dir\build.make box2d/src/CMakeFiles/box2d.dir/depend
 	$(MAKE) $(MAKESILENT) -f box2d\src\CMakeFiles\box2d.dir\build.make box2d/src/CMakeFiles/box2d.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53 "Built target box2d"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54 "Built target box2d"
 .PHONY : box2d/src/CMakeFiles/box2d.dir/all
 
 # Build rule for subdir invocation for target.
@@ -174,7 +174,7 @@ box2d: box2d/src/CMakeFiles/box2d.dir/rule
 # codegen rule for target.
 box2d/src/CMakeFiles/box2d.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f box2d\src\CMakeFiles\box2d.dir\build.make box2d/src/CMakeFiles/box2d.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53 "Finished codegen for target box2d"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=C:\HungCao\Project\AZgame\Build\CMakeFiles --progress-num=9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54 "Finished codegen for target box2d"
 .PHONY : box2d/src/CMakeFiles/box2d.dir/codegen
 
 # clean rule for target.

@@ -25,42 +25,58 @@ void BuildMap() {
         walls.push_back(body); // Lưu vào danh sách để sử dụng ở khâu Render
     };
 
-    // --- 1. TẠO KHUNG TƯỜNG BAO QUANH MÀN HÌNH ---
-    float centerX = SCREEN_WIDTH / 2.0f;
-    float centerY = SCREEN_HEIGHT / 2.0f;
-    
-    addWall(centerX, 1.5f, SCREEN_WIDTH, 3);    // Tường trên 
-    addWall(centerX, SCREEN_HEIGHT - 1.5f, SCREEN_WIDTH, 3);  // Tường dưới 
-    addWall(1.5f, centerY, 3, SCREEN_HEIGHT);     // Tường trái 
-    addWall(SCREEN_WIDTH - 1.5f, centerY, 3, SCREEN_HEIGHT);  // Tường phải 
+    // --- THIẾT KẾ BẢN ĐỒ MÊ CUNG KIỂU AZ TANK ---
+    // Dùng mảng chuỗi để vẽ sơ đồ mê cung. Khu vực chính giữa được để trống để làm vùng an toàn spawn xe tăng.
+    // '+' là cột góc, '-' là tường ngang, '|' là tường dọc. Khoảng trắng là đường đi.
+    std::vector<std::string> maze = {
+        "+---+---+---+---+---+---+---+---+",
+        "|               |               |",
+        "+   +---+---+   +   +---+---+   +",
+        "|   |       |       |       |   |",
+        "+   +   +   +---+---+   +   +   +",
+        "|       |               |       |",
+        "+---+   +               +   +---+",
+        "|       |               |       |",
+        "+   +   +   +---+---+   +   +   +",
+        "|   |       |       |       |   |",
+        "+   +---+---+   +   +---+---+   +",
+        "|               |               |",
+        "+---+---+---+---+---+---+---+---+"
+    };
 
-    // --- 2. TẠO MÊ CUNG NGẪU NHIÊN KIỂU GAME AZ ---
-    // Chia màn hình thành các ô lưới cách nhau 120 pixel để đặt vách ngăn
-    for (int x = 120; x <= SCREEN_WIDTH - 120; x += 120) {
-        for (int y = 120; y <= SCREEN_HEIGHT - 120; y += 120) {
+    float cellW = 90.0f; // Thu nhỏ chiều rộng ô đường đi để tạo không gian hẹp như AZ Tank
+    float cellH = 90.0f; // Thu nhỏ chiều cao ô đường đi
+    float wallThickness = 6.0f; // Độ dày của bức tường
+
+    // Tính toán độ lệch (offset) để canh giữa bản đồ trên màn hình
+    int numCols = 8; // Sơ đồ chuỗi ở trên có 8 ô ngang
+    int numRows = 6; // Sơ đồ chuỗi ở trên có 6 ô dọc
+    float offsetX = (SCREEN_WIDTH - (numCols * cellW)) / 2.0f;
+    float offsetY = (SCREEN_HEIGHT - (numRows * cellH)) / 2.0f - 50.0f; // Trừ đi 50px để dịch toàn bộ map lên trên
+
+    // Quét qua từng ký tự trong sơ đồ để sinh ra bức tường tương ứng
+    for (int row = 0; row < maze.size(); row++) {
+        for (int col = 0; col < maze[row].length(); col++) {
+            char c = maze[row][col];
             
-            // Bỏ qua khu vực chính giữa màn hình để chừa lại "Vùng an toàn" cho xe tăng sinh ra không bị đè vào tường
-            if (abs(x - centerX) <= 120 && abs(y - centerY) <= 120) {
-                continue; 
+            // Ký tự '-' là tường nằm ngang (Lấy % 4 == 2 để chỉ vẽ 1 đoạn duy nhất ở chính giữa ô)
+            if (c == '-' && col % 4 == 2) {
+                float cx = offsetX + (col / 4) * cellW + (cellW / 2.0f);
+                float cy = offsetY + (row / 2) * cellH;
+                addWall(cx, cy, cellW + wallThickness, wallThickness);
             }
-
-            // Chọn ngẫu nhiên một trong các mẫu vách ngăn
-            int wallType = GetRandomValue(0, 4); 
-
-            if (wallType == 0) {
-                addWall(x, y, 140, 3); // Vách nằm ngang
-            } 
-            else if (wallType == 1) {
-                addWall(x, y, 3, 140); // Vách nằm dọc
-            } 
-            else if (wallType == 2) {
-                addWall(x, y, 20, 20); // Cột trụ vuông nhỏ
-            } 
-            else if (wallType == 3) {
-                addWall(x, y, 140, 3); // Vách hình chữ thập (ngang)
-                addWall(x, y, 3, 140); // Vách hình chữ thập (dọc)
+            // Ký tự '|' là tường nằm dọc
+            else if (c == '|') {
+                float cx = offsetX + (col / 4) * cellW;
+                float cy = offsetY + (row / 2) * cellH + (cellH / 2.0f);
+                addWall(cx, cy, wallThickness, cellH + wallThickness);
             }
-            // wallType == 4: Để trống không đặt tường nhằm tạo lối đi rộng
+            // Cột trụ tại các góc giao nhau để nối khít các cạnh tường
+            else if (c == '+') {
+                float cx = offsetX + (col / 4) * cellW;
+                float cy = offsetY + (row / 2) * cellH;
+                addWall(cx, cy, wallThickness, wallThickness);
+            }
         }
     }
 }

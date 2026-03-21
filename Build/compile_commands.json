@@ -1,21 +1,27 @@
 [
 {
   "directory": "C:/HungCao/Project/AZgame/Build",
-  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\main.cpp.obj -c C:\\HungCao\\Project\\AZgame\\main.cpp",
-  "file": "C:/HungCao/Project/AZgame/main.cpp",
-  "output": "CMakeFiles/AZgame.dir/main.cpp.obj"
-},
-{
-  "directory": "C:/HungCao/Project/AZgame/Build",
-  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\world.cpp.obj -c C:\\HungCao\\Project\\AZgame\\world.cpp",
-  "file": "C:/HungCao/Project/AZgame/world.cpp",
-  "output": "CMakeFiles/AZgame.dir/world.cpp.obj"
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\bullet.cpp.obj -c C:\\HungCao\\Project\\AZgame\\bullet.cpp",
+  "file": "C:/HungCao/Project/AZgame/bullet.cpp",
+  "output": "CMakeFiles/AZgame.dir/bullet.cpp.obj"
 },
 {
   "directory": "C:/HungCao/Project/AZgame/Build",
   "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\gamemap.cpp.obj -c C:\\HungCao\\Project\\AZgame\\gamemap.cpp",
   "file": "C:/HungCao/Project/AZgame/gamemap.cpp",
   "output": "CMakeFiles/AZgame.dir/gamemap.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\init.cpp.obj -c C:\\HungCao\\Project\\AZgame\\init.cpp",
+  "file": "C:/HungCao/Project/AZgame/init.cpp",
+  "output": "CMakeFiles/AZgame.dir/init.cpp.obj"
+},
+{
+  "directory": "C:/HungCao/Project/AZgame/Build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\main.cpp.obj -c C:\\HungCao\\Project\\AZgame\\main.cpp",
+  "file": "C:/HungCao/Project/AZgame/main.cpp",
+  "output": "CMakeFiles/AZgame.dir/main.cpp.obj"
 },
 {
   "directory": "C:/HungCao/Project/AZgame/Build",
@@ -31,9 +37,9 @@
 },
 {
   "directory": "C:/HungCao/Project/AZgame/Build",
-  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\bullet.cpp.obj -c C:\\HungCao\\Project\\AZgame\\bullet.cpp",
-  "file": "C:/HungCao/Project/AZgame/bullet.cpp",
-  "output": "CMakeFiles/AZgame.dir/bullet.cpp.obj"
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/AZgame.dir/includes_CXX.rsp -g -IC:/msys64/ucrt64/bin/../include -o CMakeFiles\\AZgame.dir\\world.cpp.obj -c C:\\HungCao\\Project\\AZgame\\world.cpp",
+  "file": "C:/HungCao/Project/AZgame/world.cpp",
+  "output": "CMakeFiles/AZgame.dir/world.cpp.obj"
 },
 {
   "directory": "C:/HungCao/Project/AZgame/Build/box2d/src",

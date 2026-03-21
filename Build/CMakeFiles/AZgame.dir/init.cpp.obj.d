@@ -1,4 +1,4 @@
-CMakeFiles/AZgame.dir/world.cpp.obj: C:\HungCao\Project\AZgame\world.cpp \
+CMakeFiles/AZgame.dir/init.cpp.obj: C:\HungCao\Project\AZgame\init.cpp \
  C:\HungCao\Project\AZgame\lib.h C:/msys64/ucrt64/include/raylib.h \
  C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/stdarg.h \
  C:/msys64/ucrt64/include/stdarg.h \

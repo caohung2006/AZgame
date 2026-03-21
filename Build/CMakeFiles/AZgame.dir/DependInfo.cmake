@@ -10,6 +10,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "C:/HungCao/Project/AZgame/bullet.cpp" "CMakeFiles/AZgame.dir/bullet.cpp.obj" "gcc" "CMakeFiles/AZgame.dir/bullet.cpp.obj.d"
   "C:/HungCao/Project/AZgame/gamemap.cpp" "CMakeFiles/AZgame.dir/gamemap.cpp.obj" "gcc" "CMakeFiles/AZgame.dir/gamemap.cpp.obj.d"
+  "C:/HungCao/Project/AZgame/init.cpp" "CMakeFiles/AZgame.dir/init.cpp.obj" "gcc" "CMakeFiles/AZgame.dir/init.cpp.obj.d"
   "C:/HungCao/Project/AZgame/main.cpp" "CMakeFiles/AZgame.dir/main.cpp.obj" "gcc" "CMakeFiles/AZgame.dir/main.cpp.obj.d"
   "C:/HungCao/Project/AZgame/render.cpp" "CMakeFiles/AZgame.dir/render.cpp.obj" "gcc" "CMakeFiles/AZgame.dir/render.cpp.obj.d"
   "C:/HungCao/Project/AZgame/tank.cpp" "CMakeFiles/AZgame.dir/tank.cpp.obj" "gcc" "CMakeFiles/AZgame.dir/tank.cpp.obj.d"
