@@ -64,6 +64,8 @@ void RunGame() {
                 t->body->SetTransform(b2Vec2(pos.x - 2.0f + (i * 2.0f), pos.y), 0.0f);
                 tanks.push_back(t);
             }
+            teleportPortal.isActive = false;
+            teleportPortal.cooldownTimer = 5.0f; // Reset lại cổng mỗi khi tạo ván mới
             needsRestart = false;
         }
 
@@ -93,6 +95,11 @@ void RunGame() {
                 }
                 needsRestart = true;
             }
+        }
+
+        // --- XỬ LÝ CỔNG DỊCH CHUYỂN (PORTAL) ---
+        if (!needsRestart) {
+            UpdatePortal(dt);
         }
 
         // --- TÍNH CHẤT VẬT LÝ KHÓ: HỐ ĐEN HÚT ĐẠN ---

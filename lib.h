@@ -33,6 +33,14 @@ public:
     void Info();
 };
 
+// Cấu trúc đại diện cho Cổng dịch chuyển
+struct Portal {
+    b2Vec2 posA;
+    b2Vec2 posB;
+    bool isActive;
+    float cooldownTimer;
+};
+
 // 3. Khai báo lớp Đạn (Bullet)
 class Bullet {
 public:
@@ -48,7 +56,9 @@ extern vector<Tank*> tanks; // Báo cho hệ thống biết danh sách xe tăng
 extern vector<Bullet*> bullets; // Danh sách chứa các viên đạn
 extern int playerScores[4]; // Mảng lưu điểm số của 4 người chơi
 extern int numPlayersGlobal; // Biến toàn cục lưu số lượng người chơi
+extern Portal teleportPortal; // Biến toàn cục quản lý cổng dịch chuyển
 
+void UpdatePortal(float dt);
 void Lifetime(float dt);
 void BuildMap();
 void RunGame();

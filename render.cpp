@@ -28,6 +28,24 @@ void DrawGame() {
         DrawRectanglePro(rec, origin, angle * RAD2DEG, GRAY);
     }
 
+    // --- VẼ CỔNG DỊCH CHUYỂN (PORTAL) ---
+    if (teleportPortal.isActive) {
+        float ax = teleportPortal.posA.x * SCALE;
+        float ay = SCREEN_HEIGHT - teleportPortal.posA.y * SCALE;
+        float bx = teleportPortal.posB.x * SCALE;
+        float by = SCREEN_HEIGHT - teleportPortal.posB.y * SCALE;
+        
+        // Vẽ hiệu ứng cho cổng A (Màu Tím)
+        DrawCircle((int)ax, (int)ay, 20.0f, Fade(PURPLE, 0.5f));
+        DrawCircleLines((int)ax, (int)ay, 22.0f, PURPLE);
+        DrawText("A", (int)ax - 6, (int)ay - 10, 20, WHITE);
+
+        // Vẽ hiệu ứng cho cổng B (Màu Xanh dương)
+        DrawCircle((int)bx, (int)by, 20.0f, Fade(BLUE, 0.5f));
+        DrawCircleLines((int)bx, (int)by, 22.0f, BLUE);
+        DrawText("B", (int)bx - 6, (int)by - 10, 20, WHITE);
+    }
+
     // Vẽ tất cả người chơi (Xe tăng) bằng các khối hình học khớp với Hitbox
     for (Tank* t : tanks) {
         b2Vec2 pos = t->body->GetPosition();
