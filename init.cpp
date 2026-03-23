@@ -29,9 +29,6 @@ void ShowKeyBindingScreen(int& fw, int& bw, int& tl, int& tr, int& sh, int playe
         "Nhan phim cho chuc nang: BAN DAN (Shoot)"
     };
 
-    // Gán tạm phím mặc định đề phòng người chơi tắt cửa sổ giữa chừng
-    fw = KEY_W; bw = KEY_S; tl = KEY_A; tr = KEY_D; sh = KEY_Q;
-
     // Vòng lặp giao diện cài đặt (Thoát khi đủ 5 phím)
     while (!WindowShouldClose() && state < 5) {
         int key = GetKeyPressed();

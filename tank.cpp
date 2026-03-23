@@ -16,21 +16,34 @@ void Tank::Init(int _playerIndex, int _forwardKey, int _backwardKey, int _turnLe
         b2BodyDef tankDef; // Định nghĩa các thuộc tính vật lý cơ bản cho xe tăng
         tankDef.type = b2_dynamicBody; // Đặt là vật thể động (có thể di chuyển, bị đẩy lùi và nảy)
         tankDef.position.Set((SCREEN_WIDTH / 2.0f) / SCALE, (SCREEN_HEIGHT / 2.0f) / SCALE); // Đặt vị trí sinh ra ở chính giữa màn hình
-        tankDef.fixedRotation = true; // Khoá xoay vật lý: Ngăn xe bị văng đuôi hoặc quay mòng mòng khi quẹt góc tường
+        tankDef.fixedRotation = false; // Cho phép vật lý tác động lên góc xoay để xe bị kẹt lại khi xoay đụng tường
 
         body = world.CreateBody(&tankDef); // Đưa xe tăng vào thế giới mô phỏng vật lý Box2D
 
         // --- Cấu hình Hitbox (Khu vực va chạm) ---
-        b2PolygonShape shape;
-        shape.SetAsBox(14.0f / SCALE, 21.0f / SCALE); // Thiết lập hitbox hình chữ nhật (Kích thước thực: Rộng 20, Dài 23)
+        // 1. Hitbox cho thân xe tăng (Khu vực phía dưới)
+        b2PolygonShape hullShape;
+        // Thân xe rộng 28, cao 28. Tâm lệch xuống dưới (Y = -7)
+        hullShape.SetAsBox(14.0f / SCALE, 14.0f / SCALE, b2Vec2(0.0f, -7.0f / SCALE), 0.0f);
 
-        b2FixtureDef fix;
-        fix.shape = &shape;
-        fix.density = 1.0f;
-        fix.friction = 0.0f;
-        fix.restitution = 0.0f; // Đặt độ nảy về 0 để xe không bị nảy dội lại khi tông tường
+        b2FixtureDef hullFix;
+        hullFix.shape = &hullShape;
+        hullFix.density = 1.0f;
+        hullFix.friction = 0.0f;
+        hullFix.restitution = 0.0f; // Đặt độ nảy về 0 để xe không bị nảy dội lại khi tông tường
+        body->CreateFixture(&hullFix); // Gắn thân xe vào body
 
-        body->CreateFixture(&fix); // Gắn hitbox và các thuộc tính (khối lượng, ma sát) vào thân xe tăng
+        // 2. Hitbox cho nòng súng (Khu vực nhô ra phía trên)
+        b2PolygonShape barrelShape;
+        // Nòng súng rộng 6, cao 14. Tâm lệch lên trên (Y = 14)
+        barrelShape.SetAsBox(3.0f / SCALE, 7.0f / SCALE, b2Vec2(0.0f, 14.0f / SCALE), 0.0f);
+
+        b2FixtureDef barrelFix;
+        barrelFix.shape = &barrelShape;
+        barrelFix.density = 0.2f; // Nòng súng nhẹ hơn thân xe để không làm lệch trọng tâm khi xe xoay
+        barrelFix.friction = 0.0f;
+        barrelFix.restitution = 0.0f;
+        body->CreateFixture(&barrelFix); // Gắn thêm nòng súng vào body
 }
 
 // Hàm xử lý logic: Lắng nghe phím bấm để di chuyển và bắn đạn (được gọi liên tục mỗi khung hình)

@@ -9,21 +9,40 @@ void RunGame() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AZ Game");
     SetTargetFPS(60);
 
-    // 1. Hiển thị màn hình chọn số lượng người chơi
-    int numPlayers = ShowPlayerCountScreen();
-    numPlayersGlobal = numPlayers; // Lưu vào biến toàn cục để dùng khi vẽ đồ hoạ
-
     // Lưu trữ cấu hình phím để dùng lại khi khởi tạo ván mới
     struct PlayerConfig { int fw, bw, tl, tr, sh; };
-    vector<PlayerConfig> configs(numPlayers);
+    vector<PlayerConfig> configs(4); // Hỗ trợ tối đa 4 người chơi
+    
+    // Thiết lập cấu hình phím mặc định cho 2 người chơi
+    configs[0] = {KEY_W, KEY_S, KEY_A, KEY_D, KEY_Q};
+    configs[1] = {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_SLASH}; // Phím slash (/)
+    configs[2] = {KEY_I, KEY_K, KEY_J, KEY_L, KEY_U};
+    configs[3] = {KEY_KP_8, KEY_KP_5, KEY_KP_4, KEY_KP_6, KEY_KP_7};
 
-    for (int i = 0; i < numPlayers; i++) {
-        ShowKeyBindingScreen(configs[i].fw, configs[i].bw, configs[i].tl, configs[i].tr, configs[i].sh, i + 1);
-    }
+    int numPlayers = 2; // Mặc định là 2 người chơi
+    numPlayersGlobal = numPlayers; // Lưu vào biến toàn cục để dùng khi vẽ đồ hoạ
 
     bool needsRestart = true; // Cờ báo hiệu cần tạo map mới
 
     while (!WindowShouldClose()) {
+        // Xử lý khi nhấn vào nút Settings ở góc phải màn hình
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            Vector2 mousePos = GetMousePosition();
+            if (mousePos.x >= SCREEN_WIDTH - 120 && mousePos.x <= SCREEN_WIDTH - 10 &&
+                mousePos.y >= 10 && mousePos.y <= 40) {
+                
+                numPlayers = ShowPlayerCountScreen();
+                numPlayersGlobal = numPlayers;
+                for (int i = 0; i < numPlayers; i++) {
+                    ShowKeyBindingScreen(configs[i].fw, configs[i].bw, configs[i].tl, configs[i].tr, configs[i].sh, i + 1);
+                }
+                
+                // Reset điểm số khi bắt đầu cài đặt lại
+                for (int i = 0; i < 4; i++) playerScores[i] = 0;
+                needsRestart = true;
+            }
+        }
+
         if (needsRestart) {
             // Dọn dẹp ván cũ (Xoá tường, xe tăng, đạn cả trong Box2D lẫn bộ nhớ C++)
             for (b2Body* wall : walls) world.DestroyBody(wall);
