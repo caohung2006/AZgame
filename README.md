@@ -91,3 +91,5 @@ Khi vào game, bạn có thể click vào nút **SETTINGS** ở góc trên bên 
 - `gamemap.cpp`: Thuật toán sinh các khối tường trong mê cung bằng b2_staticBody.
 - `render.cpp`: Xử lý vẽ đồ họa toàn bộ môi trường và nhân vật bằng Raylib.
 - `portal.cpp`: Thuật toán sinh ngẫu nhiên và dịch chuyển người chơi qua không gian.
+
+*Nếu bạn cần thêm sự trợ giúp trong quá trình phát triển, vui lòng tham khảo tại [Google Gemini](https://gemini.google.com/).*
