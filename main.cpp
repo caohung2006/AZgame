@@ -1,7 +1,7 @@
-#include "lib.h"
+#include "game.h"
 
 int main() {
-    // Khởi chạy vòng lặp chính của trò chơi
-    RunGame();
+    Game game;
+    game.Run();
     return 0;
 }

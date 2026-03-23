@@ -1,132 +1,83 @@
-#include "lib.h"
+#include "tank.h"
 
-// Hàm khởi tạo: Chạy 1 lần duy nhất để thiết lập thông số cho xe tăng khi bắt đầu game
-void Tank::Init(int _playerIndex, int _forwardKey, int _backwardKey, int _turnLeftKey, int _turnRightKey, int _shootKey) {
+Tank::Tank(b2World& world, int _playerIndex, int _fw, int _bw, int _tl, int _tr, int _sh) {
+    playerIndex = _playerIndex;
+    forwardKey = (_fw != 0) ? _fw : KEY_W;
+    backwardKey = (_bw != 0) ? _bw : KEY_S;
+    turnLeftKey = (_tl != 0) ? _tl : KEY_A;
+    turnRightKey = (_tr != 0) ? _tr : KEY_D;
+    shootKey = (_sh != 0) ? _sh : KEY_Q;
+    shootCooldownTimer = 0.0f;
+    isDestroyed = false;
 
-        playerIndex = _playerIndex; // Lưu lại ID của người chơi này
-        // Gán phím bấm được truyền vào, nếu tham số bằng 0 thì lấy mặc định
-        forwardKey = (_forwardKey != 0) ? _forwardKey : KEY_W;
-        backwardKey = (_backwardKey != 0) ? _backwardKey : KEY_S;
-        turnLeftKey = (_turnLeftKey != 0) ? _turnLeftKey : KEY_A;
-        turnRightKey = (_turnRightKey != 0) ? _turnRightKey : KEY_D;
-        shootKey = (_shootKey != 0) ? _shootKey : KEY_Q;
-        shootCooldownTimer = 0.0f; // Đặt bằng 0 để xe tăng có thể bắn ngay lập tức khi vừa vào game
-        isDestroyed = false; // Mặc định xe tăng còn sống khi mới sinh ra
+    b2BodyDef tankDef;
+    tankDef.type = b2_dynamicBody;
+    tankDef.position.Set((SCREEN_WIDTH / 2.0f) / SCALE, (SCREEN_HEIGHT / 2.0f) / SCALE);
+    tankDef.fixedRotation = false;
+    body = world.CreateBody(&tankDef);
 
-        b2BodyDef tankDef; // Định nghĩa các thuộc tính vật lý cơ bản cho xe tăng
-        tankDef.type = b2_dynamicBody; // Đặt là vật thể động (có thể di chuyển, bị đẩy lùi và nảy)
-        tankDef.position.Set((SCREEN_WIDTH / 2.0f) / SCALE, (SCREEN_HEIGHT / 2.0f) / SCALE); // Đặt vị trí sinh ra ở chính giữa màn hình
-        tankDef.fixedRotation = false; // Cho phép vật lý tác động lên góc xoay để xe bị kẹt lại khi xoay đụng tường
+    b2PolygonShape hullShape;
+    hullShape.SetAsBox(14.0f / SCALE, 14.0f / SCALE, b2Vec2(0.0f, -7.0f / SCALE), 0.0f);
+    b2FixtureDef hullFix; hullFix.shape = &hullShape; hullFix.density = 1.0f; hullFix.friction = 0.0f; hullFix.restitution = 0.0f;
+    body->CreateFixture(&hullFix);
 
-        body = world.CreateBody(&tankDef); // Đưa xe tăng vào thế giới mô phỏng vật lý Box2D
-
-        // --- Cấu hình Hitbox (Khu vực va chạm) ---
-        // 1. Hitbox cho thân xe tăng (Khu vực phía dưới)
-        b2PolygonShape hullShape;
-        // Thân xe rộng 28, cao 28. Tâm lệch xuống dưới (Y = -7)
-        hullShape.SetAsBox(14.0f / SCALE, 14.0f / SCALE, b2Vec2(0.0f, -7.0f / SCALE), 0.0f);
-
-        b2FixtureDef hullFix;
-        hullFix.shape = &hullShape;
-        hullFix.density = 1.0f;
-        hullFix.friction = 0.0f;
-        hullFix.restitution = 0.0f; // Đặt độ nảy về 0 để xe không bị nảy dội lại khi tông tường
-        body->CreateFixture(&hullFix); // Gắn thân xe vào body
-
-        // 2. Hitbox cho nòng súng (Khu vực nhô ra phía trên)
-        b2PolygonShape barrelShape;
-        // Nòng súng rộng 6, cao 14. Tâm lệch lên trên (Y = 14)
-        barrelShape.SetAsBox(3.0f / SCALE, 7.0f / SCALE, b2Vec2(0.0f, 14.0f / SCALE), 0.0f);
-
-        b2FixtureDef barrelFix;
-        barrelFix.shape = &barrelShape;
-        barrelFix.density = 0.2f; // Nòng súng nhẹ hơn thân xe để không làm lệch trọng tâm khi xe xoay
-        barrelFix.friction = 0.0f;
-        barrelFix.restitution = 0.0f;
-        body->CreateFixture(&barrelFix); // Gắn thêm nòng súng vào body
+    b2PolygonShape barrelShape;
+    barrelShape.SetAsBox(3.0f / SCALE, 7.0f / SCALE, b2Vec2(0.0f, 14.0f / SCALE), 0.0f);
+    b2FixtureDef barrelFix; barrelFix.shape = &barrelShape; barrelFix.density = 0.2f; barrelFix.friction = 0.0f; barrelFix.restitution = 0.0f;
+    body->CreateFixture(&barrelFix);
 }
 
-// Hàm xử lý logic: Lắng nghe phím bấm để di chuyển và bắn đạn (được gọi liên tục mỗi khung hình)
-void Tank::Move() {
+void Tank::Move(b2World& world, std::vector<Bullet*>& bullets) {
+    float moveSpeed = 2.5f, turnSpeed = 2.5f;
+    float angularVel = 0.0f;
+    if (IsKeyDown(turnLeftKey)) angularVel += turnSpeed;
+    if (IsKeyDown(turnRightKey)) angularVel -= turnSpeed;
+    body->SetAngularVelocity(angularVel);
 
-        // --- 1. THIẾT LẬP TỐC ĐỘ ---
-        float moveSpeed = 2.5f;
-        float turnSpeed = 2.5f; // Tốc độ xoay (radians/giây)
+    b2Vec2 vel(0.0f, 0.0f);
+    float currentAngle = body->GetAngle();
+    b2Vec2 forwardDir(-sinf(currentAngle), cosf(currentAngle));
 
-        // --- 2. XỬ LÝ XOAY (Phím A và D) ---
-        float angularVel = 0.0f;
-        if (IsKeyDown(turnLeftKey)) angularVel += turnSpeed; // Xoay trái
-        if (IsKeyDown(turnRightKey)) angularVel -= turnSpeed; // Xoay phải
-        body->SetAngularVelocity(angularVel);
+    if (IsKeyDown(forwardKey)) { vel.x += forwardDir.x * moveSpeed; vel.y += forwardDir.y * moveSpeed; }
+    if (IsKeyDown(backwardKey)) { vel.x -= forwardDir.x * moveSpeed; vel.y -= forwardDir.y * moveSpeed; }
+    body->SetLinearVelocity(vel);
 
-        // --- 3. XỬ LÝ TIẾN LÙI (Phím W và S) ---
-        b2Vec2 vel(0.0f, 0.0f);
-        float currentAngle = body->GetAngle(); // Lấy góc xoay hiện tại của thân xe
-        
-        // Dùng lượng giác (sin, cos) để tính ra hướng mũi tên chỉ thẳng về phía trước mặt xe tăng
-        b2Vec2 forwardDir(-sinf(currentAngle), cosf(currentAngle));
+    if (shootCooldownTimer > 0.0f) shootCooldownTimer -= GetFrameTime();
+    if (IsKeyPressed(shootKey) && shootCooldownTimer <= 0.0f) {
+        b2Vec2 startPos = body->GetPosition();
+        b2Vec2 spawnPos = startPos + (24.5f / SCALE) * forwardDir;
+        class WallRayCastCallback : public b2RayCastCallback {
+        public:
+            bool hitWall = false;
+            float ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) override {
+                if (fixture->GetBody()->GetType() == b2_staticBody) { hitWall = true; return fraction; }
+                return -1.0f;
+            }
+        };
+        WallRayCastCallback callback;
+        world.RayCast(&callback, startPos, spawnPos);
+        if (!callback.hitWall) {
+            bullets.push_back(new Bullet(world, spawnPos, 5.0f * forwardDir));
+            shootCooldownTimer = 0.5f;
+        }
+    }
 
-        // Cộng/trừ vận tốc dọc theo hướng chỉ định để tiến hoặc lùi
-        if (IsKeyDown(forwardKey)) { vel.x += forwardDir.x * moveSpeed; vel.y += forwardDir.y * moveSpeed; }
-        if (IsKeyDown(backwardKey)) { vel.x -= forwardDir.x * moveSpeed; vel.y -= forwardDir.y * moveSpeed; }
-
-        body->SetLinearVelocity(vel);
-
-        // --- 4. XỬ LÝ BẮN ĐẠN (Phím Q) ---
-        // Giảm dần thời gian chờ mỗi khung hình (GetFrameTime() trả về thời gian tính bằng giây)
-        if (shootCooldownTimer > 0.0f) shootCooldownTimer -= GetFrameTime();
-
-        // Sử dụng IsKeyPressed (chỉ nhận 1 lần chạm) giúp người chơi không bị xả đạn liên tục nếu lỡ giữ phím
-        if (IsKeyPressed(shootKey) && shootCooldownTimer <= 0.0f) {
-            b2Vec2 startPos = body->GetPosition();
-            b2Vec2 spawnPos = startPos + (24.5f / SCALE) * forwardDir;
-
-            // Kiểm tra Raycast: Phóng tia từ tâm xe đến vị trí nòng súng
-            // Nếu có bức tường (b2_staticBody) nào nằm giữa, nghĩa là súng đang bị kẹt
-            class WallRayCastCallback : public b2RayCastCallback {
-            public:
-                bool hitWall = false;
-                float ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) override {
-                    if (fixture->GetBody()->GetType() == b2_staticBody) { // Phát hiện tường
-                        hitWall = true;
-                        return fraction; // Dừng tia dò ngay khi chạm tường
-                    }
-                    return -1.0f; // Bỏ qua nếu chạm trúng đạn hoặc xe tăng khác
-                }
-            };
-
-            WallRayCastCallback callback;
-            world.RayCast(&callback, startPos, spawnPos);
-
-            // Chỉ cho phép sinh đạn nếu không có tường chắn ngang nòng súng
-            if (!callback.hitWall) {
-                b2Vec2 bulletVel = 5.0f * forwardDir;
-                bullets.push_back(new Bullet(spawnPos, bulletVel));
-                shootCooldownTimer = 0.5f; // Đặt lại thời gian chờ là 1.0 giây sau khi bắn đạn thành công
+    for (b2ContactEdge* edge = body->GetContactList(); edge; edge = edge->next) {
+        if (edge->contact->IsTouching()) {
+            b2Body* otherBody = edge->other;
+            for (Bullet* bullet : bullets) {
+                if (otherBody == bullet->body) { bullet->time = 0.0f; isDestroyed = true; }
             }
         }
-
-        // --- 5. KIỂM TRA XE TĂNG BỊ TRÚNG ĐẠN ---
-        // Box2D tự động lưu danh sách các vật thể đang chạm vào xe tăng
-        for (b2ContactEdge* edge = body->GetContactList(); edge; edge = edge->next) {
-            if (edge->contact->IsTouching()) {
-                b2Body* otherBody = edge->other;
-                
-                // Kiểm tra xem vật thể đang chạm vào xe tăng có phải là viên đạn nào không
-                for (Bullet* bullet : bullets) {
-                    if (otherBody == bullet->body) {
-                        // TÌM THẤY VA CHẠM VỚI ĐẠN! In ra màn hình console (Terminal) để kiểm tra
-                        TraceLog(LOG_WARNING, "!!! XE TANG BI TRUNG DAN !!!");
-                        
-                        // (Tuỳ chọn) Ép thời gian sống của đạn về 0 để hàm Lifetime() tự động xoá nó ngay sau khi trúng
-                        bullet->time = 0.0f;
-                        isDestroyed = true; // Bật cờ tiêu diệt xe tăng này
-                    }
-                }
-            }
-        }
+    }
 }
 
-void Tank::Info() {
-
+void Tank::Draw() {
+    b2Vec2 pos = body->GetPosition();
+    float rot = -body->GetAngle() * RAD2DEG;
+    float x = pos.x * SCALE, y = SCREEN_HEIGHT - pos.y * SCALE;
+    
+    Color hullColor = (playerIndex == 0) ? DARKGREEN : (playerIndex == 1) ? DARKBLUE : (playerIndex == 2) ? MAROON : GOLD;
+    DrawRectanglePro({ x, y, 6.0f, 14.0f }, { 3.0f, 21.0f }, rot, GRAY);
+    DrawRectanglePro({ x, y, 28.0f, 28.0f }, { 14.0f, 7.0f }, rot, hullColor);
 }

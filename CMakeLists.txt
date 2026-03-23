@@ -11,10 +11,7 @@ add_subdirectory(box2d)
 
 find_package(raylib CONFIG REQUIRED)
 
-file(GLOB SOURCES "*.cpp")
-# 3. Khai báo file chạy chính của bạn
-# add_executable(AZgame main.cpp world.cpp gamemap.cpp render.cpp tank.cpp bullet.cpp init.cpp)
-add_executable(AZgame ${SOURCES})
+add_executable(AZgame main.cpp world.cpp gamemap.cpp render.cpp tank.cpp bullet.cpp init.cpp portal.cpp)
 
 # 4. Liên kết AZgame với thư viện box2d vừa được biên dịch từ thư mục con
 target_link_libraries(AZgame PRIVATE box2d raylib)
