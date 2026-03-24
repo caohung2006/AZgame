@@ -2,7 +2,7 @@
 #include "constants.h"
 #include "tank.h"
 #include "bullet.h"
-#include "gamemap.h"
+#include "map.h"
 #include "portal.h"
 #include "ui.h"
 

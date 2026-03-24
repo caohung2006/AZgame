@@ -33,7 +33,7 @@ void UI::ShowKeyBindingScreen(int& fw, int& bw, int& tl, int& tr, int& sh, int p
 }
 
 void UI::DrawHUD(int scores[], int numPlayers) {
-    DrawText("WASD to move", 10, 10, 20, BLACK);
+    // DrawText("WASD to move", 10, 10, 20, BLACK);
     DrawRectangle(SCREEN_WIDTH - 120, 10, 110, 30, LIGHTGRAY); DrawRectangleLines(SCREEN_WIDTH - 120, 10, 110, 30, DARKGRAY); DrawText("SETTINGS", SCREEN_WIDTH - 105, 16, 20, DARKGRAY);
     int secW = SCREEN_WIDTH / numPlayers;
     for (int i = 0; i < numPlayers; i++) {

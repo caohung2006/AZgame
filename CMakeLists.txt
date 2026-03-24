@@ -11,7 +11,10 @@ add_subdirectory(box2d)
 
 find_package(raylib CONFIG REQUIRED)
 
-add_executable(AZgame main.cpp world.cpp gamemap.cpp render.cpp tank.cpp bullet.cpp init.cpp portal.cpp)
+add_executable(AZgame main.cpp game.cpp map.cpp render.cpp tank.cpp bullet.cpp ui.cpp portal.cpp)
 
 # 4. Liên kết AZgame với thư viện box2d vừa được biên dịch từ thư mục con
 target_link_libraries(AZgame PRIVATE box2d raylib)
+
+# 5. Chỉ định thư mục chứa các file Header (.h)
+target_include_directories(AZgame PRIVATE include)

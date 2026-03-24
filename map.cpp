@@ -1,4 +1,4 @@
-#include "gamemap.h"
+#include "map.h"
 
 void GameMap::Build(b2World& world) {
     auto addWall = [&](float x, float y, float width, float height) {

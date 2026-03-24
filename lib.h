@@ -1,1 +1,0 @@
-// File nay da duoc thay the boi cac file Header chuyen biet (game.h, tank.h...) de dam bao OOP.
