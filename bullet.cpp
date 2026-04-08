@@ -26,6 +26,9 @@ Bullet::Bullet(b2World& world, b2Vec2 position, b2Vec2 velocity, bool _isLaser, 
     } else if (isMissile) {
         velocity.x *= 1.5f;
         velocity.y *= 1.5f;
+        time = 5.0f; // Rút ngắn thời gian tồn tại tên lửa
+    } else if (isFrag) {
+        time = 1.5f; // Đạn to tự động nổ sau 1.5 giây nếu không kích
     }
     
     body->SetLinearVelocity(velocity);

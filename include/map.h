@@ -1,21 +1,33 @@
 #pragma once
 #include "constants.h"
 
-// Lớp phụ trách quản lý kết cấu màn chơi / mê cung
+/**
+ * @class GameMap
+ * @brief Chịu trách nhiệm thiết kế, sinh tự động và hiển thị hệ thống Mê cung (Maze)
+ */
 class GameMap {
 private:
-    std::vector<b2Body*> walls; // Danh sách lưu trữ các khối tường tĩnh trong vật lý Box2D
+    std::vector<b2Body*> walls; ///< Danh sách lưu trữ các khối tường tĩnh trong vật lý Box2D
     
 public:
-    // Phân tích sơ đồ chuỗi (string) và khởi tạo các viên gạch/tường b2_staticBody
+    /**
+     * @brief Sinh ra một bộ bản đồ ngẫu nhiên mới bằng thuật toán Recursive Backtracker
+     * Kết hợp thêm logic đập tường ngẫu nhiên để tạo các vòng lặp lối tắt
+     */
     void Build(b2World& world);
     
-    // Võ các bức tường lên màn hình
+    /**
+     * @brief Vẽ từng bức tường tĩnh trong danh sách lên màn hình Raylib
+     */
     void Draw();
     
-    // Sinh ngẫu nhiên một tọa độ ở trung tâm một lối đi (cell) trong mê cung
+    /**
+     * @brief Sinh ngẫu nhiên một tọa độ ở trung tâm để spawn người chơi hoặc vật phẩm an toàn
+     */
     b2Vec2 GetRandomCellCenter() const;
     
-    // Dọn dẹp, phá hủy toàn bộ các khối tường hiện tại trong Box2D và dọn bộ nhớ
+    /**
+     * @brief Dọn dẹp, phá hủy toàn bộ các khối tường hiện tại trong Box2D và dọn bộ nhớ
+     */
     void Clear(b2World& world);
 };

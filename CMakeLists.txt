@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(AZgame)
 
+# Xuất file compile_commands.json để cho clangd hiểu được cấu trúc dự án
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # 1. Tắt các module không cần thiết của Box2D (như testbed, docs) để build nhanh hơn
 set(BOX2D_BUILD_TESTBED OFF CACHE BOOL "" FORCE)
 set(BOX2D_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)

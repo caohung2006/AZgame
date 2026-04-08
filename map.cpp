@@ -11,22 +11,76 @@ void GameMap::Build(b2World& world) {
         walls.push_back(body);
     };
 
-    std::vector<std::string> maze = {
-        "+---+---+---+---+---+---+---+---+", "|               |               |", "+   +---+---+   +   +---+---+   +",
-        "|   |       |       |       |   |", "+   +   +   +---+---+   +   +   +", "|       |               |       |",
-        "+---+   +               +   +---+", "|       |               |       |", "+   +   +   +---+---+   +   +   +",
-        "|   |       |       |       |   |", "+   +---+---+   +   +---+---+   +", "|               |               |",
-        "+---+---+---+---+---+---+---+---+"
-    };
-    float cellW = 90.0f, cellH = 90.0f, wallThickness = 6.0f;
-    float offsetX = (SCREEN_WIDTH - (8 * cellW)) / 2.0f, offsetY = (SCREEN_HEIGHT - (6 * cellH)) / 2.0f - 50.0f;
+    const int ROWS = 6, COLS = 8;
+    bool hWalls[ROWS + 1][COLS];
+    bool vWalls[ROWS][COLS + 1];
+    for(int r = 0; r <= ROWS; r++) for(int c = 0; c < COLS; c++) hWalls[r][c] = true;
+    for(int r = 0; r < ROWS; r++) for(int c = 0; c <= COLS; c++) vWalls[r][c] = true;
+    
+    bool visited[ROWS][COLS] = {false};
+    std::vector<std::pair<int, int>> stack;
+    
+    int startR = rand() % ROWS;
+    int startC = rand() % COLS;
+    visited[startR][startC] = true;
+    stack.push_back({startR, startC});
+    
+    // Thuật toán Recursive Backtracker tạo Mê cung Hoàn hảo
+    while (!stack.empty()) {
+        int r = stack.back().first;
+        int c = stack.back().second;
+        
+        std::vector<int> neighbors; // 0=Top, 1=Right, 2=Bottom, 3=Left
+        if (r > 0 && !visited[r-1][c]) neighbors.push_back(0);
+        if (c < COLS-1 && !visited[r][c+1]) neighbors.push_back(1);
+        if (r < ROWS-1 && !visited[r+1][c]) neighbors.push_back(2);
+        if (c > 0 && !visited[r][c-1]) neighbors.push_back(3);
+        
+        if (!neighbors.empty()) {
+            int dir = neighbors[rand() % neighbors.size()];
+            int nr = r, nc = c;
+            if (dir == 0) { nr = r-1; hWalls[r][c] = false; }
+            else if (dir == 1) { nc = c+1; vWalls[r][c+1] = false; }
+            else if (dir == 2) { nr = r+1; hWalls[r+1][c] = false; }
+            else if (dir == 3) { nc = c-1; vWalls[r][c] = false; }
+            
+            visited[nr][nc] = true;
+            stack.push_back({nr, nc});
+        } else {
+            stack.pop_back();
+        }
+    }
+    
+    // Thuật toán đục thêm một vài tường ngẫu nhiên để tạo ra các lối tắt (vòng lặp) cho game tank
+    int extraHoles = 6 + rand() % 4; // đục 6-9 hình
+    while (extraHoles > 0) {
+        if (rand() % 2 == 0) { // Tường ngang
+            int r = 1 + rand() % (ROWS - 1);
+            int c = rand() % COLS;
+            if (hWalls[r][c]) { hWalls[r][c] = false; extraHoles--; }
+        } else { // Tường dọc
+            int r = rand() % ROWS;
+            int c = 1 + rand() % (COLS - 1);
+            if (vWalls[r][c]) { vWalls[r][c] = false; extraHoles--; }
+        }
+    }
 
-    for (int row = 0; row < maze.size(); row++) {
-        for (int col = 0; col < maze[row].length(); col++) {
-            char c = maze[row][col];
-            if (c == '-' && col % 4 == 2) addWall(offsetX + (col/4)*cellW + cellW/2.0f, offsetY + (row/2)*cellH, cellW + wallThickness, wallThickness);
-            else if (c == '|') addWall(offsetX + (col/4)*cellW, offsetY + (row/2)*cellH + cellH/2.0f, wallThickness, cellH + wallThickness);
-            else if (c == '+') addWall(offsetX + (col/4)*cellW, offsetY + (row/2)*cellH, wallThickness, wallThickness);
+    float cellW = 90.0f, cellH = 90.0f, wallThickness = 6.0f;
+    float offsetX = (SCREEN_WIDTH - (COLS * cellW)) / 2.0f, offsetY = (SCREEN_HEIGHT - (ROWS * cellH)) / 2.0f - 50.0f;
+
+    // Dựng các tường vật lý
+    for(int r = 0; r <= ROWS; r++) {
+        for(int c = 0; c < COLS; c++) {
+            if (hWalls[r][c]) {
+                addWall(offsetX + c * cellW + cellW / 2.0f, offsetY + r * cellH, cellW + wallThickness, wallThickness);
+            }
+        }
+    }
+    for(int r = 0; r < ROWS; r++) {
+        for(int c = 0; c <= COLS; c++) {
+            if (vWalls[r][c]) {
+                addWall(offsetX + c * cellW, offsetY + r * cellH + cellH / 2.0f, wallThickness, cellH + wallThickness);
+            }
         }
     }
 }

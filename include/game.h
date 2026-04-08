@@ -7,39 +7,58 @@
 #include "ui.h"
 #include "item.h"
 
-// Cấu trúc lưu tạm các mã phím được gán của từng người chơi
-struct PlayerConfig { int fw, bw, tl, tr, sh; };
+/**
+ * @struct PlayerConfig
+ * @brief Cấu trúc chuyên dụng để lưu mã phím cấu hình từ UI cho từng người chơi
+ */
+struct PlayerConfig { int fw, bw, tl, tr, sh, shieldKey; };
 
-// Lớp quản lý trung tâm (Core / Engine), chịu trách nhiệm điều phối vòng lặp Game
+/**
+ * @class Game
+ * @brief Động cơ nòng cốt của trò chơi, quản lý State và Vòng lặp chính Game Loop.
+ * Sở hữu mọi hệ thống (Vật lý, Map, Player, Portal) và điều hướng các sự kiện logic.
+ */
 class Game {
 private:
-    b2World world;                  // Đối tượng quản lý thế giới vật lý 2D cốt lõi
-    std::vector<Tank*> tanks;       // Danh sách các xe tăng đang tồn tại
-    std::vector<Bullet*> bullets;   // Danh sách các viên đạn đang bay
-    std::vector<Item*> items;       // Danh sách các hộp vật phẩm trên bản đồ
-    GameMap map;                    // Đối tượng xử lý bản đồ
-    Portal portal;                  // Đối tượng xử lý cơ chế cổng
+    b2World world;                  ///< Môi trường mô phỏng vật lý Box2D cốt lõi (Trọng lực 0)
+    std::vector<Tank*> tanks;       ///< Danh sách các xe tăng (Player) hiện đang sống
+    std::vector<Bullet*> bullets;   ///< Danh sách các viên đạn, tia laser, mảnh vỡ đang bay
+    std::vector<Item*> items;       ///< Danh sách các hộp vũ khí văng trên đường
+    GameMap map;                    ///< Hệ thống quản lý Mê cung cấp quyền thuật toán
+    Portal portal;                  ///< Trình điều khiển cơ chế dịch chuyển không gian
     
-    float itemSpawnTimer;           // Thời gian đếm ngược để sinh vật phẩm mới
+    float itemSpawnTimer;           ///< Đồng hồ đếm ngược sinh hộp vũ khí kế tiếp
 
-    int playerScores[4];            // Mảng lưu điểm tổng kết của tối đa 4 người chơi
-    int numPlayers;                 // Số lượng người chơi tham gia ván hiện tại
-    bool needsRestart;              // Cờ tín hiệu yêu cầu làm mới ván đấu (khi có người chết hoặc reset)
-    std::vector<PlayerConfig> configs; // Dữ liệu phím bấm thiết lập qua màn hình Settings
+    int playerScores[4];            ///< Bảng điểm lưu trữ thành tích tích lũy 4 Slot
+    int numPlayers;                 ///< Thống kê số lượng người tham gia hiện tại
+    bool needsRestart;              ///< Cờ báo hiệu cần tiến hành dọn bàn & Setup vòng mới
+    std::vector<PlayerConfig> configs; ///< Lưu trữ thiết lập các phím từ Menu cài đặt
 
-    // Khởi tạo một round đấu mới (xóa dữ liệu cũ, sinh lại map, spawn xe tăng)
+    /**
+     * @brief Khởi tạo bàn đấu mới:
+     * Dọn sạch rác màn cũ (đạn, item, xác xe), Generate Map mới, Xếp vị trí xe tăng
+     */
     void ResetMatch();
     
-    // Bước xử lý logic một khung hình: cập nhật xe tăng, đạn, cổng, và gọi world.Step()
+    /**
+     * @brief Vòng lặp cập nhật Logic mỗi Khung Hình (Frame):
+     * Cập nhật đếm ngược sinh vật phẩm, di chuyển đạn, xe tăng và quét tên lửa theo dõi
+     */
     void Update(float dt);
     
-    // Bước dựng hình: chỉ huy các đối tượng tự vẽ chính mình lên Raylib Canvas
+    /**
+     * @brief Gọi toàn bộ hàm Draw của đồ họa hiển thị lên Canvas
+     */
     void Draw();
     
-    // Quét qua mảng và loại bỏ những viên đạn bị va chạm hoặc hết thời gian sống
+    /**
+     * @brief Dọn dẹp Garbage Collection và xử lý hiệu ứng Nổ/Miểng
+     */
     void CleanUpBullets(float dt);
     
-    // Quét qua mảng và dọn dẹp vật phẩm đã bị nhặt
+    /**
+     * @brief Dọn dẹp vệ sinh các cục Item bị cán thủng
+     */
     void CleanUpItems();
 
 public:
