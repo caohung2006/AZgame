@@ -10,8 +10,11 @@ public:
     // Phân tích sơ đồ chuỗi (string) và khởi tạo các viên gạch/tường b2_staticBody
     void Build(b2World& world);
     
-    // Vẽ các bức tường lên màn hình
+    // Võ các bức tường lên màn hình
     void Draw();
+    
+    // Sinh ngẫu nhiên một tọa độ ở trung tâm một lối đi (cell) trong mê cung
+    b2Vec2 GetRandomCellCenter() const;
     
     // Dọn dẹp, phá hủy toàn bộ các khối tường hiện tại trong Box2D và dọn bộ nhớ
     void Clear(b2World& world);

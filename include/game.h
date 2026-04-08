@@ -5,6 +5,7 @@
 #include "map.h"
 #include "portal.h"
 #include "ui.h"
+#include "item.h"
 
 // Cấu trúc lưu tạm các mã phím được gán của từng người chơi
 struct PlayerConfig { int fw, bw, tl, tr, sh; };
@@ -15,8 +16,11 @@ private:
     b2World world;                  // Đối tượng quản lý thế giới vật lý 2D cốt lõi
     std::vector<Tank*> tanks;       // Danh sách các xe tăng đang tồn tại
     std::vector<Bullet*> bullets;   // Danh sách các viên đạn đang bay
+    std::vector<Item*> items;       // Danh sách các hộp vật phẩm trên bản đồ
     GameMap map;                    // Đối tượng xử lý bản đồ
     Portal portal;                  // Đối tượng xử lý cơ chế cổng
+    
+    float itemSpawnTimer;           // Thời gian đếm ngược để sinh vật phẩm mới
 
     int playerScores[4];            // Mảng lưu điểm tổng kết của tối đa 4 người chơi
     int numPlayers;                 // Số lượng người chơi tham gia ván hiện tại
@@ -34,6 +38,9 @@ private:
     
     // Quét qua mảng và loại bỏ những viên đạn bị va chạm hoặc hết thời gian sống
     void CleanUpBullets(float dt);
+    
+    // Quét qua mảng và dọn dẹp vật phẩm đã bị nhặt
+    void CleanUpItems();
 
 public:
     // Khởi tạo các thông số game và cài đặt phím mặc định ban đầu

@@ -44,3 +44,17 @@ void GameMap::Clear(b2World& world) {
     for (b2Body* wall : walls) world.DestroyBody(wall);
     walls.clear();
 }
+
+b2Vec2 GameMap::GetRandomCellCenter() const {
+    float cellW = 90.0f, cellH = 90.0f;
+    float offsetX = (SCREEN_WIDTH - (8 * cellW)) / 2.0f;
+    float offsetY = (SCREEN_HEIGHT - (6 * cellH)) / 2.0f - 50.0f;
+    
+    int row = rand() % 6; // Mê cung có 6 ô chiều dọc
+    int col = rand() % 8; // Mê cung có 8 ô chiều ngang
+    
+    float x = offsetX + col * cellW + cellW / 2.0f;
+    float y = offsetY + row * cellH + cellH / 2.0f;
+    
+    return b2Vec2(x / SCALE, (SCREEN_HEIGHT - y) / SCALE);
+}
