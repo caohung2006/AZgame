@@ -71,6 +71,20 @@ void Tank::HandleMovement() {
     body->SetLinearVelocity(vel);
 }
 
+// Cấu trúc Raycast để kiểm tra đường đạn trước khi bắn xem có bị kẹt vào tường không
+class WallRayCastCallback : public b2RayCastCallback {
+public:
+    bool hitWall = false;
+    float ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) override {
+        // Chỉ coi là tường nếu đó là vật thể Static
+        if (fixture->GetBody()->GetType() == b2_staticBody) { 
+            hitWall = true; 
+            return fraction; 
+        }
+        return -1.0f; // Bỏ qua các vật thể khác
+    }
+};
+
 void Tank::FireWeapon(b2World& world, std::vector<Bullet*>& bullets) {
     int activeMyBullets = 0;
     for (Bullet* b : bullets) {
@@ -83,24 +97,18 @@ void Tank::FireWeapon(b2World& world, std::vector<Bullet*>& bullets) {
         b2Vec2 startPos = body->GetPosition();
         b2Vec2 spawnPos = startPos + (30.0f / SCALE) * forwardDir;
         
-        class WallRayCastCallback : public b2RayCastCallback {
-        public:
-            bool hitWall = false;
-            float ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) override {
-                if (fixture->GetBody()->GetType() == b2_staticBody) { hitWall = true; return fraction; }
-                return -1.0f;
-            }
-        };
         WallRayCastCallback callback;
         world.RayCast(&callback, startPos, spawnPos);
         
         if (!callback.hitWall) {
             bool hasFragActive = false;
-            // Xử lý nổ mìn Frag
+            
+            // Xử lý kích nổ mìn Frag nếu đã thả
             for (Bullet* b : bullets) {
                 if (b->isFrag && b->ownerPlayerIndex == playerIndex && !b->explodeFrag) {
                     b->explodeFrag = true;
                     hasFragActive = true;
+                    // Lần kích nổ mới được tính là dùng đạn (để cho phép giấu mìn chờ kích nổ)
                     if (currentWeapon == ItemType::FRAG && ammo > 0) {
                         ammo--;
                         if (ammo <= 0) currentWeapon = ItemType::NORMAL;
@@ -110,39 +118,56 @@ void Tank::FireWeapon(b2World& world, std::vector<Bullet*>& bullets) {
                 }
             }
 
+            // Nếu không kích nổ mìn, thực hiện bắn đạn mới
             if (!hasFragActive) {
-                if (currentWeapon == ItemType::GATLING) {
-                    // Công dụng Shotgun
-                    for (int i = 0; i < 5; i++) {
-                        float angleOffset = (i - 2) * 0.15f; 
-                        float cosA = cosf(angleOffset);
-                        float sinA = sinf(angleOffset);
-                        b2Vec2 dir(forwardDir.x * cosA - forwardDir.y * sinA, forwardDir.x * sinA + forwardDir.y * cosA);
-                        Bullet* b = new Bullet(world, spawnPos, 10.0f * dir, false, false, false, playerIndex);
-                        b->time = 1.0f; 
-                        bullets.push_back(b);
+                switch (currentWeapon) {
+                    case ItemType::GATLING: {
+                        // Bắn dạng chùm (Shotgun) với 5 viên văng hình quạt
+                        for (int i = 0; i < 5; i++) {
+                            float angleOffset = (i - 2) * 0.15f; 
+                            float cosA = cosf(angleOffset);
+                            float sinA = sinf(angleOffset);
+                            b2Vec2 dir(forwardDir.x * cosA - forwardDir.y * sinA, forwardDir.x * sinA + forwardDir.y * cosA);
+                            Bullet* b = new Bullet(world, spawnPos, 10.0f * dir, false, false, false, playerIndex);
+                            b->time = 1.0f; 
+                            bullets.push_back(b);
+                        }
+                        shootCooldownTimer = 0.5f;
+                        break;
                     }
-                    ammo--;
-                    if (ammo <= 0) currentWeapon = ItemType::NORMAL;
-                    shootCooldownTimer = 0.5f;
-                } else if (currentWeapon == ItemType::FRAG) {
-                    bullets.push_back(new Bullet(world, spawnPos, 5.0f * forwardDir, false, true, false, playerIndex));
-                    shootCooldownTimer = 0.5f;
-                } else if (currentWeapon == ItemType::MISSILE) {
-                    bullets.push_back(new Bullet(world, spawnPos, 4.5f * forwardDir, false, false, true, playerIndex));
-                    ammo--;
-                    if (ammo <= 0) currentWeapon = ItemType::NORMAL;
-                    shootCooldownTimer = 0.5f;
-                } else if (currentWeapon == ItemType::DEATH_RAY) {
-                    bullets.push_back(new Bullet(world, spawnPos, 8.0f * forwardDir, true, false, false, playerIndex));
-                    ammo--;
-                    if (ammo <= 0) currentWeapon = ItemType::NORMAL;
-                    shootCooldownTimer = 0.5f;
-                } else {
-                    if (activeMyBullets < 5) {
-                        bullets.push_back(new Bullet(world, spawnPos, 6.0f * forwardDir, false, false, false, playerIndex));
-                        shootCooldownTimer = 0.15f;
+                    case ItemType::FRAG: {
+                        // Thả 1 viên mìn to có thể kích nổ
+                        bullets.push_back(new Bullet(world, spawnPos, 5.0f * forwardDir, false, true, false, playerIndex));
+                        shootCooldownTimer = 0.5f;
+                        // Lưu ý: Frag giảm ammo ở bước kích nổ (phía trên), không giảm ở đây
+                        break;
                     }
+                    case ItemType::MISSILE: {
+                        // Bắn tên lửa điều hướng bám theo đối thủ
+                        bullets.push_back(new Bullet(world, spawnPos, 4.5f * forwardDir, false, false, true, playerIndex));
+                        shootCooldownTimer = 0.5f;
+                        break;
+                    }
+                    case ItemType::DEATH_RAY: {
+                        // Bắn tia lase có tốc độ bay cực lớn và sức công phá mạnh
+                        bullets.push_back(new Bullet(world, spawnPos, 8.0f * forwardDir, true, false, false, playerIndex));
+                        shootCooldownTimer = 0.5f;
+                        break;
+                    }
+                    default: {
+                        // Đạn súng mặc định (tối đa giới hạn 5 viên cùng lúc trên bản đồ theo như Tank Trouble gốc)
+                        if (activeMyBullets < 5) {
+                            bullets.push_back(new Bullet(world, spawnPos, 6.0f * forwardDir, false, false, false, playerIndex));
+                            shootCooldownTimer = 0.15f;
+                        }
+                        break;
+                    }
+                }
+                
+                // Trừ đạn cho các vũ khí (Ngoại trừ trường hợp NORMAL hoặc FRAG chưa nổ)
+                if (currentWeapon != ItemType::NORMAL && currentWeapon != ItemType::FRAG) {
+                    ammo--;
+                    if (ammo <= 0) currentWeapon = ItemType::NORMAL;
                 }
             }
         }

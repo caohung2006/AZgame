@@ -54,7 +54,7 @@ private:
     /**
      * @brief Dọn dẹp Garbage Collection và xử lý hiệu ứng Nổ/Miểng
      */
-    void CleanUpBullets(float dt);
+    void CleanUpBullets();
     
     /**
      * @brief Dọn dẹp vệ sinh các cục Item bị cán thủng

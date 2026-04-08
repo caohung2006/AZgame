@@ -1,4 +1,5 @@
 #include "bullet.h"
+#include "tank.h"
 
 Bullet::Bullet(b2World& world, b2Vec2 position, b2Vec2 velocity, bool _isLaser, bool _isFrag, bool _isMissile, int _owner) {
     isLaser = _isLaser;
@@ -10,7 +11,7 @@ Bullet::Bullet(b2World& world, b2Vec2 position, b2Vec2 velocity, bool _isLaser, 
     def.type = b2_dynamicBody;
     def.position = position;
     def.bullet = true;
-    time = 10.0f;
+    time = 7.0f;
     body = world.CreateBody(&def);
 
     b2CircleShape shape; 
@@ -55,4 +56,57 @@ void Bullet::Draw() {
     } else {
         DrawCircle(x, y, 3.0f, BLACK);
     }
+}
+
+void Bullet::Update(float dt, const std::vector<Tank*>& tanks) {
+    time -= dt;
+    if (IsDead()) return;
+
+    // Logic xử lý đạn đuổi tìm mục tiêu (Tên lửa)
+    if (isMissile) {
+        float elapsed = 5.0f - time;
+        b2Vec2 currentVel = body->GetLinearVelocity();
+        float currentSpeed = currentVel.Length();
+        
+        if (currentSpeed > 0.0f) {
+            if (elapsed < 2.0f) {
+                // Trong 2.0s đầu tiên, đạn lượn lờ hình sin (sử dụng cos để xoay vận tốc) để tạo cảm giác thực
+                float waveTurn = cosf(elapsed * 12.0f) * 4.0f * dt;
+                float angle = atan2f(currentVel.y, currentVel.x) + waveTurn;
+                body->SetLinearVelocity(b2Vec2(cosf(angle) * currentSpeed, sinf(angle) * currentSpeed));
+            } else {
+                // Sau 2.0s, tìm kiếm xe tăng BẤT KỲ gần nhất trên bản đồ
+                Tank* target = nullptr;
+                float minDist = 9999.0f;
+                for (Tank* t : tanks) {
+                    if (!t->isDestroyed) { 
+                        float dist = (t->body->GetPosition() - body->GetPosition()).Length();
+                        if (dist < minDist) { minDist = dist; target = t; }
+                    }
+                }
+                
+                // Thuật toán điều hướng dần dần về phía mục tiêu
+                if (target) {
+                    b2Vec2 toTarget = target->body->GetPosition() - body->GetPosition();
+                    toTarget.Normalize();
+                    b2Vec2 normVel = currentVel;
+                    normVel.Normalize();
+                    
+                    // Tính cross product 2D để tìm hướng cần xoay (-1 hoặc 1)
+                    float cross = normVel.x * toTarget.y - normVel.y * toTarget.x;
+                    float turnSpeed = 3.5f * dt; // tốc độ bẻ lái
+                    
+                    float angle = atan2f(normVel.y, normVel.x);
+                    if (cross > 0.1f) angle += turnSpeed;
+                    else if (cross < -0.1f) angle -= turnSpeed;
+                    
+                    body->SetLinearVelocity(b2Vec2(cosf(angle) * currentSpeed, sinf(angle) * currentSpeed));
+                }
+            }
+        }
+    }
+}
+
+bool Bullet::IsDead() const {
+    return time <= 0.0f || explodeFrag;
 }
