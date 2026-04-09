@@ -59,9 +59,12 @@ int main() {
         float dt = GetFrameTime();
         game.Update(actions, dt);
 
+        // --- Cập nhật hiệu ứng đồ họa (explosion particles) ---
+        Renderer::Update(game, dt);
+
         // --- Render ---
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground({245, 240, 230, 255}); // Nền beige ấm
         Renderer::DrawWorld(game);
         UI::DrawHUD(game.playerScores, game.numPlayers);
         EndDrawing();

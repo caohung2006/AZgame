@@ -57,6 +57,8 @@ void Game::ResetMatch() {
  * @param dt Delta time (giây).
  */
 void Game::Update(const std::vector<TankActions>& actions, float dt) {
+    recentDeaths.clear();
+
     // Sinh vật phẩm
     if (itemsEnabled) {
         itemSpawnTimer -= dt;
@@ -75,6 +77,7 @@ void Game::Update(const std::vector<TankActions>& actions, float dt) {
         if (t->playerIndex < (int)actions.size()) act = actions[t->playerIndex];
         t->Update(world, bullets, items, act, dt);
         if (t->isDestroyed) {
+            recentDeaths.push_back({t->body->GetPosition(), t->playerIndex});
             world.DestroyBody(t->body); delete t;
             tanks.erase(tanks.begin() + i);
         } else {

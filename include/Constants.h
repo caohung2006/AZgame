@@ -46,3 +46,12 @@ struct TankActions {
     bool shoot = false;
     bool shield = false;
 };
+
+/**
+ * @struct DeathEvent
+ * @brief Ghi lại vị trí xe tăng khi bị tiêu diệt, dùng cho hiệu ứng nổ.
+ */
+struct DeathEvent {
+    b2Vec2 position;
+    int playerIndex;
+};

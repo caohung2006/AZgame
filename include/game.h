@@ -37,6 +37,9 @@ public:
     // ---- Cấu hình phím (chỉ dùng cho human play) ----
     std::vector<PlayerConfig> configs;
 
+    // ---- Sự kiện dùng cho hiệu ứng đồ họa (Renderer đọc) ----
+    std::vector<DeathEvent> recentDeaths;  ///< Xe tăng bị tiêu diệt frame này
+
     // ---- Lifecycle ----
     Game();
     ~Game();
