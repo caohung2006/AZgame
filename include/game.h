@@ -4,63 +4,52 @@
 #include "bullet.h"
 #include "map.h"
 #include "portal.h"
-#include "ui.h"
 #include "item.h"
 
 /**
  * @class Game
- * @brief Động cơ nòng cốt của trò chơi, quản lý State và Vòng lặp chính Game Loop.
- * Sở hữu mọi hệ thống (Vật lý, Map, Player, Portal) và điều hướng các sự kiện logic.
+ * @brief Quản lý toàn bộ trạng thái và logic game. KHÔNG phụ thuộc Raylib.
+ * 
+ * Thiết kế cho cả human play và RL training:
+ * - Human play: main.cpp đọc bàn phím → TankActions → Game::Update()
+ * - RL train:   agent output → TankActions → Game::Update() (không cần cửa sổ đồ họa)
+ * 
+ * Mọi thành viên public để Renderer và RL agent có thể đọc trạng thái.
  */
 class Game {
-private:
-    b2World world;                  ///< Môi trường mô phỏng vật lý Box2D cốt lõi (Trọng lực 0)
-    std::vector<Tank*> tanks;       ///< Danh sách các xe tăng (Player) hiện đang sống
-    std::vector<Bullet*> bullets;   ///< Danh sách các viên đạn, tia laser, mảnh vỡ đang bay
-    std::vector<Item*> items;       ///< Danh sách các hộp vũ khí văng trên đường
-    GameMap map;                    ///< Hệ thống quản lý Mê cung cấp quyền thuật toán
-    Portal portal;                  ///< Trình điều khiển cơ chế dịch chuyển không gian
-    
-    float itemSpawnTimer;           ///< Đồng hồ đếm ngược sinh hộp vũ khí kế tiếp
-
-    int playerScores[4];            ///< Bảng điểm lưu trữ thành tích tích lũy 4 Slot
-    int numPlayers;                 ///< Thống kê số lượng người tham gia hiện tại
-    bool needsRestart;              ///< Cờ báo hiệu cần tiến hành dọn bàn & Setup vòng mới
-    bool portalsEnabled;            ///< Bật/tắt hệ thống cổng dịch chuyển
-    bool itemsEnabled;              ///< Bật/tắt hệ thống vật phẩm (hộp vũ khí)
-    std::vector<PlayerConfig> configs; ///< Lưu trữ thiết lập các phím từ Menu cài đặt
-
-    /**
-     * @brief Khởi tạo bàn đấu mới:
-     * Dọn sạch rác màn cũ (đạn, item, xác xe), Generate Map mới, Xếp vị trí xe tăng
-     */
-    void ResetMatch();
-    
-    /**
-     * @brief Vòng lặp cập nhật Logic mỗi Khung Hình (Frame):
-     * Cập nhật đếm ngược sinh vật phẩm, di chuyển đạn, xe tăng và quét tên lửa theo dõi
-     */
-    void Update(float dt);
-    
-    /**
-     * @brief Gọi toàn bộ hàm Draw của đồ họa hiển thị lên Canvas
-     */
-    void Draw();
-    
-    /**
-     * @brief Dọn dẹp Garbage Collection và xử lý hiệu ứng Nổ/Miểng
-     */
-    void CleanUpBullets();
-    
-    /**
-     * @brief Dọn dẹp vệ sinh các cục Item bị cán thủng
-     */
-    void CleanUpItems();
-
 public:
-    // Khởi tạo các thông số game và cài đặt phím mặc định ban đầu
+    // ---- Thành phần vật lý & game objects ----
+    b2World world;                      ///< Môi trường mô phỏng Box2D (trọng lực 0)
+    std::vector<Tank*> tanks;           ///< Xe tăng đang sống
+    std::vector<Bullet*> bullets;       ///< Đạn đang bay
+    std::vector<Item*> items;           ///< Hộp vũ khí trên sàn
+    GameMap map;                        ///< Hệ thống mê cung
+    Portal portal;                      ///< Cổng dịch chuyển
+
+    // ---- Thông số & cài đặt ----
+    float itemSpawnTimer;               ///< Đếm ngược sinh vật phẩm
+    int playerScores[4];                ///< Bảng điểm 4 slot
+    int numPlayers;                     ///< Số lượng người chơi
+    bool needsRestart;                  ///< Cờ cần reset match
+    bool portalsEnabled;                ///< Bật/tắt cổng dịch chuyển
+    bool itemsEnabled;                  ///< Bật/tắt vật phẩm
+
+    // ---- Cấu hình phím (chỉ dùng cho human play) ----
+    std::vector<PlayerConfig> configs;
+
+    // ---- Lifecycle ----
     Game();
     ~Game();
-    // Khởi động giao diện màn hình và Vòng lặp trò chơi (Game Loop)
-    void Run();
+
+    /// Khởi tạo bàn đấu mới: dọn sạch, sinh map, spawn xe tăng
+    void ResetMatch();
+
+    /// Cập nhật logic game 1 frame. Actions[i] tương ứng với player index i.
+    void Update(const std::vector<TankActions>& actions, float dt);
+
+    /// Dọn dẹp đạn hết hạn, xử lý nổ Frag
+    void CleanUpBullets();
+
+    /// Dọn dẹp vật phẩm đã bị nhặt
+    void CleanUpItems();
 };

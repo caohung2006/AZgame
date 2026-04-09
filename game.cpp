@@ -1,33 +1,27 @@
 #include "game.h"
 
+/**
+ * @brief Khởi tạo Game engine. Không đặt phím mặc định (do main.cpp/RL quyết định).
+ */
 Game::Game() : world(b2Vec2(0.0f, 0.0f)), numPlayers(2), needsRestart(true), portalsEnabled(true), itemsEnabled(true) {
     itemSpawnTimer = 5.0f;
-    for(int i=0; i<4; i++) playerScores[i] = 0;
+    for(int i = 0; i < 4; i++) playerScores[i] = 0;
     configs.resize(4);
-    configs[0] = {KEY_W, KEY_S, KEY_A, KEY_D, KEY_Q, KEY_E};
-    configs[1] = {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_SLASH, KEY_PERIOD};
-    configs[2] = {KEY_I, KEY_K, KEY_J, KEY_L, KEY_U, KEY_O};
-    configs[3] = {KEY_KP_8, KEY_KP_5, KEY_KP_4, KEY_KP_6, KEY_KP_7, KEY_KP_9};
-}
-Game::~Game() {}
-
-void Game::Run() {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AZ Game"); SetTargetFPS(60);
-    while (!WindowShouldClose()) {
-        if (UI::CheckSettingsButtonClicked()) {
-            int oldNumPlayers = numPlayers;
-            UI::ShowSettingsScreen(numPlayers, portalsEnabled, itemsEnabled, configs);
-            if (numPlayers != oldNumPlayers) {
-                for (int i = 0; i < 4; i++) playerScores[i] = 0;
-            }
-            needsRestart = true;
-        }
-        if (needsRestart) ResetMatch();
-        float dt = GetFrameTime(); Update(dt); Draw();
-    }
-    CloseWindow();
 }
 
+/**
+ * @brief Giải phóng tất cả tài nguyên Box2D khi Game bị hủy.
+ */
+Game::~Game() {
+    for (Tank* t : tanks) { world.DestroyBody(t->body); delete t; }
+    for (Bullet* b : bullets) { world.DestroyBody(b->body); delete b; }
+    for (Item* i : items) { world.DestroyBody(i->body); delete i; }
+    map.Clear(world);
+}
+
+/**
+ * @brief Dọn sạch bàn đấu, sinh map mới, spawn xe tăng tại vị trí ngẫu nhiên.
+ */
 void Game::ResetMatch() {
     map.Clear(world);
     for (Tank* t : tanks) { world.DestroyBody(t->body); delete t; } tanks.clear();
@@ -35,8 +29,10 @@ void Game::ResetMatch() {
     for (Item* item : items) { world.DestroyBody(item->body); delete item; } items.clear();
     itemSpawnTimer = 3.0f;
     map.Build(world);
+
+    // Spawn xe tăng tại các ô đủ xa nhau
     std::vector<b2Vec2> spawnCells;
-    while (spawnCells.size() < numPlayers) {
+    while ((int)spawnCells.size() < numPlayers) {
         b2Vec2 p = map.GetRandomCellCenter();
         bool ok = true;
         for (b2Vec2 sp : spawnCells) {
@@ -44,71 +40,97 @@ void Game::ResetMatch() {
         }
         if (ok) spawnCells.push_back(p);
     }
-    
+
     for (int i = 0; i < numPlayers; i++) {
-        Tank* t = new Tank(world, i, configs[i].fw, configs[i].bw, configs[i].tl, configs[i].tr, configs[i].sh, configs[i].shieldKey);
-        t->body->SetTransform(spawnCells[i], (rand() % 4) * PI / 2.0f); // Random góc quay 90 độ
+        Tank* t = new Tank(world, i);
+        t->body->SetTransform(spawnCells[i], (rand() % 4) * PI / 2.0f);
         tanks.push_back(t);
     }
-    portal.Reset(); needsRestart = false;
+
+    portal.Reset();
+    needsRestart = false;
 }
 
-void Game::Update(float dt) {
+/**
+ * @brief Cập nhật logic game 1 frame.
+ * @param actions Vector TankActions, indexed theo playerIndex.
+ * @param dt Delta time (giây).
+ */
+void Game::Update(const std::vector<TankActions>& actions, float dt) {
+    // Sinh vật phẩm
     if (itemsEnabled) {
         itemSpawnTimer -= dt;
         if (itemSpawnTimer <= 0.0f) {
             b2Vec2 spawnPos = map.GetRandomCellCenter();
-            ItemType rType = static_cast<ItemType>(1 + rand() % 4); // GATLING, FRAG, MISSILE, DEATH_RAY
+            ItemType rType = static_cast<ItemType>(1 + rand() % 4);
             items.push_back(new Item(world, spawnPos, rType));
             itemSpawnTimer = 3.0f;
         }
     }
 
-    for (auto it = tanks.begin(); it != tanks.end(); ) {
-        Tank* t = *it; 
-        t->Update(world, bullets, items, dt);
-        if (t->isDestroyed) { world.DestroyBody(t->body); delete t; it = tanks.erase(it); }
-        else ++it;
+    // Cập nhật từng xe tăng với action tương ứng
+    for (size_t i = 0; i < tanks.size(); ) {
+        Tank* t = tanks[i];
+        TankActions act;
+        if (t->playerIndex < (int)actions.size()) act = actions[t->playerIndex];
+        t->Update(world, bullets, items, act, dt);
+        if (t->isDestroyed) {
+            world.DestroyBody(t->body); delete t;
+            tanks.erase(tanks.begin() + i);
+        } else {
+            ++i;
+        }
     }
-    
-    // Cập nhật logic từng viên đạn (ví dụ đạn đuổi tìm mục tiêu)
+
+    // Cập nhật đạn
     for (Bullet* b : bullets) {
         b->Update(dt, tanks);
     }
 
+    // Kiểm tra điều kiện thắng
     if ((numPlayers > 1 && tanks.size() <= 1) || (numPlayers == 1 && tanks.size() == 0)) {
         if (numPlayers > 1 && tanks.size() == 1) playerScores[tanks[0]->playerIndex]++;
         needsRestart = true;
     }
+
+    // Cổng dịch chuyển
     if (!needsRestart && portalsEnabled) portal.Update(dt, tanks, bullets);
-    world.Step(dt, 6, 2); CleanUpBullets(); CleanUpItems();
+
+    // Bước vật lý Box2D + dọn dẹp
+    world.Step(dt, 6, 2);
+    CleanUpBullets();
+    CleanUpItems();
 }
 
+/**
+ * @brief Dọn dẹp đạn hết hạn. Xử lý nổ Frag thành 8 mảnh shrapnel.
+ */
 void Game::CleanUpBullets() {
     std::vector<Bullet*> newBullets;
     for (auto it = bullets.begin(); it != bullets.end(); ) {
-        Bullet* b = *it; 
-        
-        if (b->IsDead()) { 
+        Bullet* b = *it;
+        if (b->IsDead()) {
             if (b->isFrag) {
                 b2Vec2 pos = b->body->GetPosition();
                 for(int i = 0; i < 8; i++) {
                     float angle = i * PI / 4.0f;
                     b2Vec2 dir(cosf(angle), sinf(angle));
-                    // Đạn chùm (mảnh vỡ) bay cực nhanh
                     Bullet* shrapnel = new Bullet(world, pos, 12.0f * dir, false, false, false, b->ownerPlayerIndex);
-                    // Giảm thời gian tồn tại của đạn chùm (như game gốc)
-                    shrapnel->time = 1.2f; 
+                    shrapnel->time = 1.2f;
                     newBullets.push_back(shrapnel);
                 }
             }
-            world.DestroyBody(b->body); delete b; it = bullets.erase(it); 
+            world.DestroyBody(b->body); delete b; it = bullets.erase(it);
+        } else {
+            ++it;
         }
-        else ++it;
     }
     for (Bullet* nb : newBullets) bullets.push_back(nb);
 }
 
+/**
+ * @brief Dọn dẹp vật phẩm đã bị nhặt.
+ */
 void Game::CleanUpItems() {
     for (auto it = items.begin(); it != items.end(); ) {
         Item* i = *it;

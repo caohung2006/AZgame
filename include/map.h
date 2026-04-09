@@ -3,31 +3,23 @@
 
 /**
  * @class GameMap
- * @brief Chịu trách nhiệm thiết kế, sinh tự động và hiển thị hệ thống Mê cung (Maze)
+ * @brief Sinh và quản lý hệ thống Mê cung. Logic thuần, không đồ họa.
+ * Rendering do Renderer đảm nhận thông qua GetWalls().
  */
 class GameMap {
 private:
-    std::vector<b2Body*> walls; ///< Danh sách lưu trữ các khối tường tĩnh trong vật lý Box2D
+    std::vector<b2Body*> walls; ///< Danh sách các khối tường tĩnh Box2D
     
 public:
-    /**
-     * @brief Sinh ra một bộ bản đồ ngẫu nhiên mới bằng thuật toán Recursive Backtracker
-     * Kết hợp thêm logic đập tường ngẫu nhiên để tạo các vòng lặp lối tắt
-     */
+    /// Sinh bản đồ ngẫu nhiên bằng Recursive Backtracker + đục tường tạo shortcut
     void Build(b2World& world);
     
-    /**
-     * @brief Vẽ từng bức tường tĩnh trong danh sách lên màn hình Raylib
-     */
-    void Draw();
+    /// Phá hủy toàn bộ tường hiện tại
+    void Clear(b2World& world);
     
-    /**
-     * @brief Sinh ngẫu nhiên một tọa độ ở trung tâm để spawn người chơi hoặc vật phẩm an toàn
-     */
+    /// Sinh tọa độ ô ngẫu nhiên để spawn
     b2Vec2 GetRandomCellCenter() const;
     
-    /**
-     * @brief Dọn dẹp, phá hủy toàn bộ các khối tường hiện tại trong Box2D và dọn bộ nhớ
-     */
-    void Clear(b2World& world);
+    /// Trả về danh sách tường cho Renderer vẽ
+    const std::vector<b2Body*>& GetWalls() const { return walls; }
 };

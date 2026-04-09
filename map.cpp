@@ -1,5 +1,8 @@
 #include "map.h"
 
+/**
+ * @brief Sinh mê cung hoàn hảo bằng Recursive Backtracker + đục shortcut ngẫu nhiên.
+ */
 void GameMap::Build(b2World& world) {
     auto addWall = [&](float x, float y, float width, float height) {
         b2BodyDef def; def.type = b2_staticBody;
@@ -51,14 +54,14 @@ void GameMap::Build(b2World& world) {
         }
     }
     
-    // Thuật toán đục thêm một vài tường ngẫu nhiên để tạo ra các lối tắt (vòng lặp) cho game tank
-    int extraHoles = 6 + rand() % 4; // đục 6-9 hình
+    // Đục thêm tường ngẫu nhiên tạo shortcut
+    int extraHoles = 6 + rand() % 4;
     while (extraHoles > 0) {
-        if (rand() % 2 == 0) { // Tường ngang
+        if (rand() % 2 == 0) {
             int r = 1 + rand() % (ROWS - 1);
             int c = rand() % COLS;
             if (hWalls[r][c]) { hWalls[r][c] = false; extraHoles--; }
-        } else { // Tường dọc
+        } else {
             int r = rand() % ROWS;
             int c = 1 + rand() % (COLS - 1);
             if (vWalls[r][c]) { vWalls[r][c] = false; extraHoles--; }
@@ -85,15 +88,6 @@ void GameMap::Build(b2World& world) {
     }
 }
 
-void GameMap::Draw() {
-    for (b2Body* wall : walls) {
-        b2PolygonShape* shape = (b2PolygonShape*)wall->GetFixtureList()->GetShape();
-        b2Vec2 pos = wall->GetPosition();
-        Rectangle rec = { pos.x * SCALE, SCREEN_HEIGHT - pos.y * SCALE, shape->m_vertices[1].x * 2 * SCALE, shape->m_vertices[2].y * 2 * SCALE };
-        DrawRectanglePro(rec, { rec.width / 2.0f, rec.height / 2.0f }, wall->GetAngle() * RAD2DEG, GRAY);
-    }
-}
-
 void GameMap::Clear(b2World& world) {
     for (b2Body* wall : walls) world.DestroyBody(wall);
     walls.clear();
@@ -104,8 +98,8 @@ b2Vec2 GameMap::GetRandomCellCenter() const {
     float offsetX = (SCREEN_WIDTH - (8 * cellW)) / 2.0f;
     float offsetY = (SCREEN_HEIGHT - (6 * cellH)) / 2.0f - 50.0f;
     
-    int row = rand() % 6; // Mê cung có 6 ô chiều dọc
-    int col = rand() % 8; // Mê cung có 8 ô chiều ngang
+    int row = rand() % 6;
+    int col = rand() % 8;
     
     float x = offsetX + col * cellW + cellW / 2.0f;
     float y = offsetY + row * cellH + cellH / 2.0f;

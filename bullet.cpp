@@ -1,6 +1,9 @@
 #include "bullet.h"
 #include "tank.h"
 
+/**
+ * @brief Tạo viên đạn với thông số tùy theo loại vũ khí.
+ */
 Bullet::Bullet(b2World& world, b2Vec2 position, b2Vec2 velocity, bool _isLaser, bool _isFrag, bool _isMissile, int _owner) {
     isLaser = _isLaser;
     isFrag = _isFrag;
@@ -35,29 +38,9 @@ Bullet::Bullet(b2World& world, b2Vec2 position, b2Vec2 velocity, bool _isLaser, 
     body->SetLinearVelocity(velocity);
 }
 
-void Bullet::Draw() {
-    b2Vec2 pos = body->GetPosition();
-    float x = pos.x * SCALE;
-    float y = SCREEN_HEIGHT - pos.y * SCALE;
-    
-    if (isLaser) {
-        b2Vec2 v = body->GetLinearVelocity();
-        float len = v.Length();
-        if (len > 0.0f) { v.x /= len; v.y /= len; }
-        DrawLineEx({x - v.x * 20.0f, y + v.y * 20.0f}, {x + v.x * 20.0f, y - v.y * 20.0f}, 4.0f, RED);
-    } else if (isFrag) {
-        DrawCircle(x, y, 5.0f, BLACK);
-        DrawCircleLines(x, y, 6.0f, RED);
-    } else if (isMissile) {
-        b2Vec2 v = body->GetLinearVelocity();
-        float angle = atan2f(-v.y, v.x) * RAD2DEG;
-        DrawRectanglePro({x, y, 10.0f, 6.0f}, {5.0f, 3.0f}, angle, ORANGE);
-        DrawCircle(x, y, 2.0f, RED); // Mũi đỏ
-    } else {
-        DrawCircle(x, y, 3.0f, BLACK);
-    }
-}
-
+/**
+ * @brief Cập nhật đạn: giảm thời gian tồn tại, xử lý logic tên lửa đuổi.
+ */
 void Bullet::Update(float dt, const std::vector<Tank*>& tanks) {
     time -= dt;
     if (IsDead()) return;
@@ -70,12 +53,12 @@ void Bullet::Update(float dt, const std::vector<Tank*>& tanks) {
         
         if (currentSpeed > 0.0f) {
             if (elapsed < 2.0f) {
-                // Trong 2.0s đầu tiên, đạn lượn lờ hình sin (sử dụng cos để xoay vận tốc) để tạo cảm giác thực
+                // Trong 2.0s đầu tiên, đạn lượn lờ hình sin
                 float waveTurn = cosf(elapsed * 12.0f) * 4.0f * dt;
                 float angle = atan2f(currentVel.y, currentVel.x) + waveTurn;
                 body->SetLinearVelocity(b2Vec2(cosf(angle) * currentSpeed, sinf(angle) * currentSpeed));
             } else {
-                // Sau 2.0s, tìm kiếm xe tăng BẤT KỲ gần nhất trên bản đồ
+                // Sau 2.0s, tìm kiếm xe tăng gần nhất
                 Tank* target = nullptr;
                 float minDist = 9999.0f;
                 for (Tank* t : tanks) {
@@ -92,9 +75,8 @@ void Bullet::Update(float dt, const std::vector<Tank*>& tanks) {
                     b2Vec2 normVel = currentVel;
                     normVel.Normalize();
                     
-                    // Tính cross product 2D để tìm hướng cần xoay (-1 hoặc 1)
                     float cross = normVel.x * toTarget.y - normVel.y * toTarget.x;
-                    float turnSpeed = 3.5f * dt; // tốc độ bẻ lái
+                    float turnSpeed = 3.5f * dt;
                     
                     float angle = atan2f(normVel.y, normVel.x);
                     if (cross > 0.1f) angle += turnSpeed;
