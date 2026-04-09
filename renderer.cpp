@@ -154,15 +154,34 @@ void Renderer::DrawTank(const Tank& tank) {
     };
     TankColors c = palette[tank.playerIndex % 4];
 
-    // --- Death Ray laser sight ---
+    // --- Death Ray laser sight (RayCast đến tường gần nhất — thuần rendering) ---
     if (tank.currentWeapon == ItemType::DEATH_RAY) {
         float ba = tank.body->GetAngle();
         b2Vec2 fwd(-sinf(ba), cosf(ba));
         float sx = x + fwd.x * 30.0f, sy = y - fwd.y * 30.0f;
-        float ex = x + fwd.x * 800.0f, ey = y - fwd.y * 800.0f;
+
+        // RayCast tìm tường gần nhất trong Box2D world
+        struct LaserCast : public b2RayCastCallback {
+            bool hit = false; b2Vec2 hitPt; float closest = 1.0f;
+            float ReportFixture(b2Fixture* f, const b2Vec2& p, const b2Vec2&, float frac) override {
+                if (f->GetBody()->GetType() == b2_staticBody && frac < closest)
+                    { hit = true; hitPt = p; closest = frac; return frac; }
+                return -1.0f;
+            }
+        } cast;
+        b2Vec2 rayStart = tank.body->GetPosition() + (25.0f / SCALE) * fwd;
+        b2Vec2 rayEnd   = tank.body->GetPosition() + (900.0f / SCALE) * fwd;
+        tank.body->GetWorld()->RayCast(&cast, rayStart, rayEnd);
+
+        float ex, ey;
+        if (cast.hit) { ex = cast.hitPt.x * SCALE; ey = SCREEN_HEIGHT - cast.hitPt.y * SCALE; }
+        else { ex = x + fwd.x * 800.0f; ey = y - fwd.y * 800.0f; }
+
         DrawLineEx({sx, sy}, {ex, ey}, 4.0f, ColorAlpha(RED, 0.08f));
         DrawLineEx({sx, sy}, {ex, ey}, 2.0f, ColorAlpha(RED, 0.2f));
         DrawLineEx({sx, sy}, {ex, ey}, 1.0f, ColorAlpha(RED, 0.5f));
+        // Chấm đỏ tại điểm chạm tường
+        if (cast.hit) DrawCircle((int)ex, (int)ey, 3.0f, ColorAlpha(RED, 0.3f));
     }
 
     // --- Shadow ---

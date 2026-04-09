@@ -43,7 +43,16 @@ int main() {
 
         if (game.needsRestart) game.ResetMatch();
 
-        // --- Chuyển đổi bàn phím → TankActions ---
+        // -------------------------------------------------------------
+        // BƯỚC QUAN TRỌNG CHỐT LÕI (AI-READY DECISION)
+        // -------------------------------------------------------------
+        // Thay vì quăng thẳng Raylib Key Event vào trong Logic Game,
+        // Ta thu thập dữ liệu bàn phím và đóng gói thành struct TankActions.
+        // 
+        // LỢI ÍCH: Nếu bạn chạy môi trường AI (RL), bạn sẽ XÓA TOÀN BỘ FILE NÀY
+        // (chỉ giữ lại `game.cpp/h`) và viết 1 file Python/C++ mới, không cần Raylib.
+        // Trong đó, mảng `actions` sẽ do Mạng Neural Network sinh ra (Dự đoán!).
+        // -------------------------------------------------------------
         std::vector<TankActions> actions(game.numPlayers);
         for (int i = 0; i < game.numPlayers; i++) {
             PlayerConfig& cfg = game.configs[i];

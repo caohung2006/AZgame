@@ -52,11 +52,19 @@ void Game::ResetMatch() {
 }
 
 /**
- * @brief Cập nhật logic game 1 frame.
- * @param actions Vector TankActions, indexed theo playerIndex.
- * @param dt Delta time (giây).
+ * @brief Cập nhật logic game vòng lặp (1 Frame).
+ * 
+ * Đây là hàm ĐẦU NÃO của game. Mọi chuyển động, bắn súng, va chạm trong game 
+ * đều được xử lý chỉ qua hàm này. Hàm này hoàn toàn mù tịt về giao diện 
+ * (không biết Raylib là gì), nó chỉ biết làm toán (Box2D).
+ * 
+ * Q: Tại sao lại truyền `dt` (Delta Time) thay vì lấy thẳng biến hệ thống thời gian?
+ * A: Để phục vụ AI! RL cần Fixed Timestep. Nếu ta truyền dt = 1/60 (số tĩnh), 
+ * Model AI sẽ học chuẩn xác hoàn toàn (Deterministic), giúp train hiệu quả.
  */
 void Game::Update(const std::vector<TankActions>& actions, float dt) {
+    // Xóa Log tử vong của Frame trước. 
+    // Chúng ta chỉ lưu những xe chết ở frame NÀY để Renderer biết chỗ tạo Vụ Nổ.
     recentDeaths.clear();
 
     // Sinh vật phẩm
@@ -70,7 +78,9 @@ void Game::Update(const std::vector<TankActions>& actions, float dt) {
         }
     }
 
-    // Cập nhật từng xe tăng với action tương ứng
+    // ---------------------------------------------------------
+    // BƯỚC 1: XỬ LÝ HÀNH ĐỘNG CỦA TỪNG XE TĂNG (Áp dụng Action)
+    // ---------------------------------------------------------
     for (size_t i = 0; i < tanks.size(); ) {
         Tank* t = tanks[i];
         TankActions act;
@@ -85,7 +95,9 @@ void Game::Update(const std::vector<TankActions>& actions, float dt) {
         }
     }
 
-    // Cập nhật đạn
+    // ---------------------------------------------------------
+    // BƯỚC 2: CẬP NHẬT TỌA ĐỘ ĐẠN (Bay, đổi hướng, hết hạn)
+    // ---------------------------------------------------------
     for (Bullet* b : bullets) {
         b->Update(dt, tanks);
     }
@@ -96,11 +108,21 @@ void Game::Update(const std::vector<TankActions>& actions, float dt) {
         needsRestart = true;
     }
 
-    // Cổng dịch chuyển
+    // ---------------------------------------------------------
+    // BƯỚC 4: CẬP NHẬT CỔNG DỊCH CHUYỂN
+    // ---------------------------------------------------------
     if (!needsRestart && portalsEnabled) portal.Update(dt, tanks, bullets);
 
-    // Bước vật lý Box2D + dọn dẹp
+    // ---------------------------------------------------------
+    // BƯỚC 5: TIẾN LÊN PHÍA TRƯỚC BẰNG MACHINE ENGINE (Box2D Step)
+    // ---------------------------------------------------------
+    // Bản thân Engine Box2D sẽ nhảy 1 tick (bằng đúng khoảng thời gian dt)
+    // Đây là lúc các Hàm tính Va Chạm thực sự chạy ngầm.
     world.Step(dt, 6, 2);
+    
+    // ---------------------------------------------------------
+    // BƯỚC 6: DỌN RÁC BỘ NHỚ (Garbage Collection)
+    // ---------------------------------------------------------
     CleanUpBullets();
     CleanUpItems();
 }
