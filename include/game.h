@@ -33,6 +33,7 @@ public:
     bool needsRestart;                  ///< Cờ cần reset match
     bool portalsEnabled;                ///< Bật/tắt cổng dịch chuyển
     bool itemsEnabled;                  ///< Bật/tắt vật phẩm
+    bool shieldsEnabled;                ///< Bật/tắt khiên
 
     // ---- Cấu hình phím (chỉ dùng cho human play) ----
     std::vector<PlayerConfig> configs;

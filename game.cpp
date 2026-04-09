@@ -3,7 +3,7 @@
 /**
  * @brief Khởi tạo Game engine. Không đặt phím mặc định (do main.cpp/RL quyết định).
  */
-Game::Game() : world(b2Vec2(0.0f, 0.0f)), numPlayers(2), needsRestart(true), portalsEnabled(true), itemsEnabled(true) {
+Game::Game() : world(b2Vec2(0.0f, 0.0f)), numPlayers(2), needsRestart(true), portalsEnabled(true), itemsEnabled(true), shieldsEnabled(true) {
     itemSpawnTimer = 5.0f;
     for(int i = 0; i < 4; i++) playerScores[i] = 0;
     configs.resize(4);
@@ -75,7 +75,7 @@ void Game::Update(const std::vector<TankActions>& actions, float dt) {
         Tank* t = tanks[i];
         TankActions act;
         if (t->playerIndex < (int)actions.size()) act = actions[t->playerIndex];
-        t->Update(world, bullets, items, act, dt);
+        t->Update(world, bullets, items, act, dt, shieldsEnabled);
         if (t->isDestroyed) {
             recentDeaths.push_back({t->body->GetPosition(), t->playerIndex});
             world.DestroyBody(t->body); delete t;

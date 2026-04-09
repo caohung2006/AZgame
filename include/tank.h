@@ -23,7 +23,7 @@ public:
     float shieldCooldownTimer;  ///< Thời gian chờ kích hoạt lại khiên
 
     Tank(b2World& world, int _playerIndex);
-    void Update(b2World& world, std::vector<Bullet*>& bullets, std::vector<Item*>& items, const TankActions& actions, float dt);
+    void Update(b2World& world, std::vector<Bullet*>& bullets, std::vector<Item*>& items, const TankActions& actions, float dt, bool shieldsEnabled = true);
 
 private:
     void HandleMovement(const TankActions& actions);

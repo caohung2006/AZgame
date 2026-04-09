@@ -234,11 +234,11 @@ void UI::ShowKeyBindingScreen(int& fw, int& bw, int& tl, int& tr, int& sh, int& 
 // Màn hình Cài đặt chính (Settings Screen)
 // ========================================================================
 void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEnabled,
-    std::vector<PlayerConfig>& configs) {
+    bool& shieldsEnabled, std::vector<PlayerConfig>& configs) {
 
     SetExitKey(0);
 
-    float panelW = 520, panelH = 560;
+    float panelW = 520, panelH = 610;
     float panelX = (SCREEN_WIDTH - panelW) / 2.0f;
     float panelY = (SCREEN_HEIGHT - panelH) / 2.0f;
 
@@ -266,7 +266,10 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
         float row2Y = rowStart + 2 * rowH;
         Rectangle btnItem = {controlX, row2Y, 85, 32};
 
-        float keySectionY = rowStart + 3 * rowH + 8;
+        float row3Y = rowStart + 3 * rowH;
+        Rectangle btnShield = {controlX, row3Y, 85, 32};
+
+        float keySectionY = rowStart + 4 * rowH + 8;
         Rectangle keyBtns[4];
         for (int i = 0; i < 4; i++) {
             keyBtns[i] = {panelX + 30, keySectionY + 34 + i * 46.0f, panelW - 60, 40};
@@ -280,6 +283,7 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
             if (CheckCollisionPointRec(mouse, btnRight) && numPlayers < 4) numPlayers++;
             if (CheckCollisionPointRec(mouse, btnPortal)) portalsEnabled = !portalsEnabled;
             if (CheckCollisionPointRec(mouse, btnItem)) itemsEnabled = !itemsEnabled;
+            if (CheckCollisionPointRec(mouse, btnShield)) shieldsEnabled = !shieldsEnabled;
 
             for (int i = 0; i < 4; i++) {
                 if (i < numPlayers && CheckCollisionPointRec(mouse, keyBtns[i])) {
@@ -341,6 +345,16 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
         const char* iTxt = itemsEnabled ? "BAT" : "TAT";
         int itw = MeasureGameText(iTxt, 18);
         DrawGameText(iTxt, btnItem.x + btnItem.width / 2 - itw / 2.0f, btnItem.y + 8, 18, WHITE);
+
+        // ---- Row 3: Khiên ----
+        DrawGameText("Khien:", labelX, row3Y + 7, 20, {50, 52, 62, 255});
+        bool hShield = CheckCollisionPointRec(mouse, btnShield);
+        Color sColor = shieldsEnabled ? Color{50, 170, 70, 255} : Color{190, 55, 55, 255};
+        if (hShield) { sColor.r = (unsigned char)fminf(sColor.r + 25, 255); sColor.g = (unsigned char)fminf(sColor.g + 25, 255); sColor.b = (unsigned char)fminf(sColor.b + 25, 255); }
+        DrawRectangleRounded(btnShield, 0.4f, 10, sColor);
+        const char* sTxt = shieldsEnabled ? "BAT" : "TAT";
+        int stw = MeasureGameText(sTxt, 18);
+        DrawGameText(sTxt, btnShield.x + btnShield.width / 2 - stw / 2.0f, btnShield.y + 8, 18, WHITE);
 
         // ---- Section: Phím điều khiển ----
         const char* keyTitle = "PHIM DIEU KHIEN";
