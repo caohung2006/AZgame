@@ -1,6 +1,0 @@
-CompileFlags:
-  Add: [-Iinclude, -Ibox2d/include, -IC:/msys64/ucrt64/include]
-
-Diagnostics:
-  Suppress: 
-    - unused-includes
