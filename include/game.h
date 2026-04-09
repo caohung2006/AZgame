@@ -8,12 +8,6 @@
 #include "item.h"
 
 /**
- * @struct PlayerConfig
- * @brief Cấu trúc chuyên dụng để lưu mã phím cấu hình từ UI cho từng người chơi
- */
-struct PlayerConfig { int fw, bw, tl, tr, sh, shieldKey; };
-
-/**
  * @class Game
  * @brief Động cơ nòng cốt của trò chơi, quản lý State và Vòng lặp chính Game Loop.
  * Sở hữu mọi hệ thống (Vật lý, Map, Player, Portal) và điều hướng các sự kiện logic.
@@ -32,6 +26,8 @@ private:
     int playerScores[4];            ///< Bảng điểm lưu trữ thành tích tích lũy 4 Slot
     int numPlayers;                 ///< Thống kê số lượng người tham gia hiện tại
     bool needsRestart;              ///< Cờ báo hiệu cần tiến hành dọn bàn & Setup vòng mới
+    bool portalsEnabled;            ///< Bật/tắt hệ thống cổng dịch chuyển
+    bool itemsEnabled;              ///< Bật/tắt hệ thống vật phẩm (hộp vũ khí)
     std::vector<PlayerConfig> configs; ///< Lưu trữ thiết lập các phím từ Menu cài đặt
 
     /**

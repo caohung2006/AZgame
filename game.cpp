@@ -1,6 +1,6 @@
 #include "game.h"
 
-Game::Game() : world(b2Vec2(0.0f, 0.0f)), numPlayers(2), needsRestart(true) {
+Game::Game() : world(b2Vec2(0.0f, 0.0f)), numPlayers(2), needsRestart(true), portalsEnabled(true), itemsEnabled(true) {
     itemSpawnTimer = 5.0f;
     for(int i=0; i<4; i++) playerScores[i] = 0;
     configs.resize(4);
@@ -15,9 +15,11 @@ void Game::Run() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AZ Game"); SetTargetFPS(60);
     while (!WindowShouldClose()) {
         if (UI::CheckSettingsButtonClicked()) {
-            numPlayers = UI::ShowPlayerCountScreen();
-            for (int i = 0; i < numPlayers; i++) UI::ShowKeyBindingScreen(configs[i].fw, configs[i].bw, configs[i].tl, configs[i].tr, configs[i].sh, i + 1);
-            for (int i = 0; i < 4; i++) playerScores[i] = 0;
+            int oldNumPlayers = numPlayers;
+            UI::ShowSettingsScreen(numPlayers, portalsEnabled, itemsEnabled, configs);
+            if (numPlayers != oldNumPlayers) {
+                for (int i = 0; i < 4; i++) playerScores[i] = 0;
+            }
             needsRestart = true;
         }
         if (needsRestart) ResetMatch();
@@ -52,12 +54,14 @@ void Game::ResetMatch() {
 }
 
 void Game::Update(float dt) {
-    itemSpawnTimer -= dt;
-    if (itemSpawnTimer <= 0.0f) {
-        b2Vec2 spawnPos = map.GetRandomCellCenter();
-        ItemType rType = static_cast<ItemType>(1 + rand() % 4); // GATLING, FRAG, MISSILE, DEATH_RAY
-        items.push_back(new Item(world, spawnPos, rType));
-        itemSpawnTimer = 3.0f;
+    if (itemsEnabled) {
+        itemSpawnTimer -= dt;
+        if (itemSpawnTimer <= 0.0f) {
+            b2Vec2 spawnPos = map.GetRandomCellCenter();
+            ItemType rType = static_cast<ItemType>(1 + rand() % 4); // GATLING, FRAG, MISSILE, DEATH_RAY
+            items.push_back(new Item(world, spawnPos, rType));
+            itemSpawnTimer = 3.0f;
+        }
     }
 
     for (auto it = tanks.begin(); it != tanks.end(); ) {
@@ -76,7 +80,7 @@ void Game::Update(float dt) {
         if (numPlayers > 1 && tanks.size() == 1) playerScores[tanks[0]->playerIndex]++;
         needsRestart = true;
     }
-    if (!needsRestart) portal.Update(dt, tanks, bullets);
+    if (!needsRestart && portalsEnabled) portal.Update(dt, tanks, bullets);
     world.Step(dt, 6, 2); CleanUpBullets(); CleanUpItems();
 }
 

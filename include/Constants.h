@@ -14,3 +14,9 @@ const float SCALE = 30.0f;
 // Kích thước độ phân giải của cửa sổ trò chơi
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
+
+/**
+ * @struct PlayerConfig
+ * @brief Cấu trúc chuyên dụng để lưu mã phím cấu hình từ UI cho từng người chơi
+ */
+struct PlayerConfig { int fw, bw, tl, tr, sh, shieldKey; };

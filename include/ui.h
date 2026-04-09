@@ -1,18 +1,23 @@
 #pragma once
 #include "constants.h"
 
-// Lớp tĩnh (Static Class) quản lý giao diện tương tác và hiển thị (User Interface)
+/**
+ * @class UI
+ * @brief Lớp tĩnh quản lý giao diện tương tác và hiển thị (User Interface)
+ * Bao gồm: nút bánh răng, màn hình cài đặt tổng, cài đặt phím, HUD điểm số
+ */
 class UI {
 public:
-    // Mở màn hình chọn số người chơi, trả về số lượng được chọn (1 đến 4)
-    static int ShowPlayerCountScreen();
-    
-    // Mở màn hình cho phép người chơi ấn phím để thay đổi nút điều khiển mặc định
-    static void ShowKeyBindingScreen(int& fw, int& bw, int& tl, int& tr, int& sh, int playerIndex);
-    
-    // Vẽ lớp hiển thị thông tin phía trên (Heads-Up Display): Điểm số, chữ hướng dẫn
+    /// Mở màn hình Cài đặt tổng hợp: số người chơi, bật/tắt portal & item, cài phím
+    static void ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEnabled,
+        std::vector<PlayerConfig>& configs);
+
+    /// Mở màn hình gán phím cho 1 người chơi (6 phím: di chuyển, bắn, khiên)
+    static void ShowKeyBindingScreen(int& fw, int& bw, int& tl, int& tr, int& sh, int& shield, int playerIndex);
+
+    /// Vẽ HUD: nút bánh răng + bảng điểm
     static void DrawHUD(int playerScores[], int numPlayers);
-    
-    // Kiểm tra xem người dùng có nhấp chuột vào khung nút SETTINGS hay không
+
+    /// Kiểm tra click vào nút bánh răng
     static bool CheckSettingsButtonClicked();
 };
