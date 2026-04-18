@@ -40,6 +40,7 @@ Bullet::Bullet(b2World &world, b2Vec2 position, b2Vec2 velocity, bool _isLaser,
     time = 2.0f; // Đạn to tự động nổ sau 1.5 giây nếu không kích
   }
 
+  maxTime = time;
   body->SetLinearVelocity(velocity);
 }
 

@@ -23,10 +23,10 @@ public:
     float shieldCooldownTimer;  ///< Thời gian chờ kích hoạt lại khiên
 
     Tank(b2World& world, int _playerIndex);
-    void Update(b2World& world, std::vector<Bullet*>& bullets, std::vector<Item*>& items, const TankActions& actions, float dt, bool shieldsEnabled = true);
+    void Update(b2World& world, std::vector<Bullet*>& bullets, std::vector<Item*>& items, const TankActions& actions, float dt, bool shieldsEnabled, float bulletLifespan, int maxBullets);
 
 private:
     void HandleMovement(const TankActions& actions);
-    void FireWeapon(b2World& world, std::vector<Bullet*>& bullets, const TankActions& actions);
+    void FireWeapon(b2World& world, std::vector<Bullet*>& bullets, const TankActions& actions, float bulletLifespan, int maxBullets);
     void CheckCollisions(std::vector<Bullet*>& bullets, std::vector<Item*>& items);
 };

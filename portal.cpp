@@ -1,4 +1,5 @@
 #include "portal.h"
+#include "AZRandom.h"
 
 Portal::Portal() : posA(0.0f, 0.0f), posB(0.0f, 0.0f), isActive(false), cooldownTimer(5.0f) {}
 
@@ -11,7 +12,7 @@ void Portal::Update(float dt, std::vector<Tank*>& tanks, std::vector<Bullet*>& b
         cooldownTimer -= dt;
         if (cooldownTimer <= 0.0f) {
             int c1, r1, c2, r2;
-            do { c1 = rand()%8; r1 = rand()%6; c2 = rand()%8; r2 = rand()%6; } while (c1==c2 && r1==r2);
+            do { c1 = AZ::Rand()%8; r1 = AZ::Rand()%6; c2 = AZ::Rand()%8; r2 = AZ::Rand()%6; } while (c1==c2 && r1==r2);
             float cellW = 90.0f, cellH = 90.0f, offsetX = (SCREEN_WIDTH - 8*cellW)/2.0f, offsetY = (SCREEN_HEIGHT - 6*cellH)/2.0f - 50.0f;
             posA.Set((offsetX + c1*cellW + cellW/2.0f)/SCALE, (SCREEN_HEIGHT - (offsetY + r1*cellH + cellH/2.0f))/SCALE);
             posB.Set((offsetX + c2*cellW + cellW/2.0f)/SCALE, (SCREEN_HEIGHT - (offsetY + r2*cellH + cellH/2.0f))/SCALE);
@@ -25,7 +26,7 @@ void Portal::Update(float dt, std::vector<Tank*>& tanks, std::vector<Bullet*>& b
         };
         for (Tank* t : tanks) { checkTeleport(t->body); if (used) break; }
         if (!used) { for (Bullet* b : bullets) { checkTeleport(b->body); if (used) break; } }
-        if (used) { isActive = false; cooldownTimer = 3.0f + (float)(rand() % 8); }
+        if (used) { isActive = false; cooldownTimer = 3.0f + (float)(AZ::Rand() % 8); }
     }
 }
 

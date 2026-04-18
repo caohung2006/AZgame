@@ -1,4 +1,5 @@
 #include "game.h"
+#include "AZRandom.h"
 
 /**
  * @brief Khởi tạo Game engine. Không đặt phím mặc định (do main.cpp/RL quyết định).
@@ -28,7 +29,7 @@ void Game::ResetMatch() {
     for (Bullet* b : bullets) { world.DestroyBody(b->body); delete b; } bullets.clear();
     for (Item* item : items) { world.DestroyBody(item->body); delete item; } items.clear();
     itemSpawnTimer = 3.0f;
-    map.Build(world);
+    map.Build(world, mapMode);
 
     // Spawn xe tăng tại các ô đủ xa nhau
     std::vector<b2Vec2> spawnCells;
@@ -43,7 +44,7 @@ void Game::ResetMatch() {
 
     for (int i = 0; i < numPlayers; i++) {
         Tank* t = new Tank(world, i);
-        t->body->SetTransform(spawnCells[i], (rand() % 4) * PI / 2.0f);
+        t->body->SetTransform(spawnCells[i], (AZ::Rand() % 4) * PI / 2.0f);
         tanks.push_back(t);
     }
 
@@ -72,7 +73,7 @@ void Game::Update(const std::vector<TankActions>& actions, float dt) {
         itemSpawnTimer -= dt;
         if (itemSpawnTimer <= 0.0f) {
             b2Vec2 spawnPos = map.GetRandomCellCenter();
-            ItemType rType = static_cast<ItemType>(1 + rand() % 4);
+            ItemType rType = static_cast<ItemType>(1 + AZ::Rand() % 4);
             items.push_back(new Item(world, spawnPos, rType));
             itemSpawnTimer = 3.0f;
         }
@@ -85,7 +86,7 @@ void Game::Update(const std::vector<TankActions>& actions, float dt) {
         Tank* t = tanks[i];
         TankActions act;
         if (t->playerIndex < (int)actions.size()) act = actions[t->playerIndex];
-        t->Update(world, bullets, items, act, dt, shieldsEnabled);
+        t->Update(world, bullets, items, act, dt, shieldsEnabled, this->bulletLifespan, this->maxBullets);
         if (t->isDestroyed) {
             recentDeaths.push_back({t->body->GetPosition(), t->playerIndex});
             world.DestroyBody(t->body); delete t;

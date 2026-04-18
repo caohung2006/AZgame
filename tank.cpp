@@ -76,7 +76,7 @@ public:
  */
 void Tank::Update(b2World &world, std::vector<Bullet *> &bullets,
                   std::vector<Item *> &items, const TankActions &actions,
-                  float dt, bool shieldsEnabled) {
+                  float dt, bool shieldsEnabled, float bulletLifespan, int maxBullets) {
   if (shieldCooldownTimer > 0.0f)
     shieldCooldownTimer -= dt;
   if (shieldTimer > 0.0f) {
@@ -94,7 +94,7 @@ void Tank::Update(b2World &world, std::vector<Bullet *> &bullets,
   }
 
   HandleMovement(actions);
-  FireWeapon(world, bullets, actions);
+  FireWeapon(world, bullets, actions, bulletLifespan, maxBullets);
   CheckCollisions(bullets, items);
 }
 
@@ -139,7 +139,7 @@ void Tank::HandleMovement(const TankActions &actions) {
  * @brief Bắn đạn theo vũ khí hiện tại khi actions.shoot = true.
  */
 void Tank::FireWeapon(b2World &world, std::vector<Bullet *> &bullets,
-                      const TankActions &actions) {
+                      const TankActions &actions, float bulletLifespan, int maxBullets) {
   int activeMyBullets = 0;
   for (Bullet *b : bullets) {
     if (b->ownerPlayerIndex == playerIndex && !b->isMissile && !b->isFrag)
@@ -212,10 +212,12 @@ void Tank::FireWeapon(b2World &world, std::vector<Bullet *> &bullets,
           break;
         }
         default: {
-          if (activeMyBullets < 5) {
-            bullets.push_back(new Bullet(world, spawnPos, 6.0f * forwardDir,
-                                         false, false, false, playerIndex));
-            shootCooldownTimer = 0.15f;
+          if (activeMyBullets < maxBullets) { 
+            Bullet* b = new Bullet(world, spawnPos, 6.0f * forwardDir,
+                                          false, false, false, playerIndex);
+            b->time = bulletLifespan; // Gán cấu hình từ Curriculum
+            bullets.push_back(b);
+            shootCooldownTimer = 0.3f; 
           }
           break;
         }

@@ -12,6 +12,7 @@ class Bullet {
 public:
     b2Body* body;           ///< Thân vật lý quản lý tọa độ và vận tốc
     float time;             ///< Thời gian tồn tại còn lại
+    float maxTime;          ///< Thời gian tồn tại ban đầu (để tính grace period)
 
     bool isLaser;           ///< Đạn laser (xuyên thấu, bay cực nhanh)
     bool isFrag;            ///< Đạn nổ chùm (vỡ thành nhiều mảnh nhỏ)

@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include <raylib.h>
+#include <cmath>
 
 // ========================================================================
 // Particle System — Hiệu ứng nổ xe tăng
@@ -311,10 +312,37 @@ void Renderer::DrawBullet(const Bullet& bullet) {
 // ========================================================================
 void Renderer::DrawMap(const GameMap& map) {
     for (b2Body* wall : map.GetWalls()) {
-        b2PolygonShape* shape = (b2PolygonShape*)wall->GetFixtureList()->GetShape();
+        // ── Kiểm tra null fixture ──
+        b2Fixture* fixture = wall->GetFixtureList();
+        if (!fixture) continue;
+
+        // ── Kiểm tra shape type là polygon ──
+        b2Shape* baseShape = fixture->GetShape();
+        if (!baseShape || baseShape->GetType() != b2Shape::e_polygon) continue;
+
+        b2PolygonShape* shape = (b2PolygonShape*)baseShape;
+        
+        // ── Kiểm tra vertices count ──
+        if (shape->m_count < 2) continue;
+
         b2Vec2 pos = wall->GetPosition();
-        float w = shape->m_vertices[1].x * 2 * SCALE;
-        float h = shape->m_vertices[2].y * 2 * SCALE;
+        
+        // ── Tính bounding box từ vertices ──
+        float minX = shape->m_vertices[0].x;
+        float maxX = minX;
+        float minY = shape->m_vertices[0].y;
+        float maxY = minY;
+        
+        for (int i = 1; i < shape->m_count; i++) {
+            minX = std::min(minX, shape->m_vertices[i].x);
+            maxX = std::max(maxX, shape->m_vertices[i].x);
+            minY = std::min(minY, shape->m_vertices[i].y);
+            maxY = std::max(maxY, shape->m_vertices[i].y);
+        }
+        
+        float w = (maxX - minX) * SCALE;
+        float h = (maxY - minY) * SCALE;
+        
         float sx = pos.x * SCALE;
         float sy = SCREEN_HEIGHT - pos.y * SCALE;
         float rot = wall->GetAngle() * RAD2DEG;
