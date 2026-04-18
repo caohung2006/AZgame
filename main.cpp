@@ -31,9 +31,15 @@ int main() {
     UI::Init();
 
     while (!WindowShouldClose()) {
-        // --- Xử lý Settings UI ---
+        // --- Xử lý Settings UI --- 
+        game.itemsEnabled = 0;
+        game.portalsEnabled = 0;
+        game.shieldsEnabled = 0;
         if (UI::CheckSettingsButtonClicked()) {
             int oldNumPlayers = game.numPlayers;
+
+           
+
             UI::ShowSettingsScreen(game.numPlayers, game.portalsEnabled, game.itemsEnabled, game.shieldsEnabled, game.configs);
             if (game.numPlayers != oldNumPlayers) {
                 for (int i = 0; i < 4; i++) game.playerScores[i] = 0;
