@@ -70,6 +70,27 @@ cmake --build .
 
 ---
 
+## 🤖 Cách chạy A* Controller (Python Bridge)
+
+Chạy nhanh theo 3 bước:
+
+1. Build bridge executable
+```bash
+cmake --build build-py --target AZgameBridge -j1
+```
+
+2. Chạy controller từ thư mục `python/`
+```bash
+cd python
+C:/msys64/mingw64/bin/python.exe ./astar_shell.py
+```
+
+3. Điều khiển trong game
+- Player 0: do Python A* điều khiển
+- Player 1: điều khiển tay bằng phím mũi tên + `/` + `.`
+
+---
+
 ## 🕹️ Hướng dẫn chơi
 
 Click vào **biểu tượng bánh răng** ⚙️ (góc trên phải) để mở Settings:
