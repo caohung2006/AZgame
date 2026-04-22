@@ -1,5 +1,11 @@
 Build/
+build/
 .vscode/
 .cache/
 .clangd
 
+# Python & AI Training
+__pycache__/
+train_AI/models/
+train_AI/logs/
+*.zip

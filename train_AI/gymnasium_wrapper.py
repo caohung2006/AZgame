@@ -28,46 +28,46 @@ class AZTankEnv(gym.Env):
     Bọc (wrap) RLEnv của C++ theo chuẩn Gymnasium để
     tương thích với Stable Baselines3.
 
-    State (9 floats):
-        [0] x xe mình      (0-1)
-        [1] y xe mình      (0-1)
-        [2] cos góc mình   (-1, 1)
-        [3] sin góc mình   (-1, 1)
-        [4] đạn mình       (0-1)
-        [5] x xe địch      (0-1)
-        [6] y xe địch      (0-1)
-        [7] cos góc địch   (-1, 1)
-        [8] sin góc địch   (-1, 1)
+    State (13 floats):
+        [0 -> 7]: Khoảng cách radar đến tường (8 hướng) (0-1)
+        [8]: Cos góc tới địch (-1 đến 1)
+        [9]: Sin góc tới địch (-1 đến 1)
+        [10]: Khoảng cách đường chim bay đến địch (0-1)
+        [11]: Số lượng đạn đang bay (tỷ lệ 0-1)
+        [12]: Máu hiện tại (0-1)
 
-    Action (6 hành động rời rạc):
-        0: Đứng im
-        1: Tiến
-        2: Lùi
-        3: Quay trái
-        4: Quay phải
-        5: Bắn
+    Action (5 hành động rời rạc):
+        0: Tiến
+        1: Lùi
+        2: Quay trái
+        3: Quay phải
+        4: Bắn
     """
 
-    metadata = {"render_modes": []}
+    metadata = {"render_modes": ["human"]}
 
-    def __init__(self, num_players=2, map_enabled=False, items_enabled=False):
+    def __init__(self, num_players=2, map_enabled=False, items_enabled=False, training_mode=0, opponent_model=None, render_mode=None):
         super().__init__()
+
+        self.opponent_model = opponent_model
+        self.render_mode = render_mode
 
         # Khởi tạo môi trường game C++
         self._env = azgame_env.RLEnv(
             num_players=num_players,
             map_enabled=map_enabled,
-            items_enabled=items_enabled
+            items_enabled=items_enabled,
+            training_mode=training_mode
         )
 
-        # Định nghĩa không gian hành động: 6 hành động rời rạc (0 → 5)
-        self.action_space = spaces.Discrete(6)
+        # Định nghĩa không gian hành động: 5 hành động rời rạc (0 → 4)
+        self.action_space = spaces.Discrete(5)
 
-        # Định nghĩa không gian quan sát: 9 con số thực trong khoảng [-1, 1]
+        # Định nghĩa không gian quan sát: 13 con số thực trong khoảng [-1, 1]
         self.observation_space = spaces.Box(
             low=-1.0,
             high=1.0,
-            shape=(9,),
+            shape=(13,),
             dtype=np.float32
         )
 
@@ -84,17 +84,35 @@ class AZTankEnv(gym.Env):
         Thực hiện 1 hành động, trả về kết quả theo chuẩn Gymnasium.
         Returns: (observation, reward, terminated, truncated, info)
         """
-        state, reward, done = self._env.step(int(action))
+        action_p1 = -1
+        if self.opponent_model is not None:
+             # Thu thập State của Enemy (Player 1)
+             state_p1 = self._env.get_state(1)
+             obs_p1 = np.array(state_p1, dtype=np.float32)
+             # Cho model PPO cũ dự đoán đòn đánh
+             opp_action, _ = self.opponent_model.predict(obs_p1, deterministic=True)
+             action_p1 = int(opp_action)
+
+        state, reward, done = self._env.step(int(action), action_p1)
         obs = np.array(state, dtype=np.float32)
+
+        info = {}
+        if self.render_mode == "human":
+             is_open = self._env.render()
+             info["window_open"] = is_open
 
         # Gymnasium phân biệt 2 loại kết thúc:
         # terminated = kết thúc tự nhiên (bị chết, bắn hạ hết địch)
         # truncated  = hết thời gian (maxSteps)
         terminated = done
         truncated = False
-        info = {}
 
         return obs, float(reward), terminated, truncated, info
+
+    def render(self):
+        if self.render_mode == "human":
+             return self._env.render()
+        return True
 
     def close(self):
         pass
