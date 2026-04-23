@@ -1,0 +1,13 @@
+prefix=c:/Users/Admin/Downloads/AZgame-hung (1)/AZgame-hung/.conda/Library
+exec_prefix=c:/Users/Admin/Downloads/AZgame-hung (1)/AZgame-hung/.conda/Library
+libdir=c:/Users/Admin/Downloads/AZgame-hung (1)/AZgame-hung/.conda/Library/lib
+sharedlibdir=c:/Users/Admin/Downloads/AZgame-hung (1)/AZgame-hung/.conda/Library/lib
+includedir=c:/Users/Admin/Downloads/AZgame-hung (1)/AZgame-hung/.conda/Library/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.3.1
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

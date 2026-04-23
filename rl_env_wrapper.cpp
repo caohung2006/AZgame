@@ -36,7 +36,7 @@ private:
             b2Vec2 diff = myTank->body->GetPosition() - enemyTank->body->GetPosition();
             return diff.Length() * SCALE; // Khoảng cách tính bằng pixel
         }
-        return 0.0f;
+        return 1000.0f; // Trả về khoảng cách an toàn rất lớn nếu địch đã chết
     }
 
 public:
@@ -136,7 +136,7 @@ public:
         game->Update(all_actions, 1.0f/60.0f);
         currentStep++;
 
-        float reward = -0.05f; // Điểm thưởng cho bước này (Time Penalty hạn chế AI câu giờ)
+        float reward = -0.01f; // Điểm thưởng cho bước này (Time Penalty: -0.01 * 5000 = -50)
         
         // --- LOGIC TÍNH PHẦN THƯỞNG (Reward) ---
         
@@ -147,7 +147,7 @@ public:
         if (myTank) {
             for (b2ContactEdge* edge = myTank->body->GetContactList(); edge; edge = edge->next) {
                 if (edge->contact->IsTouching() && edge->other->GetType() == b2_staticBody) {
-                    reward -= 2.0f; // Điểm âm vì đâm tường
+                    reward -= 0.1f; // Phạt nặng hơn (trước là 0.05) để tránh AI kẹt tường
                     break;
                 }
             }
@@ -167,15 +167,28 @@ public:
             reward -= 100.0f; // Bị tiêu diệt (bị bắn trúng phạt -100 vì game 1-hit)
         } 
         
-        // 3. Shaping Reward (Khoảng cách cũ - mới) * 0.1
+        // 3. Shaping Reward: Vùng chiến đấu tối ưu
         float currentDist = getRawDistanceToEnemy(0);
-        if (p0Alive && currentDist > 0.1f) {
-            reward += (lastDistanceToEnemy - currentDist) * 0.1f;
+        if (p0Alive && currentDist < 1000.0f) { // Chỉ phạt khoảng cách nếu địch còn sống
+            if (currentDist > 350.0f) {
+                reward -= 0.02f; // Phạt lười biếng nếu ở quá xa (tránh góc lag)
+            } else if (currentDist < 80.0f) {
+                reward -= 0.05f; // Phạt nếu áp sát quá gần (tránh thói quen đẩy nhau)
+            }
         }
         lastDistanceToEnemy = currentDist;
 
-        // Kiểm tra điều kiện kết thúc: Engine yêu cầu, hết bước tối đa, hoặc AI chết.
-        bool done = game->needsRestart || (currentStep >= maxSteps) || (!p0Alive);
+        // Kiểm tra điều kiện kết thúc
+        bool isTimeout = (currentStep >= maxSteps);
+        bool done = game->needsRestart || isTimeout || (!p0Alive);
+
+        if (isTimeout && p0Alive) {
+            if (trainingMode == 2) {
+                reward += 100.0f; // CHẾ ĐỘ NÉ TRÁNH (Phase 2): Sống sót đến hết giờ là THẮNG!
+            } else {
+                reward -= 50.0f; // CHẾ ĐỘ CHIẾN ĐẤU: Phạt thêm nếu hết thời gian để AI không câu giờ
+            }
+        }
 
         auto state = getState(0); // Lấy trạng thái mới sau khi thực hiện hành động
         return py::make_tuple(state, reward, done);

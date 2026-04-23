@@ -127,6 +127,19 @@ def train_phase(phase_id, resume_model_path=None, render=False):
         model.learn(total_timesteps=cfg["steps"], callback=[checkpoint_cb, progress_cb], reset_num_timesteps=False)
         model.save(model_path)
         print(f"\n  [Hoàn Thành] Giai đoạn {phase_id} lưu tại: {model_path}.zip\n")
+        
+        # --- QUAN TRỌNG: DỌN RÁC BỘ NHỚ ---
+        # Tránh việc RAM và VRAM (Card đồ họa) bị ngốn ngày càng gắt khi lưu file mới
+        env.close()
+        del model
+        del opponent_model
+        del env
+        import gc
+        gc.collect()
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            
     except KeyboardInterrupt:
         model.save(model_path)
         print(f"\n  Người dùng dừng sớm, vẫn lưu model tại: {model_path}.zip\n")
