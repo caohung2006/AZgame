@@ -129,11 +129,100 @@ void Renderer::DrawEffects() {
 // ========================================================================
 void Renderer::DrawWorld(const Game& game) {
     DrawMap(game.map);
+    DrawGrid(game.map); // Debug: Vẽ Grid A* lên màn hình
     DrawPortal(game.portal);
     for (const Item* item : game.items) DrawItem(*item);
     for (const Tank* t : game.tanks) DrawTank(*t);
     for (const Bullet* b : game.bullets) DrawBullet(*b);
+    DrawBotPaths(game);
     DrawEffects();
+}
+
+// ========================================================================
+// Vẽ đường đi A* (Debug)
+// ========================================================================
+void Renderer::DrawBotPaths(const Game& game) {
+    Color pathColors[4] = {
+        {60, 200, 60, 150},
+        {60, 100, 255, 150},
+        {255, 60, 60, 150},
+        {255, 200, 60, 150}
+    };
+    for (int i = 0; i < 4; i++) {
+        const auto& path = game.botPaths[i];
+        if (path.size() >= 2) {
+            for (size_t j = 0; j < path.size() - 1; j++) {
+                float x1 = path[j].x * SCALE;
+                float y1 = SCREEN_HEIGHT - path[j].y * SCALE;
+                float x2 = path[j+1].x * SCALE;
+                float y2 = SCREEN_HEIGHT - path[j+1].y * SCALE;
+                DrawLineEx({x1, y1}, {x2, y2}, 4.0f, pathColors[i]);
+                DrawCircle((int)x2, (int)y2, 5.0f, pathColors[i]);
+            }
+        }
+    }
+}
+
+// ========================================================================
+// Debug: Vẽ Grid A* lên màn hình — "Bật con mắt của A*"
+// Ô xanh = thoáng (0 tường), Ô vàng = 1 tường, Ô cam = 2 tường, Ô đỏ = 3+ tường
+// Đường vàng = tường ngang/dọc mà A* nhìn thấy
+// ========================================================================
+void Renderer::DrawGrid(const GameMap& map) {
+    const int ROWS = GameMap::ROWS; // 6
+    const int COLS = GameMap::COLS; // 8
+    float cellW = 90.0f, cellH = 90.0f;
+    float offsetX = (SCREEN_WIDTH - (COLS * cellW)) / 2.0f;
+    float offsetY = (SCREEN_HEIGHT - (ROWS * cellH)) / 2.0f - 50.0f;
+    
+    // Vẽ từng ô Grid với màu theo số tường xung quanh
+    for (int r = 0; r < ROWS; r++) {
+        for (int c = 0; c < COLS; c++) {
+            float x = offsetX + c * cellW;
+            float y = offsetY + r * cellH;
+            
+            int wallCount = 0;
+            if (map.hWalls[r][c]) wallCount++;     // Tường trên
+            if (map.hWalls[r+1][c]) wallCount++;   // Tường dưới
+            if (map.vWalls[r][c]) wallCount++;     // Tường trái
+            if (map.vWalls[r][c+1]) wallCount++;   // Tường phải
+            
+            Color cellColor;
+            if (wallCount >= 3) cellColor = {255, 40, 40, 35};     // Đỏ: ngõ cụt
+            else if (wallCount == 2) cellColor = {255, 150, 30, 25}; // Cam: hành lang
+            else if (wallCount == 1) cellColor = {255, 255, 60, 15}; // Vàng nhạt: gần tường
+            else cellColor = {40, 255, 40, 10};                      // Xanh: thoáng
+            
+            DrawRectangle((int)x + 1, (int)y + 1, (int)cellW - 2, (int)cellH - 2, cellColor);
+            
+            // Vẽ tâm ô (node A*)
+            DrawCircle((int)(x + cellW/2), (int)(y + cellH/2), 2.0f, {255, 255, 255, 40});
+        }
+    }
+    
+    // Vẽ tường ngang mà A* nhìn thấy (đường vàng)
+    for (int r = 0; r <= ROWS; r++) {
+        for (int c = 0; c < COLS; c++) {
+            if (map.hWalls[r][c]) {
+                float x1 = offsetX + c * cellW;
+                float y1 = offsetY + r * cellH;
+                float x2 = x1 + cellW;
+                DrawLineEx({x1, y1}, {x2, y1}, 2.0f, {255, 255, 0, 80});
+            }
+        }
+    }
+    
+    // Vẽ tường dọc mà A* nhìn thấy (đường vàng)
+    for (int r = 0; r < ROWS; r++) {
+        for (int c = 0; c <= COLS; c++) {
+            if (map.vWalls[r][c]) {
+                float x1 = offsetX + c * cellW;
+                float y1 = offsetY + r * cellH;
+                float y2 = y1 + cellH;
+                DrawLineEx({x1, y1}, {x1, y2}, 2.0f, {255, 255, 0, 80});
+            }
+        }
+    }
 }
 
 // ========================================================================
@@ -144,6 +233,7 @@ void Renderer::DrawTank(const Tank& tank) {
     float rot = -tank.body->GetAngle() * RAD2DEG;
     float x = pos.x * SCALE, y = SCREEN_HEIGHT - pos.y * SCALE;
 
+    // --- Removed invulnerability blink ---
     // Bảng màu cho từng player
     struct TankColors { Color body, dark, light, track, barrel; };
     TankColors palette[] = {
@@ -211,6 +301,8 @@ void Renderer::DrawTank(const Tank& tank) {
             DrawCircle((int)px, (int)py, 2.0f, ColorAlpha({180, 220, 255, 255}, 0.5f * pulse));
         }
     }
+
+    // --- HP Bar removed ---
 }
 
 // ========================================================================

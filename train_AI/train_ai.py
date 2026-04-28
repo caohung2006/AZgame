@@ -27,48 +27,93 @@ class ProgressCallback(BaseCallback):
                   f"Cập nhật quá trình học...")
         return True
 
-# Lộ trình 7 giai đoạn tối ưu hóa (Khắc phục Catastrophic Forgetting)
+# Lộ trình 7 giai đoạn tối ưu hóa cho 1HP + 45 States + Fat RayCast + Bot
 PHASES = {
-    # 1. Tập đi bãi đất trống & bắn thẳng (Địch đứng im)
-    1: {"map": False, "items": False, "mode": 0, "steps": 500_000,   "op_phase": None},
+    # 1. Cơ bản: Đánh với Bot Level 1 (Bia tập bắn)
+    1: {"map": False, "items": False, "mode": 0, "steps": 400_000,   "bot_level": 1, "op_phase": None},
     
-    # 2. Xử lý vật cản: Tìm đường qua tường & bắn địch đứng im
-    2: {"map": True,  "items": False, "mode": 0, "steps": 1_000_000, "op_phase": None},
+    # 2. Né đạn: Bãi trống, bị bắn (mode=2, khóa súng) với Bot Level 2 (Đuổi theo bắn)
+    2: {"map": False, "items": False, "mode": 2, "steps": 800_000, "bot_level": 2, "op_phase": None},
     
-    # 3. Solo đấu súng bãi trống: Bắt đầu cho địch (Phase 2) phản công. Học né đạn & bắn mục tiêu di động
-    3: {"map": False, "items": False, "mode": 0, "steps": 1_500_000, "op_phase": 2}, 
+    # 3. Mê cung: Đánh với Bot Level 2 (Đuổi theo qua mê cung)
+    3: {"map": True,  "items": False, "mode": 0, "steps": 1_000_000, "bot_level": 2, "op_phase": None},
     
-    # 4. Tác chiến đô thị: Mang kỹ năng đối kháng ở Phase 3 vào môi trường có tường (hit-and-run)
-    4: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000, "op_phase": 3},
+    # 4. Đấu tay đôi: Đánh với Bot Level 3 (Veteran - Biết né đạn, bãi trống)
+    4: {"map": False, "items": False, "mode": 0, "steps": 1_500_000, "bot_level": 3, "op_phase": None},
     
-    # 5. Self-Play Vòng 1: Đánh với chính mình để leo rank
-    5: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000, "op_phase": 4},
+    # 5. Tác chiến đô thị: Đánh với Bot Level 4 (Boss - Kiting trong mê cung)
+    5: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000, "bot_level": 4, "op_phase": None},
     
-    # 6. Mở khóa nhặt đồ & dịch chuyển: Cấp độ tư duy chiến thuật
-    6: {"map": True,  "items": True,  "mode": 0, "steps": 2_000_000, "op_phase": 5},
+    # 6. Self-Play: Đánh với các Model cũ để tránh Rock-Paper-Scissors
+    6: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000, "bot_level": None, "op_phase": 5},
     
-    # 7. Self-Play Vòng 2 (Mastery): Trận chiến sinh tử thực sự
-    7: {"map": True,  "items": True,  "mode": 0, "steps": 3_000_000, "op_phase": 6},
+    # 7. Full Game: Items + Self-Play
+    7: {"map": True,  "items": True,  "mode": 0, "steps": 3_000_000, "bot_level": None, "op_phase": 6},
 }
 
-def load_opponent(phase_config):
-    if phase_config["op_phase"] is None:
-        return None
-    op_path = f"models/ppo_tank_phase{phase_config['op_phase']}.zip"
-    if os.path.exists(op_path):
-        print(f"  [Info] Tải model đối thủ từ Phase {phase_config['op_phase']}...")
-        return PPO.load(op_path)
-    print(f"  [Cảnh báo] Không tìm thấy model đối thủ tại {op_path}. Đối thủ sẽ đứng im!")
-    return None
+import random
+import glob
 
-def make_env(phase_id, opponent_model=None, render_mode=None):
+class OpponentPool:
+    """
+    Opponent Pool cho Self-Play nâng cao.
+    Thay vì chỉ đánh với 1 model cố định (frozen), pool lưu nhiều phiên bản cũ
+    và chọn ngẫu nhiên đối thủ → tránh bẫy Rock-Paper-Scissors cycling.
+    """
+    def __init__(self, phase_config):
+        self.models = []
+        op_phase = phase_config.get("op_phase")
+        if op_phase is None:
+            return
+
+        # 1. Thêm model phase chính thức (nếu có)
+        op_path = f"models/ppo_tank_phase{op_phase}.zip"
+        if os.path.exists(op_path):
+            self.models.append(PPO.load(op_path))
+            print(f"  [Pool] Đã thêm model Phase {op_phase} vào pool")
+
+        # 2. Quét thêm các checkpoint cũ (tạo diversity)
+        checkpoint_pattern = f"models/checkpoints/ppo_phase{op_phase}_*.zip"
+        checkpoints = sorted(glob.glob(checkpoint_pattern))
+        # Chỉ lấy tối đa 5 checkpoint gần nhất để tiết kiệm RAM
+        for cp in checkpoints[-5:]:
+            try:
+                self.models.append(PPO.load(cp))
+                print(f"  [Pool] Đã thêm checkpoint: {os.path.basename(cp)}")
+            except Exception:
+                pass
+
+        if not self.models:
+            print(f"  [Cảnh báo] Không tìm thấy model đối thủ Phase {op_phase}. Đối thủ sẽ đứng im!")
+
+    def sample(self):
+        """Chọn ngẫu nhiên 1 đối thủ từ pool"""
+        if not self.models:
+            return None
+        return random.choice(self.models)
+
+    def __len__(self):
+        return len(self.models)
+
+from bot import RuleBasedBot
+
+def make_env(phase_id, opponent_pool=None, render_mode=None):
     cfg = PHASES[phase_id]
+    
+    # Ưu tiên dùng Hardcoded Bot nếu cấu hình yêu cầu
+    if cfg.get("bot_level") is not None:
+        opponent_model = RuleBasedBot(level=cfg["bot_level"])
+    else:
+        # Nếu không có bot_level, dùng Self-Play từ Opponent Pool
+        opponent_model = opponent_pool.sample() if opponent_pool else None
+
     return AZTankEnv(
         num_players=2, # Cần 2 vì còn có địch để bắn
         map_enabled=cfg["map"],
         items_enabled=cfg["items"],
         training_mode=cfg["mode"],
         opponent_model=opponent_model,
+        opponent_pool=opponent_pool,  # Truyền pool để swap đối thủ mỗi episode
         render_mode=render_mode
     )
 
@@ -84,35 +129,53 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     print(f"  Map: {cfg['map']} | Items: {cfg['items']} | Mode: {cfg['mode']} | Target Steps: {cfg['steps']:,}")
     print("=" * 60)
 
-    # 1. Tải Model Đối thủ (nếu có)
-    opponent_model = load_opponent(cfg)
+    # 1. Tải Pool Đối thủ (nếu có) — Self-Play nâng cao
+    opponent_pool = OpponentPool(cfg)
+    if len(opponent_pool) > 0:
+        print(f"  [Pool] Tổng cộng {len(opponent_pool)} đối thủ trong pool")
 
     # 2. Khởi tạo môi trường
     # Nếu đang bật xem trực tiếp (render) thì phải ép n_envs=1 để khỏi bay nhiều cửa sổ
     num_envs = 1 if render else 4
     render_mode = "human" if render else None
-    env = make_vec_env(lambda: make_env(phase_id, opponent_model, render_mode), n_envs=num_envs)
+    env = make_vec_env(lambda: make_env(phase_id, opponent_pool, render_mode), n_envs=num_envs)
 
-    # 3. Khởi tạo Model AI (Tiếp tục từ phase trước, hoặc resume file)
+    # 3. PPO Hyperparameters tùy theo giai đoạn
+    #    Phase 1-3: Khám phá nhiều (ent_coef cao, batch lớn hơn)
+    #    Phase 4-7: Khai thác kiến thức (ent_coef thấp, batch nhỏ hơn)
+    is_early_phase = (phase_id <= 3)
+    ppo_params = {
+        "n_steps": 4096 if is_early_phase else 2048,
+        "batch_size": 128 if is_early_phase else 64,
+        "ent_coef": 0.05 if is_early_phase else 0.01,
+    }
+    print(f"  [PPO] n_steps={ppo_params['n_steps']} | batch_size={ppo_params['batch_size']} | ent_coef={ppo_params['ent_coef']}")
+
+    # 4. Khởi tạo Model AI (Tiếp tục từ phase trước, hoặc resume file)
+    # MLP Policy nhỏ thường nhanh hơn trên CPU do không mất công copy data qua VRAM.
+    # Tuy nhiên, nếu user muốn ép dùng GPU có thể đổi thành 'auto' hoặc 'cuda'.
+    training_device = "cpu" 
+    
     if resume_model_path and os.path.exists(resume_model_path + ".zip"):
         print(f"  [Info] Kế thừa trí tuệ từ model: {resume_model_path}.zip")
-        model = PPO.load(resume_model_path, env=env)
+        model = PPO.load(resume_model_path, env=env, device=training_device)
     elif phase_id > 1 and os.path.exists(f"models/ppo_tank_phase{phase_id - 1}.zip"):
         prev_path = f"models/ppo_tank_phase{phase_id - 1}"
         print(f"  [Info] Kế thừa trí tuệ từ Phase {phase_id - 1}")
-        model = PPO.load(prev_path, env=env)
+        model = PPO.load(prev_path, env=env, device=training_device)
     else:
         print("  [Info] Khởi tạo Model hoàn toàn mới!")
         model = PPO(
             policy="MlpPolicy",
             env=env,
             learning_rate=3e-4,
-            n_steps=2048,
-            batch_size=64,
+            n_steps=ppo_params["n_steps"],
+            batch_size=ppo_params["batch_size"],
             n_epochs=10,
             gamma=0.99,
-            ent_coef=0.01,
+            ent_coef=ppo_params["ent_coef"],
             verbose=1,
+            device=training_device,
             tensorboard_log="./logs/curriculum/"
         )
 
@@ -132,7 +195,7 @@ def train_phase(phase_id, resume_model_path=None, render=False):
         # Tránh việc RAM và VRAM (Card đồ họa) bị ngốn ngày càng gắt khi lưu file mới
         env.close()
         del model
-        del opponent_model
+        del opponent_pool
         del env
         import gc
         gc.collect()
@@ -164,8 +227,8 @@ def test_model(phase_id):
         
     print(f"\n🎮 Đang TEST Model Phase {phase_id}...")
     cfg = PHASES[phase_id]
-    opponent_model = load_opponent(cfg)
-    env = make_env(phase_id, opponent_model, render_mode="human")
+    opponent_pool = OpponentPool(cfg)
+    env = make_env(phase_id, opponent_pool, render_mode="human")
     model = PPO.load(model_path)
     
     obs, _ = env.reset()
