@@ -188,10 +188,10 @@ def test_model(phase_id):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pipeline", action="store_true", help="Chạy tự động từ GĐ 1 đến 7")
-    parser.add_argument("--phase", type=int, choices=range(1, 8), help="Chỉ định chạy 1 GĐ cụ thể")
-    parser.add_argument("--render", action="store_true", help="Mở cửa sổ Raylib xem (TRAIN RẤT CHẬM)")
-    parser.add_argument("--test", type=int, choices=range(1, 8), help="Xem AI múa ở Phase X (sau khi train)")
-    parser.add_argument("--resume", action="store_true", help="Tiếp tục học từ file save đang dở")
+    # parser.add_argument("--phase", type=int, choices=range(1, 8), help="Chỉ định chạy 1 GĐ cụ thể")
+    # parser.add_argument("--render", action="store_true", help="Mở cửa sổ Raylib xem (TRAIN RẤT CHẬM)")
+    # parser.add_argument("--test", type=int, choices=range(1, 8), help="Xem AI múa ở Phase X (sau khi train)")
+    # parser.add_argument("--resume", action="store_true", help="Tiếp tục học từ file save đang dở")
     args = parser.parse_args()
 
     if args.test:
