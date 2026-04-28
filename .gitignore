@@ -9,3 +9,5 @@ __pycache__/
 train_AI/models/
 train_AI/logs/
 *.zip
+logs/
+
