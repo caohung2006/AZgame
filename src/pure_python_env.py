@@ -429,7 +429,7 @@ class RLEnv:
             act = action0 if t.player_index == 0 else action1
             if act < 0:
                 act = -1  # Không hành động
-
+                
             hit = False
             if act >= 0:
                 hit = t.handle_movement(act, DT, self.walls)
