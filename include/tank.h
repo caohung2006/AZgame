@@ -14,6 +14,7 @@ public:
     int playerIndex;            ///< Số thứ tự người chơi (0-3)
     float shootCooldownTimer;   ///< Đếm lùi giữa các lần bắn
     bool isDestroyed;           ///< Cờ xe tăng đã chết
+    int lastHitBy;              ///< Lưu lại index của người đã bắn trúng viên đạn cuối cùng
 
     int hp;                     ///< Máu hiện tại (tối đa 1)
 

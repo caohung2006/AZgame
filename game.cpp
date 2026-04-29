@@ -79,7 +79,7 @@ void Game::Update(const std::vector<TankActions>& actions, float dt) {
         if (t->playerIndex < (int)actions.size()) act = actions[t->playerIndex];
         t->Update(world, bullets, items, act, dt, shieldsEnabled);
         if (t->isDestroyed) {
-            recentDeaths.push_back({t->body->GetPosition(), t->playerIndex});
+            recentDeaths.push_back({t->body->GetPosition(), t->playerIndex, t->lastHitBy});
             world.DestroyBody(t->body); delete t;
             tanks.erase(tanks.begin() + i);
         } else {

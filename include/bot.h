@@ -18,8 +18,6 @@ public:
     int currentWaypointIdx = 0;        // Index waypoint đang đi tới
     int stuckCounter = 0;              // Đếm frame bị kẹt để tự tính lại đường
     
-    // Cooldown: chỉ tính lại A* khi mục tiêu di chuyển đủ xa HOẶC hết cooldown
-    int recalcCooldown = 0;            // Đếm frame cooldown (> 0 = chưa được tính lại)
     b2Vec2 lastEnemyPos = b2Vec2(0, 0); // Vị trí địch lần cuối tính A*
     
     // Khi kẹt: đánh dấu ô bị kẹt + lùi xe trước khi tìm đường mới

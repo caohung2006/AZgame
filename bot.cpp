@@ -97,7 +97,6 @@ TankActions Bot::GetAction(Game* game) {
                     cachedPath = game->map.GetFullPath(game->world, myPos, enemyTank->body->GetPosition(), blockedCells);
                     currentWaypointIdx = 1;
                     lastEnemyPos = enemyTank->body->GetPosition();
-                    recalcCooldown = 30; // Không tính lại trong 30 frame
                     game->botPaths[playerIndex] = cachedPath;
                     if (currentWaypointIdx < (int)cachedPath.size()) {
                         virtualTarget = cachedPath[currentWaypointIdx];
@@ -106,9 +105,7 @@ TankActions Bot::GetAction(Game* game) {
                 return actions;
             }
             
-            // === Giảm Cooldown mỗi frame ===
-            // [Path Commitment] Đã phóng lao thì phải theo lao
-            // Xóa bỏ hoàn toàn recalcCooldown (tính theo frame).
+
             // === THEO DÕI CHUỖI WAYPOINT ===
             bool needRecalc = false;
             
@@ -240,18 +237,23 @@ TankActions Bot::GetAction(Game* game) {
 
         // [Bước 4: Kỷ luật bóp cò] Trigger Discipline
         if (enemyInSight && myTank->shootCooldownTimer <= 0) {
-            b2Vec2 toAim = aimTarget - myPos;
-            toAim.Normalize();
-            float dot = forwardDir.x * toAim.x + forwardDir.y * toAim.y;
-            
-            // Ngưỡng góc ngắm: Càng xa ngắm càng phải kỹ (accuracyThreshold cao)
-            float accuracyThreshold = 0.99f; // Ngắm cực chuẩn (~8 độ)
             float dist = (aimTarget - myPos).Length();
-            if (dist < 4.0f) accuracyThreshold = 0.95f; 
-            if (dist < 2.0f) accuracyThreshold = 0.85f; // Gần quá thì bắn bừa
             
-            if (dot > accuracyThreshold) {
-                actions.shoot = true;
+            // Chỉ bắn khi kẻ địch nằm trong phạm vi hiệu quả (ví dụ 16 đơn vị ~ 480 pixels)
+            // Tránh việc Bot bắn tỉa quá xa dễ bị trượt hoặc lãng phí đạn (khi train RL)
+            if (dist < 16.0f) {
+                b2Vec2 toAim = aimTarget - myPos;
+                toAim.Normalize();
+                float dot = forwardDir.x * toAim.x + forwardDir.y * toAim.y;
+                
+                // Ngưỡng góc ngắm: Càng xa ngắm càng phải kỹ (accuracyThreshold cao)
+                float accuracyThreshold = 0.99f; // Ngắm cực chuẩn (~8 độ)
+                if (dist < 4.0f) accuracyThreshold = 0.95f; 
+                if (dist < 2.0f) accuracyThreshold = 0.85f; // Gần quá thì bắn bừa
+                
+                if (dot > accuracyThreshold) {
+                    actions.shoot = true;
+                }
             }
         }
     }
