@@ -1,27 +1,221 @@
 #include "bot.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
-class EnemyRayCastCallback : public b2RayCastCallback {
+namespace {
+
+struct RayHitInfo {
+    bool hit = false;
+    bool hitStatic = false;
+    b2Body* body = nullptr;
+    b2Vec2 point = b2Vec2(0.0f, 0.0f);
+    b2Vec2 normal = b2Vec2(0.0f, 0.0f);
+};
+
+class RayHitCallback : public b2RayCastCallback {
 public:
-    b2Body* enemyBody;
-    bool hitEnemy = false;
-
-    EnemyRayCastCallback(b2Body* enemy) : enemyBody(enemy) {}
+    explicit RayHitCallback(RayHitInfo* outInfo) : info(outInfo) {}
 
     float ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction) override {
-        b2Body* hitBody = fixture->GetBody();
-        if (hitBody->GetType() == b2_staticBody) {
-            hitEnemy = false;
-            return fraction;
-        }
-        if (hitBody == enemyBody) {
-            hitEnemy = true;
-            return fraction;
-        }
-        return -1.0f;
+        if (fixture->IsSensor()) return -1.0f;
+        info->hit = true;
+        info->body = fixture->GetBody();
+        info->hitStatic = info->body && info->body->GetType() == b2_staticBody;
+        info->point = point;
+        info->normal = normal;
+        return fraction;
     }
+
+private:
+    RayHitInfo* info;
 };
+
+struct BulletThreat {
+    bool active = false;
+    float ttc = 999.0f;
+    b2Vec2 bulletPos = b2Vec2(0.0f, 0.0f);
+    b2Vec2 bulletVel = b2Vec2(0.0f, 0.0f);
+};
+
+static int s_dodgeFrames[4] = {0, 0, 0, 0};
+static b2Vec2 s_dodgeDir[4] = {
+    b2Vec2(1.0f, 0.0f),
+    b2Vec2(1.0f, 0.0f),
+    b2Vec2(1.0f, 0.0f),
+    b2Vec2(1.0f, 0.0f)
+};
+static float s_lastThreatTtc[4] = {999.0f, 999.0f, 999.0f, 999.0f};
+static int s_weaveFrames[4] = {0, 0, 0, 0};
+static int s_weaveDir[4] = {1, -1, 1, -1};
+
+int ClampPlayerIndex(int index) {
+    return std::max(0, std::min(3, index));
+}
+
+float NormalizeAngle(float angle) {
+    while (angle > PI) angle -= 2.0f * PI;
+    while (angle < -PI) angle += 2.0f * PI;
+    return angle;
+}
+
+float AngleTo(const b2Vec2& from, const b2Vec2& to) {
+    b2Vec2 delta = to - from;
+    return atan2f(-delta.x, delta.y);
+}
+
+b2Vec2 SafeNormalize(const b2Vec2& value) {
+    float length = value.Length();
+    if (length < 0.0001f) return b2Vec2(0.0f, 0.0f);
+    return (1.0f / length) * value;
+}
+
+float Dot(const b2Vec2& a, const b2Vec2& b) {
+    return a.x * b.x + a.y * b.y;
+}
+
+int RandRange(int minValue, int maxValue) {
+    if (maxValue <= minValue) return minValue;
+    return minValue + (rand() % (maxValue - minValue + 1));
+}
+
+float SolveInterceptTime(const b2Vec2& shooterPos, const b2Vec2& targetPos, const b2Vec2& targetVel, float bulletSpeed, float maxTime) {
+    b2Vec2 toTarget = targetPos - shooterPos;
+    float speed = std::max(bulletSpeed, 0.1f);
+    float a = Dot(targetVel, targetVel) - speed * speed;
+    float b = 2.0f * Dot(toTarget, targetVel);
+    float c = Dot(toTarget, toTarget);
+
+    if (fabsf(a) < 0.0001f) {
+        if (fabsf(b) < 0.0001f) return std::min(maxTime, c / speed);
+        float t = -c / b;
+        if (t > 0.0f) return std::min(t, maxTime);
+        return std::min(maxTime, c / speed);
+    }
+
+    float disc = b * b - 4.0f * a * c;
+    if (disc < 0.0f) return std::min(maxTime, c / speed);
+
+    float sqrtDisc = sqrtf(disc);
+    float t1 = (-b - sqrtDisc) / (2.0f * a);
+    float t2 = (-b + sqrtDisc) / (2.0f * a);
+    float t = 9999.0f;
+
+    if (t1 > 0.0f) t = t1;
+    if (t2 > 0.0f) t = std::min(t, t2);
+    if (t == 9999.0f) return std::min(maxTime, c / speed);
+
+    return std::min(t, maxTime);
+}
+
+int CountOwnedActiveBullets(const std::vector<Bullet*>& bullets, int ownerIndex) {
+    int count = 0;
+    for (Bullet* bullet : bullets) {
+        if (bullet && bullet->ownerPlayerIndex == ownerIndex && bullet->time > 0.0f) {
+            count++;
+        }
+    }
+    return count;
+}
+
+bool ShouldDetonateFrag(const std::vector<Bullet*>& bullets, int ownerIndex, const b2Vec2& enemyPos) {
+    for (Bullet* bullet : bullets) {
+        if (!bullet) continue;
+        if (bullet->ownerPlayerIndex != ownerIndex) continue;
+        if (!bullet->isFrag || bullet->explodeFrag || bullet->time <= 0.0f) continue;
+        float dist = (bullet->body->GetPosition() - enemyPos).Length();
+        if (dist < 2.6f) return true;
+    }
+    return false;
+}
+
+bool HasMuzzleClearance(b2World& world, const b2Vec2& origin, const b2Vec2& direction, float length) {
+    RayHitInfo info;
+    RayHitCallback callback(&info);
+    world.RayCast(&callback, origin, origin + length * direction);
+    return !(info.hit && info.hitStatic);
+}
+
+BulletThreat FindBulletThreat(const std::vector<Bullet*>& bullets, int myPlayerIndex, const b2Vec2& myPos, const b2Vec2& myVel) {
+    BulletThreat best;
+
+    for (Bullet* bullet : bullets) {
+        if (!bullet || bullet->time <= 0.0f || bullet->ownerPlayerIndex == myPlayerIndex) continue;
+
+        b2Vec2 bulletPos = bullet->body->GetPosition();
+        b2Vec2 bulletVel = bullet->body->GetLinearVelocity();
+        b2Vec2 relPos = myPos - bulletPos;
+        b2Vec2 relVel = bulletVel - myVel;
+        float speedSqr = relVel.LengthSquared();
+
+        if (speedSqr < 0.05f) continue;
+
+        float t = Dot(relPos, relVel) / speedSqr;
+        if (t <= 0.0f || t > 2.5f) continue;
+
+        b2Vec2 bulletFuture = bulletPos + t * bulletVel;
+        b2Vec2 myFuture = myPos + t * myVel;
+        float missDistance = (bulletFuture - myFuture).Length();
+
+        if (missDistance < 1.9f && t < best.ttc) {
+            best.active = true;
+            best.ttc = t;
+            best.bulletPos = bulletPos;
+            best.bulletVel = bulletVel;
+        }
+    }
+
+    return best;
+}
+
+bool FindBounceShot(Game* game, const b2Vec2& myPos, b2Body* enemyBody, const b2Vec2& enemyPos, b2Vec2* outWallPoint) {
+    if (!game || !enemyBody || !outWallPoint) return false;
+
+    const float maxRayLength = 80.0f;
+    const float baseAngle = AngleTo(myPos, enemyPos);
+    float bestScore = 9999.0f;
+    bool found = false;
+    b2Vec2 bestPoint = b2Vec2(0.0f, 0.0f);
+
+    for (int i = -34; i <= 34; ++i) {
+        float angle = baseAngle + i * 0.07f;
+        b2Vec2 dir(-sinf(angle), cosf(angle));
+
+        RayHitInfo firstHit;
+        RayHitCallback firstCallback(&firstHit);
+        game->world.RayCast(&firstCallback, myPos, myPos + maxRayLength * dir);
+
+        if (!firstHit.hit || !firstHit.hitStatic) continue;
+
+        b2Vec2 incoming = SafeNormalize(firstHit.point - myPos);
+        if (incoming.LengthSquared() < 0.01f) continue;
+
+        float projection = Dot(incoming, firstHit.normal);
+        b2Vec2 reflected = SafeNormalize(incoming - 2.0f * projection * firstHit.normal);
+        if (reflected.LengthSquared() < 0.01f) continue;
+
+        b2Vec2 bounceStart = firstHit.point + 0.05f * reflected;
+        RayHitInfo secondHit;
+        RayHitCallback secondCallback(&secondHit);
+        game->world.RayCast(&secondCallback, bounceStart, bounceStart + maxRayLength * reflected);
+
+        if (secondHit.hit && secondHit.body == enemyBody) {
+            float score = std::fabs(NormalizeAngle(AngleTo(myPos, firstHit.point) - baseAngle));
+            if (score < bestScore) {
+                bestScore = score;
+                bestPoint = firstHit.point;
+                found = true;
+            }
+        }
+    }
+
+    if (found) {
+        *outWallPoint = bestPoint;
+    }
+
+    return found;
+}
+
+} // namespace
 
 Bot::Bot(int level, int playerIndex) : level(level), playerIndex(playerIndex) {}
 
@@ -32,325 +226,179 @@ TankActions Bot::GetAction(Game* game) {
     Tank* myTank = nullptr;
     Tank* enemyTank = nullptr;
 
-    for (auto t : game->tanks) {
-        if (t->playerIndex == playerIndex) {
-            myTank = t;
-        } else if (!t->isDestroyed) {
-            enemyTank = t; // Chỉ nhắm vào 1 kẻ địch còn sống
+    for (Tank* tank : game->tanks) {
+        if (tank->playerIndex == playerIndex) {
+            myTank = tank;
+        } else if (!tank->isDestroyed) {
+            enemyTank = tank;
         }
     }
 
     if (!myTank || myTank->isDestroyed) return actions;
 
-    b2Vec2 myPos = myTank->body->GetPosition();
-    float myAngle = myTank->body->GetAngle();
-    b2Vec2 forwardDir(-sinf(myAngle), cosf(myAngle));
+    const b2Vec2 myPos = myTank->body->GetPosition();
+    const b2Vec2 myVel = myTank->body->GetLinearVelocity();
+    const float myAngle = myTank->body->GetAngle();
+    const b2Vec2 forwardDir(-sinf(myAngle), cosf(myAngle));
 
-    // ==========================================
-    // Cấp độ 1: Dummy (Bia tập bắn)
-    // ==========================================
     if (level == 1) {
         if (rand() % 100 < 5) actions.forward = true;
         if (rand() % 100 < 5) actions.turnLeft = true;
         return actions;
     }
 
-    // ==========================================
-    // Cấp độ 2+: Tự động tìm đường và ngắm bắn
-    // ==========================================
-    float enemyDist = 999.0f;
+    // 1. Evaluate Threats & Emergency Dodge
+    BulletThreat threat = FindBulletThreat(game->bullets, playerIndex, myPos, myVel);
+    if (threat.active && threat.ttc < 1.8f) {
+        // Use Shield if extremely close
+        if (threat.ttc < 0.6f && myTank->shieldCooldownTimer <= 0.0f && level >= 4) {
+            actions.shield = true;
+        }
+
+        // Dodge
+        b2Vec2 bulletDir = SafeNormalize(threat.bulletVel);
+        b2Vec2 toThreat = threat.bulletPos - myPos;
+        float cross = toThreat.x * bulletDir.y - toThreat.y * bulletDir.x;
+        b2Vec2 escapeDir = (cross > 0.0f) ? b2Vec2(-bulletDir.y, bulletDir.x) : b2Vec2(bulletDir.y, -bulletDir.x);
+        
+        float escapeAngle = NormalizeAngle(AngleTo(myPos, myPos + escapeDir) - myAngle);
+        if (escapeAngle > 0.1f) actions.turnLeft = true;
+        else if (escapeAngle < -0.1f) actions.turnRight = true;
+        
+        if (std::cos(escapeAngle) > -0.2f) actions.forward = true;
+        else actions.backward = true;
+        
+        return actions; // Dodge overrides all other logic to ensure survival
+    }
+
+    // 2. Target Selection & Aiming
     bool enemyInSight = false;
+    bool hasTarget = false;
+    b2Vec2 targetAim(0.0f, 0.0f);
+    float enemyDist = 999.0f;
 
     if (enemyTank) {
-        b2Vec2 toEnemy = enemyTank->body->GetPosition() - myPos;
-        enemyDist = toEnemy.Length();
+        b2Vec2 enemyPos = enemyTank->body->GetPosition();
+        b2Vec2 enemyVel = enemyTank->body->GetLinearVelocity();
+        enemyDist = (enemyPos - myPos).Length();
 
-        // Sử dụng CheckClearance (Fat Raycast) thay vì tia đơn lẻ để tránh lỗi tia lọt qua kẽ tường gây nhiễu A*
-        enemyInSight = CheckClearance(game->world, myPos, enemyTank->body->GetPosition());
+        float bulletSpeed = 6.0f;
+        if (myTank->currentWeapon == ItemType::GATLING) bulletSpeed = 10.0f;
+        else if (myTank->currentWeapon == ItemType::MISSILE) bulletSpeed = 4.5f;
+        else if (myTank->currentWeapon == ItemType::DEATH_RAY) bulletSpeed = 16.0f;
+
+        float hitTime = SolveInterceptTime(myPos, enemyPos, enemyVel, bulletSpeed, 2.5f);
+        b2Vec2 predictedPos = enemyPos + hitTime * enemyVel;
+
+        if (CheckClearance(game->world, myPos, predictedPos)) {
+            targetAim = predictedPos;
+            enemyInSight = true;
+            hasTarget = true;
+        } else if (CheckClearance(game->world, myPos, enemyPos)) {
+            targetAim = enemyPos;
+            enemyInSight = true;
+            hasTarget = true;
+        } else if (level >= 5 && myTank->currentWeapon != ItemType::DEATH_RAY && myTank->currentWeapon != ItemType::MISSILE) {
+            b2Vec2 wallPt;
+            if (FindBounceShot(game, myPos, enemyTank->body, enemyPos, &wallPt)) {
+                targetAim = wallPt;
+                hasTarget = true;
+            }
+        }
     }
 
-    // 1. Xác định VIRTUAL TARGET (Mục tiêu ảo)
-    b2Vec2 virtualTarget = myPos;
-    if (enemyTank) {
-        virtualTarget = enemyTank->body->GetPosition();
+    // 3. Movement & Shooting
+    if (hasTarget && enemyTank) {
+        float aimError = NormalizeAngle(AngleTo(myPos, targetAim) - myAngle);
         
+        // Aim at target
+        if (aimError > 0.04f) actions.turnLeft = true;
+        else if (aimError < -0.04f) actions.turnRight = true;
+        
+        // Optimal distance maintenance (Kiting / Chasing)
         if (enemyInSight) {
-            // Khi thấy địch, mục tiêu ảo là vị trí hiện tại hoặc vị trí đón đầu của địch
-            if (level >= 5) {
-                float dist = (virtualTarget - myPos).Length();
-                float timeToHit = dist / 15.0f;
-                virtualTarget = virtualTarget + timeToHit * enemyTank->body->GetLinearVelocity();
-            }
-            // Hủy cache path khi thấy địch trực tiếp
-            cachedPath.clear();
-            currentWaypointIdx = 0;
-            
-            game->botPaths[playerIndex].clear();
-            game->botPaths[playerIndex].push_back(myPos);
-            game->botPaths[playerIndex].push_back(virtualTarget);
-        } else if (game->mapEnabled) {
-            // === CHẾ ĐỘ LÙI XE khi đang bị kẹt ===
-            if (backupTimer > 0) {
-                backupTimer--;
+            if (enemyDist < 8.0f) {
                 actions.backward = true;
-                if (backupTimer == 0) {
-                    cachedPath = game->map.GetFullPath(game->world, myPos, enemyTank->body->GetPosition(), blockedCells);
-                    currentWaypointIdx = 1;
-                    lastEnemyPos = enemyTank->body->GetPosition();
-                    game->botPaths[playerIndex] = cachedPath;
-                    if (currentWaypointIdx < (int)cachedPath.size()) {
-                        virtualTarget = cachedPath[currentWaypointIdx];
-                    }
-                }
-                return actions;
-            }
-            
-
-            // === THEO DÕI CHUỖI WAYPOINT ===
-            bool needRecalc = false;
-            
-            if (cachedPath.empty() || currentWaypointIdx >= (int)cachedPath.size()) {
-                needRecalc = true;
+            } else if (enemyDist > 16.0f) {
+                if (std::abs(aimError) < 0.5f) actions.forward = true;
             } else {
-                // [Cách 2] Waypoint Tolerance: bán kính chấp nhận = 1.2 đơn vị (~36 pixels)
-                // Không ép bot phải đi tới chính xác tọa độ waypoint → tránh xoay vòng vòng
-                b2Vec2 currentWP = cachedPath[currentWaypointIdx];
-                float distToWP = (currentWP - myPos).Length();
-                if (distToWP < 1.2f) {
-                    currentWaypointIdx++;
-                    if (currentWaypointIdx >= (int)cachedPath.size()) {
-                        needRecalc = true;
-                    }
-                }
-                
-                // Phát hiện bị kẹt
-                float speed = myTank->body->GetLinearVelocity().Length();
-                if (speed < 0.3f) {
-                    stuckCounter++;
-                    if (stuckCounter > 30) {
-                        float cellW = 90.0f, cellH = 90.0f;
-                        float offsetX = (SCREEN_WIDTH - (8 * cellW)) / 2.0f;
-                        float offsetY = (SCREEN_HEIGHT - (6 * cellH)) / 2.0f - 50.0f;
-                        int col = (int)floorf((myPos.x * SCALE - offsetX) / cellW);
-                        int row = (int)floorf((SCREEN_HEIGHT - myPos.y * SCALE - offsetY) / cellH);
-                        if (col >= 0 && col < 8 && row >= 0 && row < 6) {
-                            blockedCells.push_back({row, col});
-                        }
-                        backupTimer = 20;
-                        cachedPath.clear();
-                        stuckCounter = 0;
-                        return actions;
-                    }
-                } else {
-                    stuckCounter = 0;
-                    if (!blockedCells.empty()) {
-                        static int clearTimer = 0;
-                        clearTimer++;
-                        if (clearTimer > 180) {
-                            blockedCells.erase(blockedCells.begin());
-                            clearTimer = 0;
-                        }
-                    }
-                }
-                
-                // [Path Commitment] Chỉ tính lại đường khi Mục tiêu đã BƯỚC SANG Ô CARO KHÁC
-                if (!needRecalc) {
-                    float cellW = 90.0f, cellH = 90.0f;
-                    float offsetX = (SCREEN_WIDTH - (8 * cellW)) / 2.0f;
-                    float offsetY = (SCREEN_HEIGHT - (6 * cellH)) / 2.0f - 50.0f;
-                    
-                    b2Vec2 enemyPos = enemyTank->body->GetPosition();
-                    int currentEnemyCol = (int)floorf((enemyPos.x * SCALE - offsetX) / cellW);
-                    int currentEnemyRow = (int)floorf((SCREEN_HEIGHT - enemyPos.y * SCALE - offsetY) / cellH);
-                    
-                    int lastEnemyCol = (int)floorf((lastEnemyPos.x * SCALE - offsetX) / cellW);
-                    int lastEnemyRow = (int)floorf((SCREEN_HEIGHT - lastEnemyPos.y * SCALE - offsetY) / cellH);
-                    
-                    // Nếu mục tiêu di chuyển sang ô lưới khác -> Tính lại A*
-                    if (currentEnemyRow != lastEnemyRow || currentEnemyCol != lastEnemyCol) {
-                        needRecalc = true;
-                    }
-                }
-            }
-            
-            // Khi tính lại đường mới
-            if (needRecalc) {
-                cachedPath = game->map.GetFullPath(game->world, myPos, enemyTank->body->GetPosition(), blockedCells);
-                currentWaypointIdx = 1;
-                stuckCounter = 0;
-                lastEnemyPos = enemyTank->body->GetPosition();
-            }
-            
-            game->botPaths[playerIndex] = cachedPath;
-            
-            if (currentWaypointIdx < (int)cachedPath.size()) {
-                virtualTarget = cachedPath[currentWaypointIdx];
-            }
-        }
-    }
-
-    // 2. Di chuyển và ngắm bắn
-    if (enemyTank) {
-        // [Bước 1: Dự báo điểm mù] Predictive Aiming
-        // Tính toán vị trí địch sẽ đứng khi đạn bay tới nơi
-        b2Vec2 aimTarget = enemyTank->body->GetPosition();
-        if (level >= 5) {
-            float dist = (aimTarget - myPos).Length();
-            float bulletSpeed = 6.0f; // Tốc độ đạn mặc định
-            if (myTank->currentWeapon == ItemType::GATLING) bulletSpeed = 10.0f;
-            else if (myTank->currentWeapon == ItemType::DEATH_RAY) bulletSpeed = 8.0f;
-            
-            // Tương lai = Hiện tại + (Quãng đường / Tốc độ đạn) * Vận tốc địch
-            aimTarget = aimTarget + (dist / bulletSpeed) * enemyTank->body->GetLinearVelocity();
-        }
-
-        // [Bước 2: Xoay xe/nòng súng]
-        // Ưu tiên: Nếu thấy địch thì xoay về phía địch để bắn, nếu không thấy thì xoay về Waypoint để đi
-        b2Vec2 lookTarget = (enemyInSight && level >= 3) ? aimTarget : virtualTarget;
-        b2Vec2 toLook = lookTarget - myPos;
-        
-        if (toLook.LengthSquared() > 0.01f) {
-            float absAngle = atan2f(-toLook.x, toLook.y);
-            float relAngle = absAngle - myAngle;
-
-            // Chuẩn hóa góc về [-PI, PI]
-            while (relAngle > PI) relAngle -= 2 * PI;
-            while (relAngle < -PI) relAngle += 2 * PI;
-
-            // Xoay hướng về mục tiêu
-            if (relAngle > 0.05f) actions.turnLeft = true;
-            else if (relAngle < -0.05f) actions.turnRight = true;
-
-            // [Bước 3: Di chuyển thông minh]
-            // Chỉ tiến lên nếu đang ngắm về phía Waypoint (để tránh đi lệch đường)
-            // HOẶC nếu đang bắn nhau thì có thể tiến/lùi tùy logic Kiting bên dưới
-            b2Vec2 toWaypoint = virtualTarget - myPos;
-            float wpAngle = atan2f(-toWaypoint.x, toWaypoint.y);
-            float wpRelAngle = wpAngle - myAngle;
-            while (wpRelAngle > PI) wpRelAngle -= 2 * PI;
-            while (wpRelAngle < -PI) wpRelAngle += 2 * PI;
-
-            if (cosf(wpRelAngle) > 0.8f) {
-                actions.forward = true;
+                // Mid-range: just hold position or move slightly to keep momentum
+                if (myVel.Length() < 0.5f && std::abs(aimError) < 0.5f) actions.forward = true;
             }
         }
 
-        // [Bước 4: Kỷ luật bóp cò] Trigger Discipline
-        if (enemyInSight && myTank->shootCooldownTimer <= 0) {
-            float dist = (aimTarget - myPos).Length();
+        // Fire control
+        bool canShoot = myTank->shootCooldownTimer <= 0.0f;
+        if (canShoot) {
+            float tolerance = 0.08f;
+            if (enemyDist > 15.0f) tolerance = 0.04f; // tighter aim at long range
+            if (enemyDist < 5.0f) tolerance = 0.2f;   // looser aim at close range
             
-            // Chỉ bắn khi kẻ địch nằm trong phạm vi hiệu quả (ví dụ 16 đơn vị ~ 480 pixels)
-            // Tránh việc Bot bắn tỉa quá xa dễ bị trượt hoặc lãng phí đạn (khi train RL)
-            if (dist < 16.0f) {
-                b2Vec2 toAim = aimTarget - myPos;
-                toAim.Normalize();
-                float dot = forwardDir.x * toAim.x + forwardDir.y * toAim.y;
-                
-                // Ngưỡng góc ngắm: Càng xa ngắm càng phải kỹ (accuracyThreshold cao)
-                float accuracyThreshold = 0.99f; // Ngắm cực chuẩn (~8 độ)
-                if (dist < 4.0f) accuracyThreshold = 0.95f; 
-                if (dist < 2.0f) accuracyThreshold = 0.85f; // Gần quá thì bắn bừa
-                
-                if (dot > accuracyThreshold) {
+            if (std::abs(aimError) <= tolerance) {
+                if (HasMuzzleClearance(game->world, myPos, forwardDir, 1.25f)) {
                     actions.shoot = true;
                 }
             }
         }
-    }
 
-    // ==========================================
-    // Cấp độ 3+: Né Đạn (Veteran)
-    // ==========================================
-    if (level >= 3) {
-        b2Vec2 myVel = myTank->body->GetLinearVelocity();
-        float minTTC = 999.0f;
-        b2Vec2 dangerBulletVel(0,0);
-        b2Vec2 dangerBulletPos(0,0);
-        
-        for (auto b : game->bullets) {
-            if (b->ownerPlayerIndex != playerIndex && b->time > 0.0f) {
-                b2Vec2 relPos = myPos - b->body->GetPosition();
-                b2Vec2 bVel = b->body->GetLinearVelocity();
-                b2Vec2 relVel = bVel - myVel;
-                float speedSqr = relVel.LengthSquared();
-                
-                if (speedSqr > 0.1f) {
-                    float t = (relPos.x * relVel.x + relPos.y * relVel.y) / speedSqr;
-                    if (t > 0 && t < 1.2f) { // Đạn sẽ chạm trong vòng 1.2 giây
-                        b2Vec2 closestPoint = b->body->GetPosition() + t * bVel;
-                        b2Vec2 myExpectedPos = myPos + t * myVel;
-                        float missDist = (closestPoint - myExpectedPos).Length();
-                        
-                        if (missDist < 1.2f) { // Bán kính nguy hiểm (khoảng 36 pixels)
-                            if (t < minTTC) {
-                                minTTC = t;
-                                dangerBulletVel = bVel;
-                                dangerBulletPos = b->body->GetPosition();
-                            }
-                        }
-                    }
-                }
-            }
+        // Handle specific weapons like Frag
+        if (myTank->currentWeapon == ItemType::FRAG && ShouldDetonateFrag(game->bullets, playerIndex, enemyTank->body->GetPosition())) {
+            actions.shoot = true; 
         }
 
-        if (minTTC < 1.0f) { // Nguy hiểm cận kề
-            actions.forward = false; // Ngừng tiến
-            actions.backward = false;
-            actions.turnLeft = false;
-            actions.turnRight = false;
-            
-            // Tìm hướng vuông góc với đạn để lách
-            b2Vec2 toMe = myPos - dangerBulletPos;
-            float cross = toMe.x * dangerBulletVel.y - toMe.y * dangerBulletVel.x;
-            float dot = forwardDir.x * dangerBulletVel.x + forwardDir.y * dangerBulletVel.y;
-            
-            // Bẻ lái cố định về 1 hướng để thoát khỏi đường bay của đạn
-            if (cross > 0) {
-                actions.turnRight = true;
-            } else {
-                actions.turnLeft = true;
-            }
-
-            // Tiến hoặc lùi tùy thuộc vào việc đạn đang đến từ phía trước hay sau lưng
-            if (dot < 0) {
-                actions.backward = true; // Đạn tới từ phía trước -> lùi lại
-            } else {
-                actions.forward = true; // Đạn rượt từ sau lưng -> vọt tới
-            }
-            
-            // Né là ưu tiên số 1, ghi đè các hành động di chuyển khác nhưng vẫn có thể bắn
-            if (enemyInSight && myTank->shootCooldownTimer <= 0) actions.shoot = true;
+    } else if (enemyTank && game->mapEnabled) {
+        // 4. Pathfinding if no target or bounce shot found
+        b2Vec2 enemyPos = enemyTank->body->GetPosition();
+        if (backupTimer > 0) {
+            backupTimer--;
+            actions.backward = true;
             return actions;
         }
-    }
 
-    // ==========================================
-    // Cấp độ 4+: Kiting (Boss) - Thả diều
-    // ==========================================
-    if (level >= 4) {
-        if (enemyDist < 8.0f && enemyInSight) { // Kẻ địch ở quá gần
-            actions.forward = false;
-            actions.backward = true; // Vừa lùi vừa bắn
-        }
-    }
-
-    // ==========================================
-    // ANTI-STUCK: Xử lý kẹt góc tường
-    // ==========================================
-    if (actions.turnLeft || actions.turnRight) {
-        bool touchingWall = false;
-        for (b2ContactEdge* edge = myTank->body->GetContactList(); edge; edge = edge->next) {
-            if (edge->contact->IsTouching() && edge->other->GetType() == b2_staticBody) {
-                touchingWall = true;
-                break;
+        bool needRecalc = cachedPath.empty() || currentWaypointIdx >= (int)cachedPath.size();
+        if (!needRecalc) {
+            if ((cachedPath[currentWaypointIdx] - myPos).Length() < 1.4f) {
+                currentWaypointIdx++;
+                if (currentWaypointIdx >= (int)cachedPath.size()) needRecalc = true;
+            }
+            if (myVel.Length() < 0.25f) {
+                stuckCounter++;
+                if (stuckCounter > 24) {
+                    backupTimer = 16;
+                    cachedPath.clear();
+                    stuckCounter = 0;
+                    return actions;
+                }
+            } else {
+                stuckCounter = 0;
             }
         }
-        
-        // Nếu chạm tường trong lúc đang cố xoay xe
-        if (touchingWall) {
-            // Chỉ cần hủy lệnh tiến lên, vật lý Box2D sẽ tự đẩy xe ra khi xe cố xoay tại chỗ
-            // Không dùng lệnh backward nữa vì nó gây ra vòng lặp tiến-lùi (jittering)
-            actions.forward = false;
+
+        if (needRecalc || (lastEnemyPos - enemyPos).LengthSquared() > 9.0f) {
+            cachedPath = game->map.GetFullPath(game->world, myPos, enemyPos, blockedCells);
+            currentWaypointIdx = 1;
+            stuckCounter = 0;
+            lastEnemyPos = enemyPos;
+        }
+
+        game->botPaths[playerIndex] = cachedPath;
+
+        if (currentWaypointIdx < (int)cachedPath.size()) {
+            float moveAngle = NormalizeAngle(AngleTo(myPos, cachedPath[currentWaypointIdx]) - myAngle);
+            if (moveAngle > 0.15f) actions.turnLeft = true;
+            else if (moveAngle < -0.15f) actions.turnRight = true;
+            if (std::cos(moveAngle) > 0.15f) actions.forward = true;
+            else if (std::cos(moveAngle) < -0.55f) actions.backward = true;
+        }
+    }
+
+    // 5. Unstuck from walls
+    if (actions.turnLeft || actions.turnRight) {
+        for (b2ContactEdge* edge = myTank->body->GetContactList(); edge; edge = edge->next) {
+            if (edge->contact->IsTouching() && edge->other->GetType() == b2_staticBody) {
+                actions.forward = false;
+                break;
+            }
         }
     }
 
