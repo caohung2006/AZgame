@@ -8,6 +8,6 @@ build/
 __pycache__/
 train_AI/models/
 train_AI/logs/
-*.zip
+# *.zip
 logs/
 
