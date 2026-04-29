@@ -29,25 +29,25 @@ class ProgressCallback(BaseCallback):
 
 # Lộ trình 7 giai đoạn tối ưu hóa cho 1HP + 45 States + Fat RayCast + Bot
 PHASES = {
-    # 1. Cơ bản: Đánh với Bot Level 1 (Bia tập bắn)
-    1: {"map": False, "items": False, "mode": 0, "steps": 400_000,   "bot_level": 1, "op_phase": None},
+    # 1. Tân binh tập bắn: Bãi trống, Bot Level 1 (Bia tập bắn)
+    1: {"map": False, "items": False, "mode": 0, "steps": 500_000,   "bot_level": 1, "op_phase": None},
     
-    # 2. Né đạn: Bãi trống, bị bắn (mode=2, khóa súng) với Bot Level 2 (Đuổi theo bắn)
+    # 2. Lớp học Sinh tồn: Bãi trống, bị bắn (mode=2, né đạn) với Bot Level 2
     2: {"map": False, "items": False, "mode": 2, "steps": 800_000, "bot_level": 2, "op_phase": None},
     
-    # 3. Mê cung: Đánh với Bot Level 2 (Đuổi theo qua mê cung)
-    3: {"map": True,  "items": False, "mode": 0, "steps": 1_000_000, "bot_level": 2, "op_phase": None},
+    # 3. Khám phá Mê cung: Mê cung, đối thủ quay lại Level 1 để tập trung nhìn Radar/A*
+    3: {"map": True,  "items": False, "mode": 0, "steps": 1_000_000, "bot_level": 1, "op_phase": None},
     
-    # 4. Đấu tay đôi: Đánh với Bot Level 3 (Veteran - Biết né đạn, bãi trống)
-    4: {"map": False, "items": False, "mode": 0, "steps": 1_500_000, "bot_level": 3, "op_phase": None},
+    # 4. Tác chiến Đô thị: Mê cung, Bot Level 3 (Veteran - Biết né đạn)
+    4: {"map": True,  "items": False, "mode": 0, "steps": 1_500_000, "bot_level": 3, "op_phase": None},
     
-    # 5. Tác chiến đô thị: Đánh với Bot Level 4 (Boss - Kiting trong mê cung)
+    # 5. Đối đầu Trùm cuối: Mê cung, Bot Level 4 (Boss - Kiting khôn ngoan)
     5: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000, "bot_level": 4, "op_phase": None},
     
-    # 6. Self-Play: Đánh với các Model cũ để tránh Rock-Paper-Scissors
-    6: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000, "bot_level": None, "op_phase": 5},
+    # 6. Đánh vỡ Meta: Self-Play với các phiên bản cũ của chính mình (Phase 5)
+    6: {"map": True,  "items": False, "mode": 0, "steps": 2_500_000, "bot_level": None, "op_phase": 5},
     
-    # 7. Full Game: Items + Self-Play
+    # 7. Đấu trường Sinh tử: Full Map + Items + Self-Play (Phase 6)
     7: {"map": True,  "items": True,  "mode": 0, "steps": 3_000_000, "bot_level": None, "op_phase": 6},
 }
 

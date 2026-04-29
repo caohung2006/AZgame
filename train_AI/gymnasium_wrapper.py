@@ -28,23 +28,14 @@ class AZTankEnv(gym.Env):
     Bọc (wrap) RLEnv của C++ theo chuẩn Gymnasium để
     tương thích với Stable Baselines3.
 
-    State (23 floats):
-        [0 -> 7]: Khoảng cách radar đến tường (8 hướng) (0-1)
-        [8]: Cos góc tới địch (-1 đến 1)
-        [9]: Sin góc tới địch (-1 đến 1)
-        [10]: Khoảng cách đường chim bay đến địch (0-1)
-        [11]: Số lượng đạn đang bay (tỷ lệ 0-1)
-        [12]: Máu hiện tại (0-1, chuẩn hóa: 2/2=1.0, 1/2=0.5)
-        [13]: Hướng đạn đối thủ gần nhất - cos (-1 đến 1)
-        [14]: Hướng đạn đối thủ gần nhất - sin (-1 đến 1)
-        [15]: Khoảng cách đạn đối thủ gần nhất (0-1)
-        [16]: Số lượng đạn đối thủ đang bay (tỷ lệ 0-1)
-        [17]: Cos hướng đến A* Waypoint (-1 đến 1)
-        [18]: Sin hướng đến A* Waypoint (-1 đến 1)
-        [19]: Khoảng cách A* (đường vòng) đến kẻ địch (0-1)
-        [20]: Địch ở ngay trước mặt (1.0 = có, 0.0 = không)
-        [21]: Vận tốc địch dọc theo hướng nhìn AI (-1 đến 1)
-        [22]: Vận tốc địch cắt ngang hướng nhìn AI (-1 đến 1)
+    State (45 floats):
+        [0 -> 4]: Self State (Heading Cos/Sin, Local Vx/Vy, Angular Vel)
+        [5 -> 12]: Enemy Info (Local X/Y, Distance, Line of Sight, Local Vx/Vy, Heading Cos/Sin)
+        [13 -> 20]: Bullet Radar (2 most dangerous bullets: Local X/Y, TTC, Miss Dist)
+        [21 -> 28]: Wall Radar (8 directions scan)
+        [29 -> 31]: A* Navigation (Waypoint Local X/Y, Path Distance)
+        [32 -> 36]: Status (Ammo, Shoot Cooldown, Enemy Ammo, Shield Active, Shield Cooldown)
+        [37 -> 44]: Previous Action One-Hot (Move, Turn, Shoot)
 
     Action (MultiBinary - 5 phím có thể nhấn cùng lúc):
         [0]: Tiến (1=có, 0=không)
