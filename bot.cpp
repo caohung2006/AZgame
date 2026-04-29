@@ -215,6 +215,60 @@ bool FindBounceShot(Game* game, const b2Vec2& myPos, b2Body* enemyBody, const b2
     return found;
 }
 
+bool CheckShootClearance(b2World& world, const b2Vec2& p1, const b2Vec2& p2) {
+    b2Vec2 dir = p2 - p1;
+    float length = dir.Length();
+    if (length < 0.01f) return true;
+    dir = SafeNormalize(dir);
+    
+    float offset = 0.15f; 
+    b2Vec2 perp(-dir.y, dir.x);
+    
+    b2Vec2 offsets[3] = {
+        b2Vec2(0, 0),
+        offset * perp,
+        -offset * perp
+    };
+    
+    for (int i = 0; i < 3; i++) {
+        RayHitInfo info;
+        RayHitCallback cb(&info);
+        world.RayCast(&cb, p1 + offsets[i], p2 + offsets[i]);
+        if (info.hit && info.hitStatic) return false;
+    }
+    return true;
+}
+
+bool SafeToShoot(b2World& world, const b2Vec2& origin, const b2Vec2& dir, b2Body* myBody) {
+    // 1. Muzzle clearance
+    RayHitInfo info1;
+    RayHitCallback cb1(&info1);
+    world.RayCast(&cb1, origin, origin + 1.25f * dir);
+    if (info1.hit && info1.hitStatic) return false; 
+
+    // 2. Check for self-bounce
+    RayHitInfo info2;
+    RayHitCallback cb2(&info2);
+    world.RayCast(&cb2, origin, origin + 30.0f * dir);
+    
+    if (info2.hit && info2.hitStatic) {
+        b2Vec2 incoming = dir;
+        float proj = Dot(incoming, info2.normal);
+        b2Vec2 reflected = SafeNormalize(incoming - 2.0f * proj * info2.normal);
+        
+        RayHitInfo info3;
+        RayHitCallback cb3(&info3);
+        b2Vec2 bounceStart = info2.point + 0.05f * reflected;
+        world.RayCast(&cb3, bounceStart, bounceStart + 30.0f * reflected);
+        
+        if (info3.hit && info3.body == myBody) {
+            return false; // Will bounce and hit myself
+        }
+    }
+    
+    return true;
+}
+
 } // namespace
 
 Bot::Bot(int level, int playerIndex) : level(level), playerIndex(playerIndex) {}
@@ -287,14 +341,15 @@ TankActions Bot::GetAction(Game* game) {
         else if (myTank->currentWeapon == ItemType::MISSILE) bulletSpeed = 4.5f;
         else if (myTank->currentWeapon == ItemType::DEATH_RAY) bulletSpeed = 16.0f;
 
-        float hitTime = SolveInterceptTime(myPos, enemyPos, enemyVel, bulletSpeed, 2.5f);
+        float maxInterceptTime = 5.0f; // Allow long range aiming
+        float hitTime = SolveInterceptTime(myPos, enemyPos, enemyVel, bulletSpeed, maxInterceptTime);
         b2Vec2 predictedPos = enemyPos + hitTime * enemyVel;
 
-        if (CheckClearance(game->world, myPos, predictedPos)) {
+        if (CheckShootClearance(game->world, myPos, predictedPos)) {
             targetAim = predictedPos;
             enemyInSight = true;
             hasTarget = true;
-        } else if (CheckClearance(game->world, myPos, enemyPos)) {
+        } else if (CheckShootClearance(game->world, myPos, enemyPos)) {
             targetAim = enemyPos;
             enemyInSight = true;
             hasTarget = true;
@@ -317,13 +372,22 @@ TankActions Bot::GetAction(Game* game) {
         
         // Optimal distance maintenance (Kiting / Chasing)
         if (enemyInSight) {
-            if (enemyDist < 8.0f) {
+            if (enemyDist < 6.0f) {
                 actions.backward = true;
-            } else if (enemyDist > 16.0f) {
-                if (std::abs(aimError) < 0.5f) actions.forward = true;
+            } else if (enemyDist > 20.0f) {
+                if (std::abs(aimError) < 0.6f) actions.forward = true;
             } else {
-                // Mid-range: just hold position or move slightly to keep momentum
-                if (myVel.Length() < 0.5f && std::abs(aimError) < 0.5f) actions.forward = true;
+                // Active mid-range movement
+                if (s_weaveFrames[playerIndex] <= 0) {
+                    s_weaveFrames[playerIndex] = RandRange(30, 90);
+                    s_weaveDir[playerIndex] = RandRange(0, 2) - 1; // -1, 0, or 1
+                }
+                s_weaveFrames[playerIndex]--;
+
+                if (std::abs(aimError) < 0.5f) {
+                    if (s_weaveDir[playerIndex] == 1 && enemyDist > 9.0f) actions.forward = true;
+                    else if (s_weaveDir[playerIndex] == -1 && enemyDist < 15.0f) actions.backward = true;
+                }
             }
         }
 
@@ -331,11 +395,12 @@ TankActions Bot::GetAction(Game* game) {
         bool canShoot = myTank->shootCooldownTimer <= 0.0f;
         if (canShoot) {
             float tolerance = 0.08f;
-            if (enemyDist > 15.0f) tolerance = 0.04f; // tighter aim at long range
-            if (enemyDist < 5.0f) tolerance = 0.2f;   // looser aim at close range
+            if (enemyDist > 18.0f) tolerance = 0.03f; // much tighter aim at long range
+            else if (enemyDist > 10.0f) tolerance = 0.06f; 
+            else if (enemyDist < 5.0f) tolerance = 0.2f;   
             
             if (std::abs(aimError) <= tolerance) {
-                if (HasMuzzleClearance(game->world, myPos, forwardDir, 1.25f)) {
+                if (SafeToShoot(game->world, myPos, forwardDir, myTank->body)) {
                     actions.shoot = true;
                 }
             }
