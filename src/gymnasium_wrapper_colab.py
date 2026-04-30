@@ -14,20 +14,20 @@ class AZTankEnv(gym.Env):
     Bọc (wrap) RLEnv Python theo chuẩn Gymnasium.
     Tương thích 100% với Stable Baselines3.
 
-    State (13 floats):
-        [0 -> 7]: Khoảng cách radar đến tường (8 hướng) (0-1)
-        [8]: Cos góc tới địch (-1 đến 1)
-        [9]: Sin góc tới địch (-1 đến 1)
-        [10]: Khoảng cách đường chim bay đến địch (0-1)
-        [11]: Số lượng đạn đang bay (tỷ lệ 0-1)
-        [12]: Máu hiện tại (0-1)
+    State (25 hoặc 27 floats tùy use_astar):
+        [0 -> 7] : Khoảng cách radar đến tường (8 hướng) (0-1)
+        [8]      : Cos góc tới địch (-1 đến 1)
+        [9]      : Sin góc tới địch (-1 đến 1)
+        [10]     : Khoảng cách đường chim bay đến địch (0-1)
+        [11]     : Số lượng đạn đang bay của bản thân (tỷ lệ 0-1)
+        [12]     : Máu hiện tại (0-1)
+        [13->24] : Tọa độ tương đối (dx, dy) và Vận tốc (vx, vy) của 3 viên đạn gần nhất
+        [25]     : A* waypoint dx (chỉ khi use_astar=True, tức map_enabled=True)
+        [26]     : A* waypoint dy (chỉ khi use_astar=True, tức map_enabled=True)
 
-    Action (5 hành động rời rạc):
-        0: Tiến
-        1: Lùi
-        2: Quay trái
-        3: Quay phải
-        4: Bắn
+    Action (13 hành động rời rạc):
+        0-11: Di chuyển theo hướng góc `action * pi / 6`
+        12: Bắn đạn
     """
 
     metadata = {"render_modes": ["human"]}
@@ -44,11 +44,14 @@ class AZTankEnv(gym.Env):
             map_enabled=map_enabled,
             items_enabled=items_enabled,
             training_mode=training_mode
+            # use_astar tự động = map_enabled (xem RLEnv.__init__)
         )
 
-        self.action_space = spaces.Discrete(5)
+        self.action_space = spaces.Discrete(13)
         self.observation_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(13,), dtype=np.float32
+            low=-1.0, high=1.0,
+            shape=(self._env.obs_size,),   # 25 khi no-map, 27 khi có map
+            dtype=np.float32
         )
 
     def reset(self, seed=None, options=None):

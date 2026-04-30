@@ -30,7 +30,7 @@ import numpy as np
 try:
     import pygame
 except ImportError:
-    print("Cần cài pygame: pip install pygame")
+    print("Can cai pygame: pip install pygame")
     sys.exit(1)
 
 from pure_python_env import (
@@ -206,48 +206,42 @@ def draw_particles(screen):
 
 
 # ============================================================
-# VẼ XE TĂNG (giống renderer.cpp DrawTank)
+# VẼ XE TĂNG (Đã được cách mạng hóa thành hình vuông)
 # ============================================================
 def draw_tank(screen, tank):
-    """Vẽ xe tăng: shadow → xích → thân 3 lớp → nòng → tháp pháo."""
+    """Vẽ xe tăng hình vuông 30x30: shadow → xích → thân → nòng → tháp pháo vuông."""
     x, y = b2p(tank.pos.x, tank.pos.y)
     rot = -tank.angle * RAD2DEG  # Raylib convention
     c = TANK_PALETTES[tank.player_index % 4]
 
-    # --- Shadow ---
-    draw_rotated_rect(screen, (0, 0, 0, 25) if len((0,0,0,25)) == 4 else (10,10,10),
-                      x + 2, y + 2, 28, 28, 14, 7, rot)
-    # Dùng surface riêng cho shadow alpha
-    shadow_surf = pygame.Surface((32, 32), pygame.SRCALPHA)
-    pygame.draw.rect(shadow_surf, (0, 0, 0, 25), (0, 0, 32, 32))
-    # Đơn giản hóa: vẽ shadow bằng rect xoay tối
-    draw_rotated_rect(screen, (5, 5, 8), x + 2, y + 2, 28, 28, 14, 7, rot)
+    # --- Shadow (Hình vuông 30x30) ---
+    draw_rotated_rect(screen, (5, 5, 8), x + 2, y + 2, 30, 30, 15, 15, rot)
 
-    # --- Xích xe (tracks) ---
-    draw_rotated_rect(screen, c["track"], x, y, 6, 32, 18, 9, rot)   # Trái
-    draw_rotated_rect(screen, c["track"], x, y, 6, 32, -12, 9, rot)  # Phải
+    # --- Xích xe (Bên trái: 6x30, Bên phải: 6x30) ---
+    draw_rotated_rect(screen, c["track"], x, y, 6, 30, 15, 15, rot)   # Trái
+    draw_rotated_rect(screen, c["track"], x, y, 6, 30, -9, 15, rot)   # Phải
 
     # Chi tiết xích (4 vạch mỗi bên)
     track_line = (min(255, c["track"][0]+25), min(255, c["track"][1]+25), min(255, c["track"][2]+25))
-    for i in range(4):
-        y_off = -3 + i * 8
-        draw_rotated_rect(screen, track_line, x, y, 6, 1.5, 18, 9 - y_off, rot)
-        draw_rotated_rect(screen, track_line, x, y, 6, 1.5, -12, 9 - y_off, rot)
+    for i in range(5):
+        y_off = -12 + i * 6
+        draw_rotated_rect(screen, track_line, x, y, 6, 2, 15, 1 - y_off, rot)
+        draw_rotated_rect(screen, track_line, x, y, 6, 2, -9, 1 - y_off, rot)
 
-    # --- Thân xe 3 lớp ---
-    draw_rotated_rect(screen, c["dark"], x, y, 28, 28, 14, 7, rot)    # Viền tối
-    draw_rotated_rect(screen, c["body"], x, y, 24, 24, 12, 5, rot)    # Thân chính
-    draw_rotated_rect(screen, c["light"], x, y, 16, 16, 8, 1, rot)    # Highlight
+    # --- Thân xe (18x30 ở giữa) tạo thành tổng thể vuông 30x30 ---
+    draw_rotated_rect(screen, c["dark"], x, y, 18, 30, 9, 15, rot)    # Viền tối
+    draw_rotated_rect(screen, c["body"], x, y, 14, 26, 7, 13, rot)    # Thân chính
+    draw_rotated_rect(screen, c["light"], x, y, 8, 14, 4, 7, rot)     # Highlight
 
     # --- Nòng súng ---
-    draw_rotated_rect(screen, c["dark"], x, y, 8, 18, 4, 24, rot)     # Viền nòng
-    draw_rotated_rect(screen, c["barrel"], x, y, 5, 17, 2.5, 23.5, rot)  # Nòng trong
-    draw_rotated_rect(screen, (50, 50, 50), x, y, 4, 3, 2, 24, rot)   # Lỗ nòng
+    draw_rotated_rect(screen, c["dark"], x, y, 8, 16, 4, 25, rot)     # Viền nòng
+    draw_rotated_rect(screen, c["barrel"], x, y, 5, 15, 2.5, 24.5, rot)  # Nòng trong
+    draw_rotated_rect(screen, (50, 50, 50), x, y, 4, 3, 2, 25, rot)   # Lỗ nòng
 
-    # --- Tháp pháo (turret) ---
-    pygame.draw.circle(screen, c["dark"], (int(x), int(y)), 9)
-    pygame.draw.circle(screen, c["body"], (int(x), int(y)), 7)
-    pygame.draw.circle(screen, c["light"], (int(x), int(y)), 4)
+    # --- Tháp pháo vuông (Square Turret) ---
+    draw_rotated_rect(screen, c["dark"], x, y, 16, 16, 8, 8, rot)
+    draw_rotated_rect(screen, c["body"], x, y, 12, 12, 6, 6, rot)
+    draw_rotated_rect(screen, c["light"], x, y, 6, 6, 3, 3, rot)
 
 
 # ============================================================
@@ -308,6 +302,57 @@ def draw_hud(screen, font, env, p2_auto, p0_label, p1_label, game_time):
 
 
 # ============================================================
+# BANG DIEM THANG (top-center)
+# ============================================================
+def draw_scoreboard(screen, font_big, font_med, env, p0_label, p1_label):
+    """Ve bang diem thang lon o giua tren cung man hinh."""
+    s0 = env.player_scores[0]
+    s1 = env.player_scores[1]
+
+    # Mau cua tung player
+    P0_COLOR  = (100, 210, 100)   # Xanh la
+    P1_COLOR  = (90,  140, 235)   # Xanh duong
+    SEP_COLOR = (180, 180, 180)
+
+    # Render cac phan
+    lbl0 = font_med.render(f"P0 [{p0_label}]", True, P0_COLOR)
+    lbl1 = font_med.render(f"P1 [{p1_label}]", True, P1_COLOR)
+    sc0  = font_big.render(str(s0), True, P0_COLOR)
+    sc1  = font_big.render(str(s1), True, P1_COLOR)
+    sep  = font_big.render(":", True, SEP_COLOR)
+
+    # Kich thuoc tong
+    total_w = sc0.get_width() + sep.get_width() + sc1.get_width() + 40
+    cx = WINDOW_W // 2
+    cy = 30
+
+    # Nen glassmorphism
+    pad_x, pad_y = 24, 10
+    bg_w = max(total_w + lbl0.get_width() + lbl1.get_width() + 80, 280)
+    bg_h = sc0.get_height() + lbl0.get_height() + pad_y * 2 + 6
+    bg = pygame.Surface((bg_w, bg_h), pygame.SRCALPHA)
+    bg.fill((0, 0, 0, 130))
+    pygame.draw.rect(bg, (255, 255, 255, 25), (0, 0, bg_w, bg_h), border_radius=12)
+    pygame.draw.rect(bg, (255, 255, 255, 40), (0, 0, bg_w, 2))   # top highlight
+    screen.blit(bg, (cx - bg_w // 2, cy - pad_y))
+
+    # Vi tri cac phan tu
+    sc0_x = cx - sep.get_width() // 2 - sc0.get_width() - 16
+    sc1_x = cx + sep.get_width() // 2 + 16
+    sep_x = cx - sep.get_width() // 2
+    score_y = cy + lbl0.get_height() + 2
+
+    # Label tren
+    screen.blit(lbl0, (sc0_x + sc0.get_width() // 2 - lbl0.get_width() // 2, cy))
+    screen.blit(lbl1, (sc1_x + sc1.get_width() // 2 - lbl1.get_width() // 2, cy))
+
+    # So diem
+    screen.blit(sc0,  (sc0_x, score_y))
+    screen.blit(sep,  (sep_x, score_y))
+    screen.blit(sc1,  (sc1_x, score_y))
+
+
+# ============================================================
 # LOAD MODEL
 # ============================================================
 def load_model(path):
@@ -317,21 +362,30 @@ def load_model(path):
         if os.path.exists(path + ".zip"):
             path = path + ".zip"
         else:
-            print(f"  [Lỗi] Không tìm thấy model: {path}")
+            print(f"  [Loi] Khong tim thay model: {path}")
             return None
     try:
         from stable_baselines3 import PPO
         model = PPO.load(path)
-        print(f"  [OK] Đã load model: {path}")
+        print(f"  [OK] Da load model: {path}")
         return model
     except ImportError:
-        print("  [Lỗi] Cần cài: pip install stable-baselines3")
+        print("  [Loi] Can cai: pip install stable-baselines3")
         return None
 
 
 def get_model_action(model, env, player_idx):
     state = env.get_state(player_idx)
     obs = np.array(state, dtype=np.float32)
+    
+    # Tu dong khop kich thuoc observation (25 hoac 27)
+    if hasattr(model, "observation_space"):
+        expected_shape = model.observation_space.shape[0]
+        if expected_shape == 25 and obs.shape[0] == 27:
+            obs = obs[:25]  # Cat bo 2 feature A* (tuong thich model cu)
+        elif expected_shape == 27 and obs.shape[0] == 25:
+            obs = np.pad(obs, (0, 2), 'constant')  # Pad them 0 neu env khong map
+            
     action, _ = model.predict(obs, deterministic=True)
     return int(action)
 
@@ -364,15 +418,24 @@ def main():
     pygame.display.set_caption(title)
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("Consolas", 14)
+    font_big = pygame.font.SysFont("Consolas", 36, bold=True)
+    font_med = pygame.font.SysFont("Consolas", 18, bold=True)
 
     env = RLEnv(num_players=2, map_enabled=map_enabled, items_enabled=False)
     env.reset()
 
-    # Lưu trạng thái tank trước đó để detect death
+    # Luu trang thai tank truoc do de detect death
     prev_tank_indices = set()
     p2_auto = True
     running = True
     frame_time = 1.0 / 60.0
+
+    # Idle override + action smoothing
+    IDLE_LIMIT  = 120   # 2 giay o 60 FPS
+    ACTION_HOLD = 20    # giu moi action 20 frames (~0.33s) truoc khi doi
+    idle_counter  = {0: 0, 1: 0}
+    last_pos      = {}
+    smooth_action = {0: (-1, 0), 1: (-1, 0)}  # {player: (action, frames_remaining)}
 
     while running:
         t_start = time_module.time()
@@ -397,27 +460,65 @@ def main():
 
         # ---- Player 0 ----
         if p0_model:
-            action0 = get_model_action(p0_model, env, 0)
+            raw0 = get_model_action(p0_model, env, 0)
+            cur0, hold0 = smooth_action[0]
+            if hold0 <= 0:
+                # Het thoi gian giu -> nhan action moi tu model
+                smooth_action[0] = (raw0, ACTION_HOLD)
+            else:
+                # Dang trong thoi gian giu -> bo qua action model moi
+                smooth_action[0] = (cur0, hold0 - 1)
+            action0 = smooth_action[0][0]
+            # Idle override cho P0
+            t0 = next((t for t in env.tanks if t.player_index == 0 and not t.is_destroyed), None)
+            if t0:
+                prev = last_pos.get(0, (t0.pos.x, t0.pos.y))
+                if abs(t0.pos.x - prev[0]) + abs(t0.pos.y - prev[1]) < 1e-4:
+                    idle_counter[0] += 1
+                else:
+                    idle_counter[0] = 0
+                last_pos[0] = (t0.pos.x, t0.pos.y)
+                if idle_counter[0] > IDLE_LIMIT:
+                    action0 = random.randint(0, 11)
+                    smooth_action[0] = (action0, ACTION_HOLD)
         else:
             action0 = -1
             if keys[pygame.K_w]:     action0 = 0
-            elif keys[pygame.K_s]:   action0 = 1
-            elif keys[pygame.K_a]:   action0 = 2
-            elif keys[pygame.K_d]:   action0 = 3
-            if keys[pygame.K_SPACE]: action0 = 4
+            elif keys[pygame.K_a]:   action0 = 3
+            elif keys[pygame.K_s]:   action0 = 6
+            elif keys[pygame.K_d]:   action0 = 9
+            if keys[pygame.K_SPACE]: action0 = 12
 
         # ---- Player 1 ----
         if p1_model:
-            action1 = get_model_action(p1_model, env, 1)
+            raw1 = get_model_action(p1_model, env, 1)
+            cur1, hold1 = smooth_action[1]
+            if hold1 <= 0:
+                smooth_action[1] = (raw1, ACTION_HOLD)
+            else:
+                smooth_action[1] = (cur1, hold1 - 1)
+            action1 = smooth_action[1][0]
+            # Idle override cho P1
+            t1 = next((t for t in env.tanks if t.player_index == 1 and not t.is_destroyed), None)
+            if t1:
+                prev = last_pos.get(1, (t1.pos.x, t1.pos.y))
+                if abs(t1.pos.x - prev[0]) + abs(t1.pos.y - prev[1]) < 1e-4:
+                    idle_counter[1] += 1
+                else:
+                    idle_counter[1] = 0
+                last_pos[1] = (t1.pos.x, t1.pos.y)
+                if idle_counter[1] > IDLE_LIMIT:
+                    action1 = random.randint(0, 11)
+                    smooth_action[1] = (action1, ACTION_HOLD)
         elif p2_auto:
-            action1 = random.randint(0, 4)
+            action1 = random.randint(0, 12)
         else:
             action1 = -1
             if keys[pygame.K_UP]:      action1 = 0
-            elif keys[pygame.K_DOWN]:  action1 = 1
-            elif keys[pygame.K_LEFT]:  action1 = 2
-            elif keys[pygame.K_RIGHT]: action1 = 3
-            if keys[pygame.K_RETURN]:  action1 = 4
+            elif keys[pygame.K_LEFT]:  action1 = 3
+            elif keys[pygame.K_DOWN]:  action1 = 6
+            elif keys[pygame.K_RIGHT]: action1 = 9
+            if keys[pygame.K_RETURN]:  action1 = 12
 
         # ---- Step game ----
         state, reward, done = env.step(action0, action1)
@@ -438,6 +539,9 @@ def main():
         update_particles(1.0 / 60.0)
 
         if done:
+            idle_counter  = {0: 0, 1: 0}
+            last_pos      = {}
+            smooth_action = {0: (-1, 0), 1: (-1, 0)}
             # Đợi một chút để xem hiệu ứng nổ
             for _ in range(30):
                 update_particles(1.0 / 60.0)
@@ -476,8 +580,11 @@ def main():
         # Vẽ particles (hiệu ứng nổ)
         draw_particles(screen)
 
-        # HUD
+        # HUD goc trai
         draw_hud(screen, font, env, p2_auto, p0_label, p1_label, frame_time)
+
+        # Bang diem thang (top-center)
+        draw_scoreboard(screen, font_big, font_med, env, p0_label, p1_label)
 
         pygame.display.flip()
         clock.tick(FPS)

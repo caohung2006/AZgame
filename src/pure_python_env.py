@@ -6,6 +6,7 @@ radar 8 hướng, mê cung Recursive Backtracker, reward shaping.
 """
 import math
 import random
+import heapq
 import numpy as np
 
 # ============================================================
@@ -29,10 +30,10 @@ OFFSET_Y = (SCREEN_HEIGHT - (MAZE_ROWS * CELL_H)) / 2.0 - 50.0  # Offset Y để
 # Tank physics (từ tank.cpp)
 MOVE_SPEED = 3.0                # Tốc độ di chuyển xe tăng (m/s trong Box2D)
 TURN_SPEED = 3.0                # Tốc độ xoay xe tăng (rad/s)
-TANK_HALF_W = 14.0 / SCALE     # Nửa chiều rộng bounding box xe tăng (m)
-TANK_HALF_H = 14.0 / SCALE     # Nửa chiều cao bounding box xe tăng (m)
+TANK_HALF_W = 15.0 / SCALE     # Nửa chiều rộng bounding box thân xe (m) - Square 30x30
+TANK_HALF_H = 15.0 / SCALE     # Nửa chiều cao bounding box thân xe (m) - Square 30x30
 SHOOT_COOLDOWN = 0.15           # Thời gian chờ giữa 2 lần bắn (giây)
-MAX_BULLETS_PER_PLAYER = 5     # Số đạn tối đa đồng thời mỗi người chơi
+MAX_BULLETS_PER_PLAYER = 1     # Số đạn tối đa đồng thời mỗi người chơi (mỗi lần chỉ bắn 1 viên)
 BULLET_SPEED = 6.0              # Tốc độ đạn (m/s trong Box2D)
 BULLET_LIFETIME = 7.0           # Thời gian sống của đạn trước khi tự hủy (giây)
 BULLET_RADIUS = 3.0 / SCALE    # Bán kính va chạm của đạn (m)
@@ -149,7 +150,7 @@ class SimpleBullet:
 class SimpleTank:
     """Xe tăng đơn giản (thay thế Tank + b2Body)."""
     __slots__ = ('pos', 'angle', 'player_index', 'is_destroyed',
-                 'shoot_cooldown', 'hw', 'hh')
+                 'shoot_cooldown', 'hw', 'hh', 'ammo')
 
     def __init__(self, player_index):
         self.pos = Vec2(WORLD_W / 2, WORLD_H / 2)
@@ -158,7 +159,8 @@ class SimpleTank:
         self.is_destroyed = False
         self.shoot_cooldown = 0.0
         self.hw = TANK_HALF_W
-        self.hh = TANK_HALF_H + 7.0 / SCALE  # hull + barrel
+        self.hh = TANK_HALF_H + 10.0 / SCALE  # hull + barrel (barrel extends to 25px = 15 + 10)
+        self.ammo = 5
 
     def forward_dir(self):
         """Hướng mũi xe (-sin, cos) giống C++."""
@@ -178,36 +180,51 @@ class SimpleTank:
                 return True
         return False
 
-    def handle_movement(self, action, dt, walls):
-        """Di chuyển theo action (0-4) với va chạm tường axis-separated.
+    def _overlaps_any_tank(self, other_tanks):
+        """Kiểm tra xe có đè lên xe tăng khác không."""
+        my_aabb = self.get_aabb()
+        for t in other_tanks:
+            if t is self or t.is_destroyed:
+                continue
+            if my_aabb.overlaps(t.get_aabb()):
+                return True
+        return False
+
+    def handle_movement(self, action, dt, walls, other_tanks):
+        """Di chuyển theo action (0 -> 11 (12 hướng, hướng thứ i xoay 1 góc i * pi/6 rồi di chuyển theo hướng đó)) với va chạm tường axis-separated.
         Trả về True nếu bị chặn bởi tường (dùng cho reward)."""
+
+        """
+        Di chuyển theo hướng các góc 0, pi/6,  
+                                        pi/3, 
+                                        pi/2, 
+                                        2pi/3 , 
+                                        5pi/6, 
+                                        pi, 
+                                        7pi/6, 
+                                        4pi/3, 
+                                        3pi/2, 
+                                        5pi/3, 
+                                        11pi/6    
+        """
         # Xoay
-        angular_vel = 0.0
-        if action == 2:  # Turn left
-            angular_vel = TURN_SPEED
-        elif action == 3:  # Turn right
-            angular_vel = -TURN_SPEED
-        self.angle += angular_vel * dt
+        self.angle = action * PI / 6 
 
         # Tính vận tốc
         fwd = self.forward_dir()
-        vx, vy = 0.0, 0.0
-        if action == 0:  # Forward
-            vx, vy = fwd.x * MOVE_SPEED * dt, fwd.y * MOVE_SPEED * dt
-        elif action == 1:  # Backward
-            vx, vy = -fwd.x * MOVE_SPEED * dt, -fwd.y * MOVE_SPEED * dt
+        vx, vy = fwd.x * MOVE_SPEED * dt, fwd.y * MOVE_SPEED * dt
 
         blocked = False
 
         # Di chuyển trục X, revert nếu va chạm
         self.pos.x += vx
-        if walls and self._overlaps_any_wall(walls):
+        if (walls and self._overlaps_any_wall(walls)) or self._overlaps_any_tank(other_tanks):
             self.pos.x -= vx
             blocked = True
 
         # Di chuyển trục Y, revert nếu va chạm
         self.pos.y += vy
-        if walls and self._overlaps_any_wall(walls):
+        if (walls and self._overlaps_any_wall(walls)) or self._overlaps_any_tank(other_tanks):
             self.pos.y -= vy
             blocked = True
 
@@ -358,6 +375,181 @@ def _ray_aabb(p1, p2, aabb):
 
 
 # ============================================================
+# A* PATHFINDING TRÊN GRID
+# ============================================================
+# Kích thước mỗi ô grid (đơn vị Box2D)
+# Chọn ~1/3 chiều rộng ô mê cung để đủ mịn nhưng không quá chậm
+A_STAR_CELL = (CELL_W / 3.0) / SCALE   # ≈ 1.0 m
+
+
+def _build_grid(walls):
+    """
+    Xây dựng occupancy grid từ danh sách tường.
+    Ô (r, c) = True nếu bị tường chặn.
+    Grid gốc tại góc dưới-trái (Box2D 0,0).
+    """
+    cols = max(1, int(math.ceil(WORLD_W / A_STAR_CELL)))
+    rows = max(1, int(math.ceil(WORLD_H / A_STAR_CELL)))
+    blocked = [[False] * cols for _ in range(rows)]
+
+    margin = A_STAR_CELL * 0.4   # padding nhỏ quanh tường cho xe không kẹt
+    for w in walls:
+        a = w.aabb
+        x0 = a.cx - a.hw - margin
+        x1 = a.cx + a.hw + margin
+        y0 = a.cy - a.hh - margin
+        y1 = a.cy + a.hh + margin
+        c0 = max(0, int(x0 / A_STAR_CELL))
+        c1 = min(cols - 1, int(x1 / A_STAR_CELL))
+        r0 = max(0, int(y0 / A_STAR_CELL))
+        r1 = min(rows - 1, int(y1 / A_STAR_CELL))
+        for r in range(r0, r1 + 1):
+            for c in range(c0, c1 + 1):
+                blocked[r][c] = True
+
+    return blocked, rows, cols
+
+
+def _pos_to_cell(x, y):
+    """Chuyển tọa độ Box2D → (row, col) trong grid."""
+    return int(y / A_STAR_CELL), int(x / A_STAR_CELL)
+
+
+def _cell_to_pos(r, c):
+    """Chuyển (row, col) → tọa độ Box2D tâm ô."""
+    return (c + 0.5) * A_STAR_CELL, (r + 0.5) * A_STAR_CELL
+
+
+def astar_path(start_pos, goal_pos, walls):
+    """
+    Tìm đường A* từ start_pos đến goal_pos (Box2D Vec2).
+    Trả về list[(x, y)] các waypoint (tâm ô), hoặc [] nếu không tìm được.
+    Heuristic: khoảng cách Euclidean.
+    """
+    blocked, rows, cols = _build_grid(walls)
+
+    sr, sc = _pos_to_cell(start_pos.x, start_pos.y)
+    gr, gc = _pos_to_cell(goal_pos.x, goal_pos.y)
+
+    # Clamp
+    sr = max(0, min(rows - 1, sr))
+    sc = max(0, min(cols - 1, sc))
+    gr = max(0, min(rows - 1, gr))
+    gc = max(0, min(cols - 1, gc))
+
+    # Nếu đích bị tường chặn, tìm ô gần nhất không bị chặn
+    if blocked[gr][gc]:
+        found = False
+        for dr in range(-2, 3):
+            for dc in range(-2, 3):
+                nr, nc = gr + dr, gc + dc
+                if 0 <= nr < rows and 0 <= nc < cols and not blocked[nr][nc]:
+                    gr, gc = nr, nc
+                    found = True
+                    break
+            if found:
+                break
+
+    if (sr, sc) == (gr, gc):
+        return []   # Đã ở đích
+
+    # 8-chiều di chuyển
+    DIRS = [(-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0),
+            (-1, -1, 1.414), (-1, 1, 1.414), (1, -1, 1.414), (1, 1, 1.414)]
+
+    open_heap = []   # (f, g, r, c)
+    g_cost = {(sr, sc): 0.0}
+    parent = {(sr, sc): None}
+
+    def h(r, c):
+        return math.sqrt((r - gr)**2 + (c - gc)**2)
+
+    heapq.heappush(open_heap, (h(sr, sc), 0.0, sr, sc))
+
+    while open_heap:
+        f, g, r, c = heapq.heappop(open_heap)
+
+        if (r, c) == (gr, gc):
+            # Tái tạo đường đi
+            path = []
+            cur = (gr, gc)
+            while cur is not None:
+                px, py = _cell_to_pos(cur[0], cur[1])
+                path.append((px, py))
+                cur = parent[cur]
+            path.reverse()
+            return path   # list[(x, y)]
+
+        # Bỏ qua nếu đã có đường tốt hơn
+        if g > g_cost.get((r, c), float('inf')):
+            continue
+
+        for dr, dc, cost in DIRS:
+            nr, nc = r + dr, c + dc
+            if not (0 <= nr < rows and 0 <= nc < cols):
+                continue
+            if blocked[nr][nc]:
+                continue
+            # Fix corner cutting: di chuyển chéo phải kiểm tra cả 2 ô kề bên
+            # Tránh tank đi xuyên qua góc tường (vật lý không cho phép)
+            if dr != 0 and dc != 0:
+                if blocked[r + dr][c] or blocked[r][c + dc]:
+                    continue
+            ng = g + cost
+            if ng < g_cost.get((nr, nc), float('inf')):
+                g_cost[(nr, nc)] = ng
+                parent[(nr, nc)] = (r, c)
+                heapq.heappush(open_heap, (ng + h(nr, nc), ng, nr, nc))
+
+    return []   # Không tìm được đường
+
+
+def astar_path_length(start_pos, goal_pos, walls):
+    """
+    Trả về tổng độ dài A* path (đơn vị Box2D * A_STAR_CELL).
+    Dùng cho reward shaping thay đường chim bay.
+    Trả về -1.0 nếu không tìm được đường.
+    """
+    path = astar_path(start_pos, goal_pos, walls)
+    if not path:
+        return -1.0
+    total = 0.0
+    for i in range(1, len(path)):
+        dx = path[i][0] - path[i-1][0]
+        dy = path[i][1] - path[i-1][1]
+        total += math.sqrt(dx*dx + dy*dy)
+    return total
+
+
+def get_astar_waypoint_dir(my_pos, enemy_pos, walls):
+    """
+    Trả về (dx, dy) đã normalize hướng từ tank tới waypoint A* tiếp theo.
+    Nếu không tìm được đường → trả về hướng thẳng tới enemy.
+    Dùng để thêm vào state vector.
+    """
+    path = astar_path(my_pos, enemy_pos, walls)
+
+    if len(path) >= 2:
+        # Bỏ qua waypoint đầu (chính là vị trí hiện tại)
+        # Lấy waypoint thứ 2 hoặc xa hơn (lookahead=2) để mượt hơn
+        lookahead = min(2, len(path) - 1)
+        wx, wy = path[lookahead]
+    elif len(path) == 1:
+        wx, wy = path[0]
+    else:
+        # Không tìm được đường → hướng thẳng
+        wx, wy = enemy_pos.x, enemy_pos.y
+
+    dx = wx - my_pos.x
+    dy = wy - my_pos.y
+    length = math.sqrt(dx*dx + dy*dy)
+    if length > 1e-6:
+        dx /= length
+        dy /= length
+    return dx, dy
+
+
+# ============================================================
 # MÔI TRƯỜNG RL (thay thế RLEnv C++)
 # ============================================================
 class RLEnv:
@@ -366,21 +558,36 @@ class RLEnv:
     Cùng API: reset(), step(action0, action1), get_state(playerIdx), render().
     """
 
-    def __init__(self, num_players=2, map_enabled=False, items_enabled=False, training_mode=0):
+    def __init__(self, num_players=2, map_enabled=False, items_enabled=False,
+                 training_mode=0, use_astar=None):
         self.num_players = num_players
         self.map_enabled = map_enabled
         self.items_enabled = items_enabled
         self.training_mode = training_mode
-        self.max_steps = 5000
+        self.max_steps = 10000
         self.current_step = 0
-        self.last_scores = [0] * 4
+        self.last_scores = [0] * 2
         self.last_distance = 1000.0
         self.needs_restart = True
+
+        # A* chỉ có ý nghĩa khi có tường (map_enabled=True)
+        # use_astar=None → tự động theo map_enabled
+        if use_astar is None:
+            self.use_astar = map_enabled
+        else:
+            self.use_astar = use_astar
 
         self.tanks = []
         self.bullets = []
         self.walls = []
-        self.player_scores = [0] * 4
+        self.player_scores = [0] * 2
+        self.idle_steps = 0          # So buoc agent dung yen lien tiep
+        self._last_pos = {}          # {player_idx: (x, y)} - theo doi vi tri de phat idle
+
+    @property
+    def obs_size(self):
+        """Kích thước observation vector (25 hoặc 27 tùy use_astar)."""
+        return 27 if self.use_astar else 25
 
     def reset(self):
         """Khởi tạo ván mới, trả về state player 0."""
@@ -415,103 +622,151 @@ class RLEnv:
 
         self.last_scores = list(self.player_scores)
         self.last_distance = self._raw_distance(0)
+        self.idle_steps = 0
+        self._last_pos = {}
+        if hasattr(self, 'last_dist_error'):
+            del self.last_dist_error
         return self.get_state(0)
 
-    def step(self, action0, action1=-1):
-        """Thực hiện 1 bước, trả về (state, reward, done) dạng tuple."""
-        # Lưu kết quả va chạm tường cho reward (tránh gọi collides_wall 2 lần)
+
+    def step(self, action0, action1 = -1) : 
+        """
+        do a action, return tuple(state, reward, done)
+        """
         p0_hit_wall = False
 
-        # Cập nhật tanks
-        for t in self.tanks:
-            if t.is_destroyed:
+        for t in self.tanks : 
+            if t.is_destroyed : 
                 continue
-            act = action0 if t.player_index == 0 else action1
-            if act < 0:
-                act = -1  # Không hành động
-                
-            hit = False
-            if act >= 0:
-                hit = t.handle_movement(act, DT, self.walls)
-            if t.player_index == 0:
-                p0_hit_wall = hit
 
-            # Bắn
-            can_shoot = (act == 4 and t.shoot_cooldown <= 0 and self.training_mode != 2)
-            if can_shoot:
-                my_bullets = sum(1 for b in self.bullets if b.owner == t.player_index and not b.is_dead())
-                if my_bullets < MAX_BULLETS_PER_PLAYER:
-                    fwd = t.forward_dir()
+            act = action0 if t.player_index == 0 else action1 
+            if act < 0: 
+                act = -1
+            hit = False
+            # Chỉ gọi hàm di chuyển nếu action từ 0 đến 11 (12 góc). 12 là bắn.
+            if 0 <= act < 12: 
+                hit = t.handle_movement(act, DT, self.walls, self.tanks) 
+            if t.player_index == 0: 
+                p0_hit_wall = hit
+            
+            # fire 
+            can_shoot = (act == 12 and t.shoot_cooldown <= 0.0 and self.training_mode != 2 and t.ammo > 0) 
+            if can_shoot: 
+                my_bullet = sum(1 for b in self.bullets if b.owner == t.player_index and not b.is_dead()) 
+                if my_bullet < MAX_BULLETS_PER_PLAYER: 
+                    fwd = t.forward_dir() 
                     spawn_pos = t.pos + fwd * BARREL_LENGTH
                     vel = fwd * BULLET_SPEED
                     self.bullets.append(SimpleBullet(spawn_pos, vel, t.player_index))
-                    t.shoot_cooldown = SHOOT_COOLDOWN
+                    t.shoot_cooldown = SHOOT_COOLDOWN 
+                    t.ammo -= 1
+            if t.shoot_cooldown > 0.0: 
+                t.shoot_cooldown -= DT 
 
-            if t.shoot_cooldown > 0:
-                t.shoot_cooldown -= DT
+        for b in self.bullets: 
+            if not b.is_dead(): 
+                b.update(DT, self.walls) 
 
-        # Cập nhật đạn
-        for b in self.bullets:
-            if not b.is_dead():
-                b.update(DT, self.walls)
-
-        # Kiểm tra va chạm đạn-tank
-        for t in self.tanks:
-            if t.is_destroyed:
-                continue
-            t_aabb = t.get_aabb()
-            for b in self.bullets:
-                if b.is_dead():
+        for t in self.tanks: 
+            if t.is_destroyed: 
+                continue 
+            t_aabb = t.get_aabb() 
+            for b in self.bullets: 
+                if b.is_dead(): 
                     continue
-                b_aabb = b.get_aabb()
-                if t_aabb.overlaps(b_aabb):
-                    b.time = 0  # Xóa đạn
-                    t.is_destroyed = True
-                    break
+                b_aabb = b.get_aabb() 
+                if t_aabb.overlaps(b_aabb): 
+                    b.time = 0
+                    t.is_destroyed = True 
+                    break         
 
-        # Dọn đạn chết
         self.bullets = [b for b in self.bullets if not b.is_dead()]
 
-        # Kiểm tra điều kiện thắng
         alive = [t for t in self.tanks if not t.is_destroyed]
-        if self.num_players > 1 and len(alive) <= 1:
-            if len(alive) == 1:
-                self.player_scores[alive[0].player_index] += 1
-            self.needs_restart = True
-
+        if self.num_players > 1 and len(alive) <= 1: 
+            if len(alive) == 1: 
+                self.player_scores[alive[0].player_index] += 1 
+            self.needs_restart = True 
         self.current_step += 1
 
-        # ---- TÍNH REWARD (giống rl_env_wrapper.cpp) ----
+        # ----- calculate rewards ------ # 
         reward = -0.01  # Time penalty
-
-        my_tank = None
-        for t in self.tanks:
-            if t.player_index == 0:
-                my_tank = t; break
-
-        # Phạt đâm tường (dùng kết quả đã tính ở trên, KHÔNG gọi lại collides_wall)
-        if my_tank and not my_tank.is_destroyed:
-            if p0_hit_wall:
-                reward -= 0.1
-
-        # Thưởng kill
-        score_diff = self.player_scores[0] - self.last_scores[0]
-        if score_diff > 0:
-            reward += 100.0 * score_diff
-            self.last_scores[0] = self.player_scores[0]
-
+        
+        my_tank = None 
+        enemy_tank = None
+        for t in self.tanks: 
+            if t.player_index == 0: 
+                my_tank = t 
+            elif not t.is_destroyed:
+                enemy_tank = t
+        
         p0_alive = my_tank is not None and not my_tank.is_destroyed
-        if not p0_alive:
-            reward -= 100.0
 
-        # Shaping: khoảng cách
-        current_dist = self._raw_distance(0)
-        if p0_alive and current_dist < 1000.0:
-            if current_dist > 350.0:
-                reward -= 0.02
-            elif current_dist < 80.0:
-                reward -= 0.05
-        self.last_distance = current_dist
+        # --- Idle penalty ---
+        if p0_alive:
+            IDLE_THRESHOLD = 1e-4
+            last = self._last_pos.get(0, (my_tank.pos.x, my_tank.pos.y))
+            moved = (abs(my_tank.pos.x - last[0]) +
+                     abs(my_tank.pos.y - last[1])) > IDLE_THRESHOLD
+            if moved:
+                self.idle_steps = 0
+                reward += 0.005
+            else:
+                self.idle_steps += 1
+                if self.idle_steps > 30:
+                    reward -= 0.02 * min(self.idle_steps / 30, 3.0)
+            self._last_pos[0] = (my_tank.pos.x, my_tank.pos.y)
+
+        if p0_alive:
+            if p0_hit_wall: 
+                reward -= 0.05 
+        
+        score_diff = self.player_scores[0] - self.last_scores[0]
+        if score_diff > 0: 
+            reward += 100.0 * score_diff
+            self.last_scores[0] = self.player_scores[0] 
+        
+        if not p0_alive: 
+            reward -= 100.0 
+
+        # Potential-based Distance Shaping & Aiming Reward (dùng A* path distance)
+        if p0_alive and enemy_tank and not enemy_tank.is_destroyed:
+            # Dùng A* path length nếu có tường, fallback về đường chim bay
+            astar_len = astar_path_length(my_tank.pos, enemy_tank.pos, self.walls)
+            if astar_len < 0:
+                current_dist = self._raw_distance(0)      # fallback
+            else:
+                current_dist = astar_len * SCALE          # đổi về pixel để so sánh
+
+            optimal_dist = 200.0
+            dist_error = abs(current_dist - optimal_dist)
+
+            if hasattr(self, 'last_dist_error'):
+                reward += (self.last_dist_error - dist_error) * 0.05
+            self.last_dist_error = dist_error
+            self.last_distance = current_dist
+
+            to_enemy = enemy_tank.pos - my_tank.pos
+            abs_angle = math.atan2(-to_enemy.x, to_enemy.y)
+            rel_angle = abs_angle - my_tank.angle
+            rel_angle = (rel_angle + PI) % (2 * PI) - PI
+            
+            if abs(rel_angle) < PI / 6:
+                reward += 0.01
+
+            if action0 == 12 and my_tank.shoot_cooldown == SHOOT_COOLDOWN:
+                if abs(rel_angle) < PI / 6:
+                    reward += 0.1
+        
+        # Check if both tanks are out of bullets
+        all_out_of_bullets = all(
+            t.ammo == 0 and sum(1 for b in self.bullets if b.owner == t.player_index and not b.is_dead()) == 0
+            for t in self.tanks if not t.is_destroyed
+        )
+
+        if all_out_of_bullets and len(alive) == 2:
+            reward = 0.0  # No points for a draw
+            self.needs_restart = True
 
         is_timeout = self.current_step >= self.max_steps
         done = self.needs_restart or is_timeout or (not p0_alive)
@@ -524,9 +779,19 @@ class RLEnv:
 
         state = self.get_state(0)
         return (state, reward, done)
+            
 
     def get_state(self, player_idx):
-        """Trích xuất 13 đặc trưng (giống C++)."""
+        """
+        Trích xuất đặc trưng:
+          [0-7]  : Wall Radar 8 hướng
+          [8-10] : Góc (cos, sin) + khoảng cách tới enemy (đường chim bay)
+          [11]   : Số đạn đang bay
+          [12]   : HP
+          [13-24]: Bullet Radar (3 viên gần nhất)
+          [25-26]: A* waypoint direction (dx, dy) — chỉ khi use_astar=True
+        Trả về 25 floats (use_astar=False) hoặc 27 floats (use_astar=True).
+        """
         my_tank = None
         enemy_tank = None
         for t in self.tanks:
@@ -540,35 +805,64 @@ class RLEnv:
             my_pos = my_tank.pos
             my_angle = my_tank.angle
 
-            # 1. Radar 8 hướng
-            ray_length = math.sqrt(SCREEN_WIDTH**2 + SCREEN_HEIGHT**2) / SCALE
+            # 1. Wall Radar 8 hướng (SCAN_RADIUS = 250.0)
+            SCAN_RADIUS = 250.0 / SCALE
             for i in range(8):
                 angle = my_angle + i * (PI / 4.0)
                 direction = Vec2(-math.sin(angle), math.cos(angle))
-                frac = raycast_walls(my_pos, direction, ray_length, self.walls)
+                frac = raycast_walls(my_pos, direction, SCAN_RADIUS, self.walls)
                 state.append(frac)
 
-            # 2-3. Góc + khoảng cách tới enemy
+            # 2-3. Góc + khoảng cách tới enemy (đường chim bay)
             if enemy_tank and not enemy_tank.is_destroyed:
                 to_enemy = enemy_tank.pos - my_pos
                 abs_angle = math.atan2(-to_enemy.x, to_enemy.y)
                 rel_angle = abs_angle - my_angle
                 state.append(math.cos(rel_angle))
                 state.append(math.sin(rel_angle))
-                state.append(min(1.0, to_enemy.length() / ray_length))
+                state.append(min(1.0, to_enemy.length() / (1000.0/SCALE)))
             else:
                 state.extend([1.0, 0.0, 1.0])
 
-            # 4. Số đạn đang bay
-            my_bullets = sum(1 for b in self.bullets if b.owner == player_idx and not b.is_dead())
-            state.append(min(1.0, my_bullets / 5.0))
+            # 4. Số đạn còn lại của bản thân
+            state.append(my_tank.ammo / 5.0)
 
-            # 5. HP (1-hit kill → luôn 1.0 nếu sống)
+            # 5. HP
             state.append(1.0)
 
-            return state
+            # 6. Bullet Radar: Tìm 3 viên đạn gần nhất
+            nearby_bullets = []
+            for b in self.bullets:
+                if b.is_dead(): continue
+                dist = (b.pos - my_pos).length()
+                if dist <= SCAN_RADIUS:
+                    nearby_bullets.append((dist, b))
+
+            nearby_bullets.sort(key=lambda x: x[0])
+
+            for i in range(3):
+                if i < len(nearby_bullets):
+                    dist, b = nearby_bullets[i]
+                    dx = (b.pos.x - my_pos.x) / SCAN_RADIUS
+                    dy = (b.pos.y - my_pos.y) / SCAN_RADIUS
+                    vx = b.vel.x / BULLET_SPEED
+                    vy = b.vel.y / BULLET_SPEED
+                    state.extend([dx, dy, vx, vy])
+                else:
+                    state.extend([1.0, 1.0, 0.0, 0.0])
+
+            # 7. A* Waypoint Direction [25-26] — chỉ thêm khi use_astar=True
+            if self.use_astar:
+                if enemy_tank and not enemy_tank.is_destroyed:
+                    wp_dx, wp_dy = get_astar_waypoint_dir(my_pos, enemy_tank.pos, self.walls)
+                    state.append(wp_dx)
+                    state.append(wp_dy)
+                else:
+                    state.extend([0.0, 0.0])
+
+            return state   # 25 floats (no A*) hoặc 27 floats (with A*)
         else:
-            return [0.0] * 13
+            return [0.0] * self.obs_size
 
     def render(self):
         """Stub - Colab không có cửa sổ đồ họa."""
