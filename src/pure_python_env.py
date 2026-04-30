@@ -33,7 +33,7 @@ TURN_SPEED = 3.0                # Tốc độ xoay xe tăng (rad/s)
 TANK_HALF_W = 15.0 / SCALE     # Nửa chiều rộng bounding box thân xe (m) - Square 30x30
 TANK_HALF_H = 15.0 / SCALE     # Nửa chiều cao bounding box thân xe (m) - Square 30x30
 SHOOT_COOLDOWN = 0.15           # Thời gian chờ giữa 2 lần bắn (giây)
-MAX_BULLETS_PER_PLAYER = 1     # Số đạn tối đa đồng thời mỗi người chơi (mỗi lần chỉ bắn 1 viên)
+MAX_BULLETS_PER_PLAYER = 1     # Mỗi lần chỉ có tối đa 1 viên đạn bay trên màn hình
 BULLET_SPEED = 6.0              # Tốc độ đạn (m/s trong Box2D)
 BULLET_LIFETIME = 7.0           # Thời gian sống của đạn trước khi tự hủy (giây)
 BULLET_RADIUS = 3.0 / SCALE    # Bán kính va chạm của đạn (m)
@@ -634,6 +634,7 @@ class RLEnv:
         do a action, return tuple(state, reward, done)
         """
         p0_hit_wall = False
+        p0_shot_this_step = False
 
         for t in self.tanks : 
             if t.is_destroyed : 
@@ -660,6 +661,8 @@ class RLEnv:
                     self.bullets.append(SimpleBullet(spawn_pos, vel, t.player_index))
                     t.shoot_cooldown = SHOOT_COOLDOWN 
                     t.ammo -= 1
+                    if t.player_index == 0:
+                        p0_shot_this_step = True
             if t.shoot_cooldown > 0.0: 
                 t.shoot_cooldown -= DT 
 
@@ -676,6 +679,9 @@ class RLEnv:
                     continue
                 b_aabb = b.get_aabb() 
                 if t_aabb.overlaps(b_aabb): 
+                    # Ân hạn 0.1s đầu tiên để đạn bay ra khỏi Hitbox, tránh lỗi "tự bắn chết mình"
+                    if b.owner == t.player_index and b.time > BULLET_LIFETIME - 0.1:
+                        continue
                     b.time = 0
                     t.is_destroyed = True 
                     break         
@@ -690,7 +696,7 @@ class RLEnv:
         self.current_step += 1
 
         # ----- calculate rewards ------ # 
-        reward = -0.01  # Time penalty
+        reward = -0.0001  # Time penalty
         
         my_tank = None 
         enemy_tank = None
@@ -710,24 +716,24 @@ class RLEnv:
                      abs(my_tank.pos.y - last[1])) > IDLE_THRESHOLD
             if moved:
                 self.idle_steps = 0
-                reward += 0.005
+                reward += 0.00005
             else:
                 self.idle_steps += 1
                 if self.idle_steps > 30:
-                    reward -= 0.02 * min(self.idle_steps / 30, 3.0)
+                    reward -= 0.0002 * min(self.idle_steps / 30, 3.0)
             self._last_pos[0] = (my_tank.pos.x, my_tank.pos.y)
 
         if p0_alive:
             if p0_hit_wall: 
-                reward -= 0.05 
+                reward -= 0.0005 
         
         score_diff = self.player_scores[0] - self.last_scores[0]
         if score_diff > 0: 
-            reward += 100.0 * score_diff
+            reward += 1.0 * score_diff
             self.last_scores[0] = self.player_scores[0] 
         
         if not p0_alive: 
-            reward -= 100.0 
+            reward -= 1.0 
 
         # Potential-based Distance Shaping & Aiming Reward (dùng A* path distance)
         if p0_alive and enemy_tank and not enemy_tank.is_destroyed:
@@ -742,7 +748,7 @@ class RLEnv:
             dist_error = abs(current_dist - optimal_dist)
 
             if hasattr(self, 'last_dist_error'):
-                reward += (self.last_dist_error - dist_error) * 0.05
+                reward += (self.last_dist_error - dist_error) * 0.0005
             self.last_dist_error = dist_error
             self.last_distance = current_dist
 
@@ -752,20 +758,25 @@ class RLEnv:
             rel_angle = (rel_angle + PI) % (2 * PI) - PI
             
             if abs(rel_angle) < PI / 6:
-                reward += 0.01
+                reward += 0.0001
 
-            if action0 == 12 and my_tank.shoot_cooldown == SHOOT_COOLDOWN:
+            # Agent bắn khi đối diện sẽ được thưởng lớn hơn
+            if p0_shot_this_step:
                 if abs(rel_angle) < PI / 6:
-                    reward += 0.1
+                    reward += 0.01
         
-        # Check if both tanks are out of bullets
-        all_out_of_bullets = all(
-            t.ammo == 0 and sum(1 for b in self.bullets if b.owner == t.player_index and not b.is_dead()) == 0
-            for t in self.tanks if not t.is_destroyed
-        )
+        # Check if both tanks are out of bullets and no active bullets are flying
+        both_alive_and_empty = False
+        if len(alive) == 2:
+            both_empty = all(
+                t.ammo <= 0 and sum(1 for b in self.bullets if b.owner == t.player_index and not b.is_dead()) == 0
+                for t in alive
+            )
+            if both_empty:
+                both_alive_and_empty = True
 
-        if all_out_of_bullets and len(alive) == 2:
-            reward = 0.0  # No points for a draw
+        if both_alive_and_empty:
+            reward = 0.0  # Không được điểm nào khi hòa
             self.needs_restart = True
 
         is_timeout = self.current_step >= self.max_steps
@@ -773,9 +784,9 @@ class RLEnv:
 
         if is_timeout and p0_alive:
             if self.training_mode == 2:
-                reward += 100.0
+                reward += 1.0
             else:
-                reward -= 50.0
+                reward -= 0.5
 
         state = self.get_state(0)
         return (state, reward, done)
@@ -824,8 +835,8 @@ class RLEnv:
             else:
                 state.extend([1.0, 0.0, 1.0])
 
-            # 4. Số đạn còn lại của bản thân
-            state.append(my_tank.ammo / 5.0)
+            # 4. Số đạn còn lại của bản thân (thay cho số đạn đang bay để agent biết mình còn bao nhiêu đạn)
+            state.append(max(0.0, my_tank.ammo / 5.0))
 
             # 5. HP
             state.append(1.0)

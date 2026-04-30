@@ -43,8 +43,8 @@ class AZTankEnv(gym.Env):
             num_players=num_players,
             map_enabled=map_enabled,
             items_enabled=items_enabled,
-            training_mode=training_mode
-            # use_astar tự động = map_enabled (xem RLEnv.__init__)
+            training_mode=training_mode,
+            use_astar=True  # Cố định luôn bật để kích thước vector luôn là 27
         )
 
         self.action_space = spaces.Discrete(13)
