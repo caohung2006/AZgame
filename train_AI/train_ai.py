@@ -27,28 +27,31 @@ class ProgressCallback(BaseCallback):
                   f"Cập nhật quá trình học...")
         return True
 
-# Lộ trình 7 giai đoạn tối ưu hóa cho 1HP + 45 States + Fat RayCast + Bot
+# LỘ TRÌNH 8 GIAI ĐOẠN HUẤN LUYỆN (CURRICULUM LEARNING V3.0)
 PHASES = {
-    # 1. Tân binh tập bắn: Bãi trống, Bot Level 1 (Bia tập bắn)
-    1: {"map": False, "items": False, "mode": 0, "steps": 500_000,   "bot_level": 1, "op_phase": None},
+    # Phase 1: Nắm quyền kiểm soát. AI học lái xe và ngắm bắn mục tiêu đứng im.
+    1: {"map": False, "items": False, "mode": 0, "steps": 500_000,    "bot_level": [1]},
     
-    # 2. Lớp học Sinh tồn: Bãi trống, bị bắn (mode=2, né đạn) với Bot Level 2
-    2: {"map": False, "items": False, "mode": 2, "steps": 800_000, "bot_level": 2, "op_phase": None},
+    # Phase 2: Rượt đuổi. AI học cách Tracking (bám theo) mục tiêu di động.
+    2: {"map": False, "items": False, "mode": 0, "steps": 800_000,    "bot_level": [2]},
     
-    # 3. Khám phá Mê cung: Mê cung, đối thủ quay lại Level 1 để tập trung nhìn Radar/A*
-    3: {"map": True,  "items": False, "mode": 0, "steps": 1_000_000, "bot_level": 1, "op_phase": None},
+    # Phase 3: Né đạn cơ bản. Đạn bay rát ép AI phải học Strafe (Lách ngang).
+    3: {"map": False, "items": False, "mode": 0, "steps": 1_000_000,  "bot_level": [3]},
+
+    # Phase 4: Nhập môn mê cung. ĐỘT NGỘT HẠ BOT XUỐNG LEVEL 1. 
+    4: {"map": True,  "items": False, "mode": 0, "steps": 1_000_000,  "bot_level": [1]},
     
-    # 4. Tác chiến Đô thị: Mê cung, Bot Level 3 (Veteran - Biết né đạn)
-    4: {"map": True,  "items": False, "mode": 0, "steps": 1_500_000, "bot_level": 3, "op_phase": None},
+    # Phase 5: Tác chiến đô thị. Kết hợp giữa việc né tường và lách đạn. 
+    5: {"map": True,  "items": False, "mode": 0, "steps": 1_500_000,  "bot_level": [3, 3, 3, 3, 2]},
     
-    # 5. Đối đầu Trùm cuối: Mê cung, Bot Level 4 (Boss - Kiting khôn ngoan)
-    5: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000, "bot_level": 4, "op_phase": None},
+    # Phase 6: Chống Bắn Đón (Juking). Kẻ địch bắt đầu khôn, AI học cách "nhấp nhả" lừa đạn.
+    6: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000,  "bot_level": [4, 4, 4, 4, 3]},
     
-    # 6. Đánh vỡ Meta: Self-Play với các phiên bản cũ của chính mình (Phase 5)
-    6: {"map": True,  "items": False, "mode": 0, "steps": 2_500_000, "bot_level": None, "op_phase": 5},
-    
-    # 7. Đấu trường Sinh tử: Full Map + Items + Self-Play (Phase 6)
-    7: {"map": True,  "items": True,  "mode": 0, "steps": 3_000_000, "bot_level": None, "op_phase": 6},
+    # Phase 7: Học Ép Góc (Cornering). Kẻ địch biết lách đạn, AI học cách lùa địch vào chân tường.
+    7: {"map": True,  "items": False, "mode": 0, "steps": 2_500_000,  "bot_level": [5, 5, 5, 5, 4]},
+
+    # Phase 8: Full Game. Bật tính năng nhặt đồ, Bot full phép (Bắn nẩy, Khiên).
+    8: {"map": True,  "items": True,  "mode": 0, "steps": 3_000_000,  "bot_level": [6, 6, 6, 6, 5]},
 }
 
 import random
@@ -250,10 +253,10 @@ def test_model(phase_id):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pipeline", action="store_true", help="Chạy tự động từ GĐ 1 đến 7")
-    parser.add_argument("--phase", type=int, choices=range(1, 8), help="Chỉ định chạy 1 GĐ cụ thể")
+    parser.add_argument("--pipeline", action="store_true", help="Chạy tự động từ GĐ 1 đến 8")
+    parser.add_argument("--phase", type=int, choices=range(1, 9), help="Chỉ định chạy 1 GĐ cụ thể")
     parser.add_argument("--render", action="store_true", help="Mở cửa sổ Raylib xem (TRAIN RẤT CHẬM)")
-    parser.add_argument("--test", type=int, choices=range(1, 8), help="Xem AI múa ở Phase X (sau khi train)")
+    parser.add_argument("--test", type=int, choices=range(1, 9), help="Xem AI múa ở Phase X (sau khi train)")
     parser.add_argument("--resume", action="store_true", help="Tiếp tục học từ file save đang dở")
     args = parser.parse_args()
 

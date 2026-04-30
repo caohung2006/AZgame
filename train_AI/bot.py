@@ -6,9 +6,15 @@ class MockSpace:
 
 class RuleBasedBot:
     def __init__(self, level=1):
-        self.level = level
+        self.level_list = level if isinstance(level, list) else [level]
+        self.level = self.level_list[0]
         self.action_space_shape = (3,)
         self.observation_space = MockSpace((45,))
+
+    def sample_level(self):
+        import random
+        self.level = random.choice(self.level_list)
+        return self.level
 
     def get_action_from_env(self, env_instance):
         """

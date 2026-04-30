@@ -84,6 +84,11 @@ class AZTankEnv(gym.Env):
             new_opponent = self.opponent_pool.sample()
             if new_opponent is not None:
                 self.opponent_model = new_opponent
+        
+        # Nếu là RuleBasedBot, chọn ngẫu nhiên Level từ danh sách được cấp
+        if self.opponent_model is not None and hasattr(self.opponent_model, 'sample_level'):
+            self.opponent_model.sample_level()
+
         state = self._env.reset()
         obs = np.array(state, dtype=np.float32)
         info = {}

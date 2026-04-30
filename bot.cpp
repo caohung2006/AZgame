@@ -290,44 +290,50 @@ TankActions Bot::GetAction(Game* game) {
 
     if (!myTank || myTank->isDestroyed) return actions;
 
+    // ==========================================
+    // LEVEL 1: "Bao Cát Tĩnh" (Dummy)
+    // Logic: Stand still, don't shoot.
+    // ==========================================
+    if (level <= 1) return actions;
+
     const b2Vec2 myPos = myTank->body->GetPosition();
     const b2Vec2 myVel = myTank->body->GetLinearVelocity();
     const float myAngle = myTank->body->GetAngle();
     const b2Vec2 forwardDir(-sinf(myAngle), cosf(myAngle));
 
-    if (level == 1) {
-        if (rand() % 100 < 5) actions.forward = true;
-        if (rand() % 100 < 5) actions.turnLeft = true;
-        return actions;
-    }
+    // ==========================================
+    // EMERGENCY DODGE (Enabled from LEVEL 5)
+    // ==========================================
+    if (level >= 5) {
+        BulletThreat threat = FindBulletThreat(game->bullets, playerIndex, myPos, myVel);
+        if (threat.active && threat.ttc < 1.8f) {
+            // Level 6 can use Shield
+            if (level >= 6 && threat.ttc < 0.6f && myTank->shieldCooldownTimer <= 0.0f) {
+                actions.shield = true;
+            }
 
-    // 1. Evaluate Threats & Emergency Dodge
-    BulletThreat threat = FindBulletThreat(game->bullets, playerIndex, myPos, myVel);
-    if (threat.active && threat.ttc < 1.8f) {
-        // Use Shield if extremely close
-        if (threat.ttc < 0.6f && myTank->shieldCooldownTimer <= 0.0f && level >= 4) {
-            actions.shield = true;
+            // Dodge Logic
+            b2Vec2 bulletDir = SafeNormalize(threat.bulletVel);
+            b2Vec2 toThreat = threat.bulletPos - myPos;
+            float cross = toThreat.x * bulletDir.y - toThreat.y * bulletDir.x;
+            b2Vec2 escapeDir = (cross > 0.0f) ? b2Vec2(-bulletDir.y, bulletDir.x) : b2Vec2(bulletDir.y, -bulletDir.x);
+            
+            float escapeAngle = NormalizeAngle(AngleTo(myPos, myPos + escapeDir) - myAngle);
+            if (escapeAngle > 0.1f) actions.turnLeft = true;
+            else if (escapeAngle < -0.1f) actions.turnRight = true;
+            
+            if (std::cos(escapeAngle) > -0.2f) actions.forward = true;
+            else actions.backward = true;
+            
+            return actions; // Dodge overrides target selection
         }
-
-        // Dodge
-        b2Vec2 bulletDir = SafeNormalize(threat.bulletVel);
-        b2Vec2 toThreat = threat.bulletPos - myPos;
-        float cross = toThreat.x * bulletDir.y - toThreat.y * bulletDir.x;
-        b2Vec2 escapeDir = (cross > 0.0f) ? b2Vec2(-bulletDir.y, bulletDir.x) : b2Vec2(bulletDir.y, -bulletDir.x);
-        
-        float escapeAngle = NormalizeAngle(AngleTo(myPos, myPos + escapeDir) - myAngle);
-        if (escapeAngle > 0.1f) actions.turnLeft = true;
-        else if (escapeAngle < -0.1f) actions.turnRight = true;
-        
-        if (std::cos(escapeAngle) > -0.2f) actions.forward = true;
-        else actions.backward = true;
-        
-        return actions; // Dodge overrides all other logic to ensure survival
     }
 
-    // 2. Target Selection & Aiming
-    bool enemyInSight = false;
+    // ==========================================
+    // TARGET SELECTION & AIMING
+    // ==========================================
     bool hasTarget = false;
+    bool enemyInSight = false;
     b2Vec2 targetAim(0.0f, 0.0f);
     float enemyDist = 999.0f;
 
@@ -336,128 +342,137 @@ TankActions Bot::GetAction(Game* game) {
         b2Vec2 enemyVel = enemyTank->body->GetLinearVelocity();
         enemyDist = (enemyPos - myPos).Length();
 
-        float bulletSpeed = 6.0f;
-        if (myTank->currentWeapon == ItemType::GATLING) bulletSpeed = 10.0f;
-        else if (myTank->currentWeapon == ItemType::MISSILE) bulletSpeed = 4.5f;
-        else if (myTank->currentWeapon == ItemType::DEATH_RAY) bulletSpeed = 16.0f;
+        if (level >= 4) {
+            // LEVEL 4-6: Predictive Aiming
+            float bulletSpeed = 6.0f;
+            if (myTank->currentWeapon == ItemType::GATLING) bulletSpeed = 10.0f;
+            else if (myTank->currentWeapon == ItemType::MISSILE) bulletSpeed = 4.5f;
+            else if (myTank->currentWeapon == ItemType::DEATH_RAY) bulletSpeed = 16.0f;
 
-        float maxInterceptTime = 5.0f; // Allow long range aiming
-        float hitTime = SolveInterceptTime(myPos, enemyPos, enemyVel, bulletSpeed, maxInterceptTime);
-        b2Vec2 predictedPos = enemyPos + hitTime * enemyVel;
+            float hitTime = SolveInterceptTime(myPos, enemyPos, enemyVel, bulletSpeed, 5.0f);
+            b2Vec2 predictedPos = enemyPos + hitTime * enemyVel;
 
-        if (CheckShootClearance(game->world, myPos, predictedPos)) {
-            targetAim = predictedPos;
-            enemyInSight = true;
-            hasTarget = true;
-        } else if (CheckShootClearance(game->world, myPos, enemyPos)) {
-            targetAim = enemyPos;
-            enemyInSight = true;
-            hasTarget = true;
-        } else if (level >= 5 && myTank->currentWeapon != ItemType::DEATH_RAY && myTank->currentWeapon != ItemType::MISSILE) {
-            b2Vec2 wallPt;
-            if (FindBounceShot(game, myPos, enemyTank->body, enemyPos, &wallPt)) {
-                targetAim = wallPt;
+            if (CheckShootClearance(game->world, myPos, predictedPos)) {
+                targetAim = predictedPos;
+                enemyInSight = true;
+                hasTarget = true;
+            } else if (CheckShootClearance(game->world, myPos, enemyPos)) {
+                targetAim = enemyPos;
+                enemyInSight = true;
+                hasTarget = true;
+            } else if (level >= 6 && myTank->currentWeapon != ItemType::DEATH_RAY && myTank->currentWeapon != ItemType::MISSILE) {
+                // LEVEL 6: Bounce Shots
+                b2Vec2 wallPt;
+                if (FindBounceShot(game, myPos, enemyTank->body, enemyPos, &wallPt)) {
+                    targetAim = wallPt;
+                    hasTarget = true;
+                }
+            }
+        } else {
+            // LEVEL 2-3: Direct Aiming
+            if (CheckShootClearance(game->world, myPos, enemyPos)) {
+                targetAim = enemyPos;
+                enemyInSight = true;
                 hasTarget = true;
             }
         }
     }
 
-    // 3. Movement & Shooting
-    if (hasTarget && enemyTank) {
+    // ==========================================
+    // MOVEMENT STRATEGY
+    // ==========================================
+    if (hasTarget) {
         float aimError = NormalizeAngle(AngleTo(myPos, targetAim) - myAngle);
         
-        // Aim at target
+        // Aiming
         if (aimError > 0.04f) actions.turnLeft = true;
         else if (aimError < -0.04f) actions.turnRight = true;
-        
-        // Optimal distance maintenance (Kiting / Chasing)
-        if (enemyInSight) {
-            if (enemyDist < 6.0f) {
-                actions.backward = true;
-            } else if (enemyDist > 20.0f) {
-                if (std::abs(aimError) < 0.6f) actions.forward = true;
-            } else {
-                // Active mid-range movement
-                if (s_weaveFrames[playerIndex] <= 0) {
-                    s_weaveFrames[playerIndex] = RandRange(30, 90);
-                    s_weaveDir[playerIndex] = RandRange(0, 2) - 1; // -1, 0, or 1
-                }
-                s_weaveFrames[playerIndex]--;
 
-                if (std::abs(aimError) < 0.5f) {
-                    if (s_weaveDir[playerIndex] == 1 && enemyDist > 9.0f) actions.forward = true;
-                    else if (s_weaveDir[playerIndex] == -1 && enemyDist < 15.0f) actions.backward = true;
+        if (level == 2) {
+            // LEVEL 2: Random/Simple movement
+            if (s_weaveFrames[playerIndex] <= 0) {
+                s_weaveFrames[playerIndex] = RandRange(60, 120);
+                s_weaveDir[playerIndex] = RandRange(0, 2); // 0 or 1
+            }
+            s_weaveFrames[playerIndex]--;
+            if (s_weaveDir[playerIndex] == 1) actions.forward = true;
+        } 
+        else if (level == 3) {
+            // LEVEL 3: Aggressive Chase
+            if (enemyDist > 5.0f) {
+                if (std::abs(aimError) < 0.8f) actions.forward = true;
+            } else {
+                actions.backward = true;
+            }
+        }
+        else if (level >= 4) {
+            // LEVEL 4-6: Kiting & Weaving
+            if (enemyInSight) {
+                if (enemyDist < 7.0f) {
+                    actions.backward = true;
+                } else if (enemyDist > 18.0f) {
+                    if (std::abs(aimError) < 0.6f) actions.forward = true;
+                } else {
+                    // Mid-range weaving
+                    if (s_weaveFrames[playerIndex] <= 0) {
+                        s_weaveFrames[playerIndex] = RandRange(30, 90);
+                        s_weaveDir[playerIndex] = RandRange(0, 2) - 1;
+                    }
+                    s_weaveFrames[playerIndex]--;
+                    if (std::abs(aimError) < 0.5f) {
+                        if (s_weaveDir[playerIndex] == 1 && enemyDist > 9.0f) actions.forward = true;
+                        else if (s_weaveDir[playerIndex] == -1 && enemyDist < 15.0f) actions.backward = true;
+                    }
                 }
             }
         }
 
-        // Fire control
+        // ==========================================
+        // FIRE CONTROL
+        // ==========================================
         bool canShoot = myTank->shootCooldownTimer <= 0.0f;
         if (canShoot) {
-            float tolerance = 0.08f;
-            if (enemyDist > 18.0f) tolerance = 0.03f; // much tighter aim at long range
-            else if (enemyDist > 10.0f) tolerance = 0.06f; 
-            else if (enemyDist < 5.0f) tolerance = 0.2f;   
+            bool fireAllowed = true;
             
-            if (std::abs(aimError) <= tolerance) {
-                if (SafeToShoot(game->world, myPos, forwardDir, myTank->body)) {
-                    actions.shoot = true;
+            // LEVEL 2: Slow reload (Only 10% chance to fire when ready)
+            if (level == 2) {
+                if (RandRange(0, 100) > 2) fireAllowed = false; 
+            }
+
+            if (fireAllowed) {
+                float tolerance = (level >= 4) ? 0.08f : 0.15f;
+                if (enemyDist > 15.0f) tolerance *= 0.5f;
+
+                if (std::abs(aimError) <= tolerance) {
+                    if (SafeToShoot(game->world, myPos, forwardDir, myTank->body)) {
+                        actions.shoot = true;
+                    }
                 }
             }
         }
-
-        // Handle specific weapons like Frag
-        if (myTank->currentWeapon == ItemType::FRAG && ShouldDetonateFrag(game->bullets, playerIndex, enemyTank->body->GetPosition())) {
-            actions.shoot = true; 
-        }
-
-    } else if (enemyTank && game->mapEnabled) {
-        // 4. Pathfinding if no target or bounce shot found
+    } 
+    else if (enemyTank && game->mapEnabled && level >= 2) {
+        // NAVIGATE TO ENEMY if no line of sight
         b2Vec2 enemyPos = enemyTank->body->GetPosition();
-        if (backupTimer > 0) {
-            backupTimer--;
-            actions.backward = true;
-            return actions;
-        }
-
+        
         bool needRecalc = cachedPath.empty() || currentWaypointIdx >= (int)cachedPath.size();
-        if (!needRecalc) {
-            if ((cachedPath[currentWaypointIdx] - myPos).Length() < 1.4f) {
-                currentWaypointIdx++;
-                if (currentWaypointIdx >= (int)cachedPath.size()) needRecalc = true;
-            }
-            if (myVel.Length() < 0.25f) {
-                stuckCounter++;
-                if (stuckCounter > 24) {
-                    backupTimer = 16;
-                    cachedPath.clear();
-                    stuckCounter = 0;
-                    return actions;
-                }
-            } else {
-                stuckCounter = 0;
-            }
-        }
-
         if (needRecalc || (lastEnemyPos - enemyPos).LengthSquared() > 9.0f) {
             cachedPath = game->map.GetFullPath(game->world, myPos, enemyPos, blockedCells);
             currentWaypointIdx = 1;
-            stuckCounter = 0;
             lastEnemyPos = enemyPos;
         }
-
-        game->botPaths[playerIndex] = cachedPath;
 
         if (currentWaypointIdx < (int)cachedPath.size()) {
             float moveAngle = NormalizeAngle(AngleTo(myPos, cachedPath[currentWaypointIdx]) - myAngle);
             if (moveAngle > 0.15f) actions.turnLeft = true;
             else if (moveAngle < -0.15f) actions.turnRight = true;
             if (std::cos(moveAngle) > 0.15f) actions.forward = true;
-            else if (std::cos(moveAngle) < -0.55f) actions.backward = true;
         }
     }
 
-    // 5. Unstuck from walls
+    // ==========================================
+    // UNSTUCK LOGIC
+    // ==========================================
     if (actions.turnLeft || actions.turnRight) {
         for (b2ContactEdge* edge = myTank->body->GetContactList(); edge; edge = edge->next) {
             if (edge->contact->IsTouching() && edge->other->GetType() == b2_staticBody) {
