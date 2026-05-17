@@ -1,11 +1,9 @@
 #pragma once
 #include <box2d/box2d.h>
-#include <vector>
-#include <string>
 #include <cmath>
 #include <cstdlib>
-
-
+#include <string>
+#include <vector>
 
 // ========================================================================
 // Hằng số toán học (không phụ thuộc Raylib)
@@ -23,15 +21,18 @@
 // ========================================================================
 // Thông số game
 // ========================================================================
-const float SCALE = 30.0f;         // Tỷ lệ pixel (Raylib) <-> mét (Box2D)
-const int SCREEN_WIDTH = 1024;     // Chiều rộng thế giới game
-const int SCREEN_HEIGHT = 768;     // Chiều cao thế giới game
+const float SCALE = 30.0f;     // Tỷ lệ pixel (Raylib) <-> mét (Box2D)
+const int SCREEN_WIDTH = 1024; // Chiều rộng thế giới game
+const int SCREEN_HEIGHT = 768; // Chiều cao thế giới game
 
 /**
  * @struct PlayerConfig
- * @brief Lưu mã phím cấu hình cho từng người chơi (chỉ dùng ở chế độ human play)
+ * @brief Lưu mã phím cấu hình cho từng người chơi (chỉ dùng ở chế độ human
+ * play)
  */
-struct PlayerConfig { int fw, bw, tl, tr, sh, shieldKey; };
+struct PlayerConfig {
+  int fw, bw, tl, tr, sh, shieldKey;
+};
 
 /**
  * @struct TankActions
@@ -39,12 +40,12 @@ struct PlayerConfig { int fw, bw, tl, tr, sh, shieldKey; };
  * Tách rời input khỏi game logic, cho phép chạy headless khi train RL.
  */
 struct TankActions {
-    bool forward = false;
-    bool backward = false;
-    bool turnLeft = false;
-    bool turnRight = false;
-    bool shoot = false;
-    bool shield = false;
+  bool forward = false;
+  bool backward = false;
+  bool turnLeft = false;
+  bool turnRight = false;
+  bool shoot = false;
+  bool shield = false;
 };
 
 /**
@@ -52,7 +53,7 @@ struct TankActions {
  * @brief Ghi lại vị trí xe tăng khi bị tiêu diệt, dùng cho hiệu ứng nổ.
  */
 struct DeathEvent {
-    b2Vec2 position;
-    int playerIndex;
-    int killerIndex; // Thêm killerIndex để phát hiện tự sát
+  b2Vec2 position;
+  int playerIndex;
+  int killerIndex; // Thêm killerIndex để phát hiện tự sát
 };

@@ -23,6 +23,10 @@ public:
     // Khi kẹt: đánh dấu ô bị kẹt + lùi xe trước khi tìm đường mới
     std::vector<std::pair<int,int>> blockedCells; // Các ô bị kẹt (row, col) - A* sẽ phạt nặng
     int backupTimer = 0;               // Đếm frame lùi xe (> 0 = đang lùi)
+    
+    // Hệ thống Commitment Lock cho né đạn
+    int evasionTimer = 0;
+    TankActions lockedActions;
 
     Bot(int level, int playerIndex);
 

@@ -28,14 +28,15 @@ class AZTankEnv(gym.Env):
     Bọc (wrap) RLEnv của C++ theo chuẩn Gymnasium để
     tương thích với Stable Baselines3.
 
-    State (45 floats):
+    State (52 floats):
         [0 -> 4]: Self State (Heading Cos/Sin, Local Vx/Vy, Angular Vel)
-        [5 -> 12]: Enemy Info (Local X/Y, Distance, Line of Sight, Local Vx/Vy, Heading Cos/Sin)
-        [13 -> 20]: Bullet Radar (2 most dangerous bullets: Local X/Y, TTC, Miss Dist)
-        [21 -> 28]: Wall Radar (8 directions scan)
-        [29 -> 31]: A* Navigation (Waypoint Local X/Y, Path Distance)
-        [32 -> 36]: Status (Ammo, Shoot Cooldown, Enemy Ammo, Shield Active, Shield Cooldown)
-        [37 -> 44]: Previous Action One-Hot (Move, Turn, Shoot)
+        [5 -> 14]: Enemy Info (Local X/Y, Distance, LOS, Local Vx/Vy, Heading Cos/Sin, Approach Speed, Am I Visible)
+        [15 -> 22]: Bullet Radar (2 most dangerous bullets: Local X/Y, TTC, Miss Dist)
+        [23 -> 30]: Wall Radar (8 directions scan)
+        [31 -> 33]: A* Navigation (Waypoint Local X/Y, Path Distance)
+        [34 -> 38]: Status (Ammo, Shoot Cooldown, Enemy Ammo, Shield Active, Shield Cooldown)
+        [39 -> 43]: Weapon Type One-Hot (Normal, Gatling, Frag, Missile, Death Ray)
+        [44 -> 51]: Previous Action One-Hot (Move, Turn, Shoot)
 
     Action (MultiBinary - 5 phím có thể nhấn cùng lúc):
         [0]: Tiến (1=có, 0=không)
@@ -68,11 +69,11 @@ class AZTankEnv(gym.Env):
         # 2: Shoot (0=idle, 1=shoot)
         self.action_space = spaces.MultiDiscrete([3, 3, 2])
 
-        # Định nghĩa không gian quan sát: 45 con số thực
+        # Định nghĩa không gian quan sát: 52 con số thực
         self.observation_space = spaces.Box(
             low=-1.0,
             high=1.0,
-            shape=(45,),
+            shape=(52,),
             dtype=np.float32
         )
 
@@ -121,6 +122,10 @@ class AZTankEnv(gym.Env):
                      action_p1 = opp_action
                  else:
                      action_p1 = [0, 0, 0]
+                     
+                 # Tịch thu lệnh bắn nếu không thấy địch (mô phỏng lại logic lúc train)
+                 if len(action_p1) == 3 and action_p1[2] == 1 and state_p1[8] < 0.5:
+                     action_p1[2] = 0
 
         # Đảm bảo chuyển Numpy Array của SB3 sang Python List dạng INT trước khi đẩy cho C++
         action_list = [int(a) for a in action]
