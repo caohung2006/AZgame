@@ -90,7 +90,8 @@ class AZTankEnv(gym.Env):
             self.opponent_model.sample_level()
 
         state = self._env.reset()
-        obs = np.array(state, dtype=np.float32)
+        expected_shape = self.observation_space.shape[0]
+        obs = np.array(state[:expected_shape], dtype=np.float32)
         info = {}
         return obs, info
 
@@ -129,7 +130,8 @@ class AZTankEnv(gym.Env):
         action_p1_list = [int(a) for a in action_p1] if len(action_p1) > 0 else []
 
         state, reward, done, is_timeout = self._env.step(action_list, action_p1_list)
-        obs = np.array(state, dtype=np.float32)
+        expected_shape = self.observation_space.shape[0]
+        obs = np.array(state[:expected_shape], dtype=np.float32)
 
         info = {}
         if self.render_mode == "human":
