@@ -82,7 +82,16 @@ cmake --build build-py --target AZgameBridge -j1
 2. Chạy controller từ thư mục `python/`
 ```bash
 cd python
-C:/msys64/mingw64/bin/python.exe ./astar_shell.py
+python ./pathfind_shell.py
+```
+
+`astar_shell.py` chỉ là wrapper tương thích cũ, còn `pathfind_shell.py` là entrypoint chính.
+
+Nếu bạn đang ở ngay thư mục gốc của project, hai lệnh này cũng chạy được:
+```bash
+cmake --build build-py --target AZgameBridge -j1
+cd python
+C:/msys64/mingw64/bin/python.exe ./pathfind_shell.py
 ```
 
 3. Điều khiển trong game

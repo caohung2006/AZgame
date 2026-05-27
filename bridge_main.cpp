@@ -1,4 +1,4 @@
-#include <raylib.h>
+﻿#include <raylib.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -16,10 +16,10 @@
 #include "renderer.h"
 
 namespace {
-const char* kControlFile = "bridge_control.txt";
-const char* kStateTmpFile = "bridge_state.tmp";
-const char* kStateFile = "bridge_state.json";
-const char* kWaypointsFile = "bridge_waypoints.txt";
+const char* kControlFile = "run/bridge_control.txt";
+const char* kStateTmpFile = "run/bridge_state.tmp";
+const char* kStateFile = "run/bridge_state.json";
+const char* kWaypointsFile = "run/bridge_waypoints.txt";
 
 struct WaypointOverlay {
   std::vector<Vector2> points;

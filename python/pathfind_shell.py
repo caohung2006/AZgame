@@ -1,4 +1,4 @@
-from astar_controller import main
+from pathfind_controller import main
 
 
 if __name__ == "__main__":

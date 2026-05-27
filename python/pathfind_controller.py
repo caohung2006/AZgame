@@ -6,18 +6,35 @@ import tempfile
 import time
 from typing import Dict, List, Optional, Tuple
 
-from astar_env import BridgeEnv, heading_error
-from astar_planner import AStarPlanner
+from pathfind_env import BridgeEnv, heading_error
+from pathfind_planner import Planner
 
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-_WAYPOINTS_FILE = os.path.join(_REPO_ROOT, "bridge_waypoints.txt")
+_WAYPOINTS_FILE = os.path.join(_REPO_ROOT, "run", "bridge_waypoints.txt")
+_WAYPOINTS_TMP_DIR = os.path.join(_REPO_ROOT, "run", "bridge_waypoints_tmp")
 _LAST_WAYPOINTS_WRITE = 0.0
+_GRID_WIDTH = 96
+_GRID_HEIGHT = 72
+_RUN_START = time.monotonic()
+_PLAN_COUNT = 0
+_PLAN_TOTAL_MS = 0.0
+_PLAN_LAST_MS = 0.0
+
+_PLANNER_ALGORITHM = 'astar' # can be "astar", "dijkstra", "bfs", "dfs", "theta_star", "jps"
+
+_FREEZE_MOVEMENT = False
+_FREEZE_TIMER_ON_FIRST_PATH = False
+_FREEZE_AFTER_FIRST_PATH = False
+_FIRST_PATH_TIME: Optional[float] = None
+_LOCK_AFTER_FIRST_PATH = False
+
 _STUCK_FRAMES = 10
 _STUCK_MOVE_EPS2 = 0.001
 _BACKOFF_FRAMES = 12
 _TURN_ON_THRESHOLD = 0.18
 _TURN_OFF_THRESHOLD = 0.12
+_ENABLE_PERIODIC_REPLAN = True
 
 
 def _tank(snapshot: Dict, player_index: int) -> Optional[Dict]:
@@ -27,21 +44,29 @@ def _tank(snapshot: Dict, player_index: int) -> Optional[Dict]:
     return None
 
 
-def _build_planner(snapshot: Dict) -> AStarPlanner:
+def _build_planner(snapshot: Dict) -> Planner:
     scale = float(snapshot["scale"])
     walls = snapshot.get("walls", [])
     wall_aabbs = [(w["min_x"], w["min_y"], w["max_x"], w["max_y"]) for w in walls]
-    return AStarPlanner.from_world_geometry(
+    return Planner.from_world_geometry(
         world_width=float(snapshot["screen_width"]) / scale,
         world_height=float(snapshot["screen_height"]) / scale,
         wall_aabbs=wall_aabbs,
-        grid_width=96,
-        grid_height=72,
+        grid_width=_GRID_WIDTH,
+        grid_height=_GRID_HEIGHT,
         inflation_radius=0.55,
+        algorithm=_PLANNER_ALGORITHM,
     )
 
 
-def _plan_waypoints(planner: AStarPlanner, me: Dict, enemy: Dict) -> Optional[List[Tuple[float, float]]]:
+def _record_plan_time(elapsed_ms: float) -> None:
+    global _PLAN_COUNT, _PLAN_TOTAL_MS, _PLAN_LAST_MS
+    _PLAN_LAST_MS = elapsed_ms
+    _PLAN_TOTAL_MS += elapsed_ms
+    _PLAN_COUNT += 1
+
+
+def _plan_waypoints(planner: Planner, me: Dict, enemy: Dict) -> Optional[List[Tuple[float, float]]]:
     start = planner.world_to_grid(float(me["x"]), float(me["y"]))
     goal = planner.world_to_grid(float(enemy["x"]), float(enemy["y"]))
     result = planner.plan(start, goal)
@@ -61,14 +86,26 @@ def _write_waypoints(waypoints: List[Tuple[float, float]], waypoint_idx: int, fo
     else:
         idx = 0
 
-    payload = [f"idx {idx}\n"]
+    avg_ms = (_PLAN_TOTAL_MS / _PLAN_COUNT) if _PLAN_COUNT else 0.0
+    if _FREEZE_TIMER_ON_FIRST_PATH and _FIRST_PATH_TIME is not None:
+        runtime_s = _FIRST_PATH_TIME - _RUN_START
+    else:
+        runtime_s = time.monotonic() - _RUN_START
+    payload = [
+        f"idx {idx}\n",
+        f"pf_total_ms {_PLAN_TOTAL_MS:.3f}\n",
+        f"pf_avg_ms {avg_ms:.3f}\n",
+        f"runtime_s {runtime_s:.5f}\n",
+        f"maze {_GRID_WIDTH} {_GRID_HEIGHT}\n",
+    ]
     for x, y in waypoints:
         payload.append(f"{x:.4f} {y:.4f}\n")
     payload_str = "".join(payload)
 
-    # Best effort only: never let debug drawing break the controller loop.
+    os.makedirs(_WAYPOINTS_TMP_DIR, exist_ok=True)
+    tmp = ""
     try:
-        fd, tmp = tempfile.mkstemp(prefix="bridge_waypoints.", suffix=".tmp", dir=_REPO_ROOT)
+        fd, tmp = tempfile.mkstemp(prefix="bridge_waypoints.", suffix=".tmp", dir=_WAYPOINTS_TMP_DIR)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(payload_str)
         os.replace(tmp, _WAYPOINTS_FILE)
@@ -80,6 +117,26 @@ def _write_waypoints(waypoints: List[Tuple[float, float]], waypoint_idx: int, fo
             _LAST_WAYPOINTS_WRITE = now
         except OSError:
             pass
+    finally:
+        if tmp and os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
+
+def _cleanup_waypoint_tmp_files() -> None:
+    for folder in (_REPO_ROOT, _WAYPOINTS_TMP_DIR):
+        try:
+            entries = os.listdir(folder)
+        except OSError:
+            continue
+        for name in entries:
+            if name.startswith("bridge_waypoints.") and name.endswith(".tmp"):
+                try:
+                    os.remove(os.path.join(folder, name))
+                except OSError:
+                    pass
 
 
 def _remaining_waypoints_length(
@@ -98,10 +155,19 @@ def _remaining_waypoints_length(
 
 
 def main() -> None:
+    global _FIRST_PATH_TIME, _LOCK_AFTER_FIRST_PATH 
+
+    if os.path.exists(_WAYPOINTS_FILE):
+        try:
+            os.remove(_WAYPOINTS_FILE)
+        except OSError:
+            pass
+
     env = BridgeEnv()
     env.launch()
+    _cleanup_waypoint_tmp_files()
 
-    planner: Optional[AStarPlanner] = None
+    planner: Optional[Planner] = None
     waypoints: List[Tuple[float, float]] = []
     last_good_waypoints: List[Tuple[float, float]] = []
     waypoint_idx = 0
@@ -109,6 +175,8 @@ def main() -> None:
     last_pos: Optional[Tuple[float, float]] = None
     stuck_frames = 0
     backoff_frames = 0
+    saw_state = False
+    last_no_path_frame = -9999
 
     try:
         while True:
@@ -125,6 +193,7 @@ def main() -> None:
             me = _tank(snapshot, 0)
             enemy = _tank(snapshot, 1)
             if me is None or enemy is None:
+                saw_state = True
                 _write_waypoints([], 0, force=True)
                 env.set_action(0, 0)
                 env.flush_actions()
@@ -133,17 +202,28 @@ def main() -> None:
                 backoff_frames = 0
                 continue
 
+            if not saw_state:
+                saw_state = True
+
 
             if planner is None or frame % 20 == 0 or waypoint_idx >= len(waypoints):
-                planner = _build_planner(snapshot)
-                planned_waypoints = _plan_waypoints(planner, me, enemy)
-                if planned_waypoints is not None:
-                    waypoints = planned_waypoints
-                    last_good_waypoints = planned_waypoints
-                    waypoint_idx = 0
-                elif not waypoints:
-                    waypoints = last_good_waypoints
-                    waypoint_idx = min(waypoint_idx, max(len(waypoints) - 1, 0))
+                should_periodic_replan = _ENABLE_PERIODIC_REPLAN and (frame % 20 == 0)
+                if planner is None or should_periodic_replan or waypoint_idx >= len(waypoints):
+                    planner = _build_planner(snapshot)
+                    plan_start = time.perf_counter()
+                    planned_waypoints = _plan_waypoints(planner, me, enemy)
+                    _record_plan_time((time.perf_counter() - plan_start) * 1000.0)
+                    if planned_waypoints is not None:
+                        waypoints = planned_waypoints
+                        last_good_waypoints = planned_waypoints
+                        waypoint_idx = 0
+                        if _FREEZE_TIMER_ON_FIRST_PATH and _FIRST_PATH_TIME is None:
+                            _FIRST_PATH_TIME = time.monotonic()
+                        if _FREEZE_AFTER_FIRST_PATH and not _LOCK_AFTER_FIRST_PATH:
+                            _LOCK_AFTER_FIRST_PATH = True
+                    elif not waypoints:
+                        waypoints = last_good_waypoints
+                        waypoint_idx = min(waypoint_idx, max(len(waypoints) - 1, 0))
 
             if waypoint_idx < len(waypoints):
                 tx, ty = waypoints[waypoint_idx]
@@ -208,6 +288,13 @@ def main() -> None:
             turn_right = err < -_TURN_ON_THRESHOLD
             if abs(err) < _TURN_OFF_THRESHOLD:
                 turn_left = turn_right = False
+
+            if _FREEZE_MOVEMENT or (_FREEZE_AFTER_FIRST_PATH and _LOCK_AFTER_FIRST_PATH):
+                env.set_flags(0, shoot=should_shoot)
+                env.flush_actions()
+                frame += 1
+                time.sleep(0.003)
+                continue
 
             env.set_flags(
                 0,
