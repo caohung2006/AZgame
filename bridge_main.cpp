@@ -24,6 +24,10 @@ const char* kWaypointsFile = "run/bridge_waypoints.txt";
 struct WaypointOverlay {
   std::vector<Vector2> points;
   int currentIdx = 0;
+  int mazeWidth = 0;
+  int mazeHeight = 0;
+  float pfTotalMs = 0.0f;
+  float pfAvgMs = 0.0f;
   bool valid = false;
 };
 
@@ -70,6 +74,18 @@ WaypointOverlay ReadWaypointsOverlay() {
     ls >> tag;
     if (tag == "idx") {
       ls >> out.currentIdx;
+      continue;
+    }
+    if (tag == "maze") {
+      ls >> out.mazeWidth >> out.mazeHeight;
+      continue;
+    }
+    if (tag == "pf_total_ms") {
+      ls >> out.pfTotalMs;
+      continue;
+    }
+    if (tag == "pf_avg_ms") {
+      ls >> out.pfAvgMs;
       continue;
     }
 
@@ -232,6 +248,21 @@ int main() {
     DrawWaypointsOverlay(waypointOverlay);
     DrawText("P0: Python via bridge_control.txt", 12, 10, 18, DARKGRAY);
     DrawText("P1: Arrow Keys + / + .", 12, 34, 18, DARKGRAY);
+    if (waypointOverlay.mazeWidth > 0 && waypointOverlay.mazeHeight > 0) {
+      const char* mazeText = TextFormat("maze: %d x %d",
+                                        waypointOverlay.mazeWidth,
+                                        waypointOverlay.mazeHeight);
+      int mazeWidthPx = MeasureText(mazeText, 18);
+      int mazeX = (SCREEN_WIDTH - mazeWidthPx) / 2;
+      DrawText(mazeText, mazeX, 10, 18, DARKGRAY);
+    }
+
+    const char* avgText = (waypointOverlay.pfAvgMs > 0.0f)
+                              ? TextFormat("avg_ms: %.3f", waypointOverlay.pfAvgMs)
+                              : "avg_ms: --";
+    int avgWidthPx = MeasureText(avgText, 18);
+    DrawText(avgText, SCREEN_WIDTH - avgWidthPx - 12, 10, 18, DARKGRAY);
+
     EndDrawing();
   }
 

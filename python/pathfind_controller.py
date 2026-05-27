@@ -23,7 +23,7 @@ _PLAN_LAST_MS = 0.0
 
 _PLANNER_ALGORITHM = 'astar' # can be "astar", "dijkstra", "bfs", "dfs", "theta_star", "jps"
 
-_FREEZE_MOVEMENT = False
+_FREEZE_MOVEMENT = True
 _FREEZE_TIMER_ON_FIRST_PATH = False
 _FREEZE_AFTER_FIRST_PATH = False
 _FIRST_PATH_TIME: Optional[float] = None
