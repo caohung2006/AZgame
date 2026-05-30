@@ -26,6 +26,8 @@ public:
     int bounceSearchCD = 0;
     float cachedBounceAngle = 0;
     bool hasBounceShot = false;
+    int shotMode = 0;         // 0=direct, 1=bounce (quyết định 1 lần/viên đạn)
+    int shotModeTimer = 0;    // Đếm ngược giữ mode ổn định
 
     // Dodge
     int dodgeLockTimer = 0;
