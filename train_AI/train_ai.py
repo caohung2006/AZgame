@@ -1,5 +1,5 @@
 """
-Script huấn luyện AI xe tăng (Curriculum Learning 7 Giai đoạn)
+Script huấn luyện AI xe tăng (Curriculum Learning 10 Giai đoạn)
 Hỗ trợ Self-Play (Lấy AI cũ làm đối thủ cho AI mới tập né).
 """
 
@@ -27,28 +27,36 @@ class ProgressCallback(BaseCallback):
                   f"Cập nhật quá trình học...")
         return True
 
-# Lộ trình 7 giai đoạn tối ưu hóa cho 1HP + 45 States + Fat RayCast + Bot
+# LỘ TRÌNH 11 GIAI ĐOẠN HUẤN LUYỆN (CURRICULUM LEARNING V5.0)
 PHASES = {
-    # 1. Tân binh tập bắn: Bãi trống, Bot Level 1 (Bia tập bắn)
-    1: {"map": False, "items": False, "mode": 0, "steps": 500_000,   "bot_level": 1, "op_phase": None},
+    # CHƯƠNG 1: BÃI ĐẤT TRỐNG (Rút ngắn thời gian vì AI học nhanh hơn)
+    1: {"map": False, "items": False, "mode": 0, "bot_level": [1],    "steps": 300_000}, # Học lái và tiến lại gần
+    2: {"map": False, "items": False, "mode": 0, "bot_level": [2],    "steps": 500_000}, # Học rượt mục tiêu
+    3: {"map": False, "items": False, "mode": 0, "bot_level": [3],    "steps": 800_000}, # Học lách đạn ngang
+
+    # CHƯƠNG 2: MÊ CUNG & BÀI TEST THỢ SĂN
+    4: {"map": True,  "items": False, "mode": 0, "bot_level": [1],    "steps": 1_000_000}, # Làm quen Tường
     
-    # 2. Lớp học Sinh tồn: Bãi trống, bị bắn (mode=2, né đạn) với Bot Level 2
-    2: {"map": False, "items": False, "mode": 2, "steps": 800_000, "bot_level": 2, "op_phase": None},
-    
-    # 3. Khám phá Mê cung: Mê cung, đối thủ quay lại Level 1 để tập trung nhìn Radar/A*
-    3: {"map": True,  "items": False, "mode": 0, "steps": 1_000_000, "bot_level": 1, "op_phase": None},
-    
-    # 4. Tác chiến Đô thị: Mê cung, Bot Level 3 (Veteran - Biết né đạn)
-    4: {"map": True,  "items": False, "mode": 0, "steps": 1_500_000, "bot_level": 3, "op_phase": None},
-    
-    # 5. Đối đầu Trùm cuối: Mê cung, Bot Level 4 (Boss - Kiting khôn ngoan)
-    5: {"map": True,  "items": False, "mode": 0, "steps": 2_000_000, "bot_level": 4, "op_phase": None},
-    
-    # 6. Đánh vỡ Meta: Self-Play với các phiên bản cũ của chính mình (Phase 5)
-    6: {"map": True,  "items": False, "mode": 0, "steps": 2_500_000, "bot_level": None, "op_phase": 5},
-    
-    # 7. Đấu trường Sinh tử: Full Map + Items + Self-Play (Phase 6)
-    7: {"map": True,  "items": True,  "mode": 0, "steps": 3_000_000, "bot_level": None, "op_phase": 6},
+    # 🔴 PHASE 5: BÀI THI SĂN MỒI
+    # Mix 80% Fleeing Bot (Level 7) và 20% Bot đứng im (Level 1)
+    5: {"map": True,  "items": False, "mode": 0, "bot_level": [7, 7, 7, 7, 1], "steps": 1_500_000}, 
+
+    # 🟣 PHASE 6 (MỚI): BÀI THI PHỤC KÍCH
+    # Bot Level 4 (Xạ Thủ) chủ động tìm kiếm AI → AI học chờ đợi + phủ đầu
+    # Camping penalty đã smart (không phạt khi địch gần) → AI có thể núp
+    6: {"map": True,  "items": False, "mode": 0, "bot_level": [4, 4], "steps": 1_500_000},
+
+    # CHƯƠNG 3: HUẤN LUYỆN CHIẾN ĐẤU CHỦ ĐỘNG (Bot đa dạng)
+    7: {"map": True,  "items": False, "mode": 0, "bot_level": [3, 4, 5, 7, 1], "steps": 2_000_000}, # Đa dạng chiến thuật
+    8: {"map": True,  "items": False, "mode": 0, "bot_level": [4, 5, 6, 6, 7], "steps": 2_500_000}, # Ép góc nâng cao
+    9: {"map": True,  "items": True,  "mode": 0, "bot_level": [6, 6, 6, 5, 7], "steps": 3_000_000}, # Bậc thầy + Items
+
+    # STAGE 2: TIẾN HÓA VƯỢT BẬC (Self-Play)
+    # Phase 10 - Đấu Không Cân Xứng (Asymmetric): Model B vs Model A (Phase 9 frozen)
+    10: {"map": True,  "items": True,  "mode": 0, "op_phase": 9, "steps": 6_000_000},
+
+    # Phase 11 - Đấu Cân Bằng (Symmetric): Model B vs Model B (Cả 2 đều cập nhật)
+    11: {"map": True,  "items": True,  "mode": 0, "op_phase": 11, "steps": 10_000_000},
 }
 
 import random
@@ -60,31 +68,47 @@ class OpponentPool:
     Thay vì chỉ đánh với 1 model cố định (frozen), pool lưu nhiều phiên bản cũ
     và chọn ngẫu nhiên đối thủ → tránh bẫy Rock-Paper-Scissors cycling.
     """
-    def __init__(self, phase_config):
+    def __init__(self, phase_config, current_phase=None):
         self.models = []
-        op_phase = phase_config.get("op_phase")
+        self.phase_config = phase_config
+        self.current_phase = current_phase
+        self.refresh()
+
+    def refresh(self):
+        """Quét ổ đĩa để tải các model đối thủ mới nhất"""
+        op_phase = self.phase_config.get("op_phase")
         if op_phase is None:
             return
 
-        # 1. Thêm model phase chính thức (nếu có)
-        op_path = f"models/ppo_tank_phase{op_phase}.zip"
-        if os.path.exists(op_path):
-            self.models.append(PPO.load(op_path))
-            print(f"  [Pool] Đã thêm model Phase {op_phase} vào pool")
+        # Logic tải đối thủ:
+        # Phase 9 (Asymmetric): Đấu với Phase 8 (frozen)
+        # Phase 10 (Symmetric): Đấu với chính mình (Phase 10 checkpoints)
+        phases_to_load = [op_phase]
 
-        # 2. Quét thêm các checkpoint cũ (tạo diversity)
-        checkpoint_pattern = f"models/checkpoints/ppo_phase{op_phase}_*.zip"
-        checkpoints = sorted(glob.glob(checkpoint_pattern))
-        # Chỉ lấy tối đa 5 checkpoint gần nhất để tiết kiệm RAM
-        for cp in checkpoints[-5:]:
-            try:
-                self.models.append(PPO.load(cp))
-                print(f"  [Pool] Đã thêm checkpoint: {os.path.basename(cp)}")
-            except Exception:
-                pass
+        new_models = []
+        for p in phases_to_load:
+            # 1. Thêm model phase chính thức
+            op_path = f"models/ppo_tank_phase{p}.zip"
+            if os.path.exists(op_path):
+                try:
+                    new_models.append(PPO.load(op_path))
+                    print(f"  [Pool] Đã nạp model chính Phase {p}")
+                except Exception: pass
 
-        if not self.models:
-            print(f"  [Cảnh báo] Không tìm thấy model đối thủ Phase {op_phase}. Đối thủ sẽ đứng im!")
+            # 2. Quét thêm các checkpoint (chỉ lấy 3 cái mới nhất mỗi phase để tránh tràn RAM)
+            checkpoint_pattern = f"models/checkpoints/ppo_phase{p}_*.zip"
+            checkpoints = sorted(glob.glob(checkpoint_pattern))
+            for cp in checkpoints[-3:]:
+                try:
+                    new_models.append(PPO.load(cp))
+                    print(f"  [Pool] Đã nạp checkpoint: {os.path.basename(cp)}")
+                except Exception: pass
+        
+        if new_models:
+            self.models = new_models
+            print(f"  [Pool] Hiện có tổng cộng {len(self.models)} đối thủ.")
+        elif not self.models:
+            print(f"  [Cảnh báo] Pool trống rỗng! Đối thủ sẽ đứng im.")
 
     def sample(self):
         """Chọn ngẫu nhiên 1 đối thủ từ pool"""
@@ -130,15 +154,27 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     print("=" * 60)
 
     # 1. Tải Pool Đối thủ (nếu có) — Self-Play nâng cao
-    opponent_pool = OpponentPool(cfg)
-    if len(opponent_pool) > 0:
-        print(f"  [Pool] Tổng cộng {len(opponent_pool)} đối thủ trong pool")
+    opponent_pool = OpponentPool(cfg, current_phase=phase_id)
 
     # 2. Khởi tạo môi trường
     # Nếu đang bật xem trực tiếp (render) thì phải ép n_envs=1 để khỏi bay nhiều cửa sổ
     num_envs = 1 if render else 4
     render_mode = "human" if render else None
     env = make_vec_env(lambda: make_env(phase_id, opponent_pool, render_mode), n_envs=num_envs)
+
+    # 3. Callback đặc biệt cho Self-Play: Cập nhật pool mỗi khi có checkpoint mới
+    class SelfPlayCallback(BaseCallback):
+        def __init__(self, pool, refresh_freq=100_000):
+            super().__init__()
+            self.pool = pool
+            self.refresh_freq = refresh_freq
+        def _on_step(self) -> bool:
+            if self.n_calls % self.refresh_freq == 0:
+                print("\n  [Self-Play] Đang làm mới Pool đối thủ từ các checkpoint mới nhất...")
+                self.pool.refresh()
+            return True
+    
+    self_play_cb = SelfPlayCallback(opponent_pool)
 
     # 3. PPO Hyperparameters tùy theo giai đoạn
     #    Phase 1-3: Khám phá nhiều (ent_coef cao, batch lớn hơn)
@@ -152,17 +188,25 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     print(f"  [PPO] n_steps={ppo_params['n_steps']} | batch_size={ppo_params['batch_size']} | ent_coef={ppo_params['ent_coef']}")
 
     # 4. Khởi tạo Model AI (Tiếp tục từ phase trước, hoặc resume file)
-    # MLP Policy nhỏ thường nhanh hơn trên CPU do không mất công copy data qua VRAM.
-    # Tuy nhiên, nếu user muốn ép dùng GPU có thể đổi thành 'auto' hoặc 'cuda'.
     training_device = "cpu" 
     
     if resume_model_path and os.path.exists(resume_model_path + ".zip"):
         print(f"  [Info] Kế thừa trí tuệ từ model: {resume_model_path}.zip")
-        model = PPO.load(resume_model_path, env=env, device=training_device)
+        model = PPO.load(resume_model_path, env=env, device=training_device,
+                         custom_objects={
+                             "n_steps": ppo_params["n_steps"],
+                             "batch_size": ppo_params["batch_size"],
+                             "ent_coef": ppo_params["ent_coef"],
+                         })
     elif phase_id > 1 and os.path.exists(f"models/ppo_tank_phase{phase_id - 1}.zip"):
         prev_path = f"models/ppo_tank_phase{phase_id - 1}"
         print(f"  [Info] Kế thừa trí tuệ từ Phase {phase_id - 1}")
-        model = PPO.load(prev_path, env=env, device=training_device)
+        model = PPO.load(prev_path, env=env, device=training_device,
+                         custom_objects={
+                             "n_steps": ppo_params["n_steps"],
+                             "batch_size": ppo_params["batch_size"],
+                             "ent_coef": ppo_params["ent_coef"],
+                         })
     else:
         print("  [Info] Khởi tạo Model hoàn toàn mới!")
         model = PPO(
@@ -187,12 +231,10 @@ def train_phase(phase_id, resume_model_path=None, render=False):
         print("\n  [Chú ý] Chế độ biểu diễn ĐANG BẬT. Tốc độ train sẽ bị dìm xuống mức thấp nhất (bằng tốc độ mắt nhìn)...")
 
     try:
-        model.learn(total_timesteps=cfg["steps"], callback=[checkpoint_cb, progress_cb], reset_num_timesteps=False)
+        model.learn(total_timesteps=cfg["steps"], callback=[checkpoint_cb, progress_cb, self_play_cb], reset_num_timesteps=False)
         model.save(model_path)
         print(f"\n  [Hoàn Thành] Giai đoạn {phase_id} lưu tại: {model_path}.zip\n")
         
-        # --- QUAN TRỌNG: DỌN RÁC BỘ NHỚ ---
-        # Tránh việc RAM và VRAM (Card đồ họa) bị ngốn ngày càng gắt khi lưu file mới
         env.close()
         del model
         del opponent_pool
@@ -208,14 +250,24 @@ def train_phase(phase_id, resume_model_path=None, render=False):
         print(f"\n  Người dùng dừng sớm, vẫn lưu model tại: {model_path}.zip\n")
         sys.exit(0)
 
-def pipeline(render=False):
-    print("\n🚀 Bắt đầu Curriculum Learning 🚀\n")
+def pipeline(start_phase=1, resume_start=False, render=False):
+    print(f"\n🚀 Bắt đầu Curriculum Learning từ Phase {start_phase} 🚀\n")
     for phase_id in sorted(PHASES.keys()):
+        if phase_id < start_phase:
+            continue
+            
         expected_path = f"models/ppo_tank_phase{phase_id}.zip"
-        if os.path.exists(expected_path):
+        
+        # Nếu là phase đầu tiên và người dùng muốn resume, ta luôn nạp model cũ
+        if phase_id == start_phase and resume_start:
+             print(f"  🔄 Đang nạp lại model Phase {phase_id} để học tiếp...")
+             train_phase(phase_id, resume_model_path=f"models/ppo_tank_phase{phase_id}", render=render)
+        # Nếu đã có model phase này rồi thì bỏ qua để tiết kiệm thời gian
+        elif os.path.exists(expected_path):
              print(f"  ⏩ Đã có model Phase {phase_id}, tự bỏ qua...")
              continue
-        train_phase(phase_id, render=render)
+        else:
+             train_phase(phase_id, render=render)
     print("\n✅ TẤT CẢ CÁC GIAI ĐOẠN ĐÃ HOÀN THÀNH!")
 
 def test_model(phase_id):
@@ -236,7 +288,6 @@ def test_model(phase_id):
         while True:
             action, _ = model.predict(obs, deterministic=True)
             obs, reward, done, trunc, info = env.step(action)
-            # Dừng vòng lặp nếu người dùng đóng cửa sổ đồ họa
             if not info.get("window_open", True):
                 print("\n  [INFO] Đã đóng cửa sổ game.")
                 break
@@ -250,24 +301,26 @@ def test_model(phase_id):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pipeline", action="store_true", help="Chạy tự động từ GĐ 1 đến 7")
-    parser.add_argument("--phase", type=int, choices=range(1, 8), help="Chỉ định chạy 1 GĐ cụ thể")
+    parser.add_argument("--pipeline", action="store_true", help="Chạy tự động từ GĐ 1 đến 10")
+    parser.add_argument("--phase", type=int, choices=range(1, 12), help="Chỉ định chạy 1 GĐ cụ thể")
     parser.add_argument("--render", action="store_true", help="Mở cửa sổ Raylib xem (TRAIN RẤT CHẬM)")
-    parser.add_argument("--test", type=int, choices=range(1, 8), help="Xem AI múa ở Phase X (sau khi train)")
+    parser.add_argument("--test", type=int, choices=range(1, 12), help="Xem AI múa ở Phase X (sau khi train)")
     parser.add_argument("--resume", action="store_true", help="Tiếp tục học từ file save đang dở")
     args = parser.parse_args()
 
     if args.test:
         test_model(args.test)
     elif args.pipeline:
-        pipeline(render=args.render)
+        # Nếu có truyền --phase X khi đang chạy --pipeline, nó sẽ bắt đầu từ phase X
+        start_ph = args.phase if args.phase else 1
+        pipeline(start_phase=start_ph, resume_start=args.resume, render=args.render)
     elif args.phase:
-        # Nếu bật resume, truyền đường dẫn file hiện tại vào để cấy gene học tiếp
         resume_path = f"models/ppo_tank_phase{args.phase}" if args.resume else None
         train_phase(args.phase, resume_model_path=resume_path, render=args.render)
     else:
         print("Vui lòng chọn cách chạy:")
-        print("  python train_ai.py --pipeline             (Chạy tốc độ rùa, không màn hình)")
-        print("  python train_ai.py --pipeline --render    (Mở màn hình xem quá trình, CỰC CHẬM)")
-        print("  python train_ai.py --phase 1 --resume     (Học tiếp file save nếu bị ngắt giữa chừng)")
+        print("  python train_ai.py --pipeline             (Chạy từ đầu đến cuối)")
+        print("  python train_ai.py --pipeline --phase 9   (Bắt đầu từ Phase 9, bỏ qua nếu đã có file)")
+        print("  python train_ai.py --pipeline --phase 9 --resume  (Học TIẾP Phase 9 rồi tự động sang các Phase sau)")
+        print("  python train_ai.py --phase 1 --resume     (Chỉ học tiếp Phase 1 rồi dừng)")
         print("  python train_ai.py --test 7               (Xem AI diễn hài SAU KHI train xong)")

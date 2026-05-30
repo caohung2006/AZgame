@@ -248,7 +248,7 @@ void Renderer::DrawTank(const Tank& tank) {
     if (tank.currentWeapon == ItemType::DEATH_RAY) {
         float ba = tank.body->GetAngle();
         b2Vec2 fwd(-sinf(ba), cosf(ba));
-        float sx = x + fwd.x * 30.0f, sy = y - fwd.y * 30.0f;
+        float sx = x + fwd.x * 22.5f, sy = y - fwd.y * 22.5f;
         float ex = x + fwd.x * 800.0f, ey = y - fwd.y * 800.0f;
         DrawLineEx({sx, sy}, {ex, ey}, 4.0f, ColorAlpha(RED, 0.08f));
         DrawLineEx({sx, sy}, {ex, ey}, 2.0f, ColorAlpha(RED, 0.2f));
@@ -256,48 +256,48 @@ void Renderer::DrawTank(const Tank& tank) {
     }
 
     // --- Shadow ---
-    DrawRectanglePro({x + 2, y + 2, 28.0f, 28.0f}, {14.0f, 7.0f}, rot, {0, 0, 0, 25});
+    DrawRectanglePro({x + 2, y + 2, 21.0f, 21.0f}, {10.5f, 5.25f}, rot, {0, 0, 0, 25});
 
     // --- Xích xe (tracks) — 2 dải tối 2 bên ---
-    DrawRectanglePro({x, y, 6.0f, 32.0f}, {18.0f, 9.0f}, rot, c.track);  // Track trái
-    DrawRectanglePro({x, y, 6.0f, 32.0f}, {-12.0f, 9.0f}, rot, c.track); // Track phải
+    DrawRectanglePro({x, y, 4.5f, 24.0f}, {13.5f, 6.75f}, rot, c.track);  // Track trái
+    DrawRectanglePro({x, y, 4.5f, 24.0f}, {-9.0f, 6.75f}, rot, c.track); // Track phải
     // Chi tiết xích (3 vạch ngang mỗi bên)
     Color trackLine = {(unsigned char)(c.track.r + 25), (unsigned char)(c.track.g + 25), (unsigned char)(c.track.b + 25), 180};
     for (int i = 0; i < 4; i++) {
-        float yOff = -3.0f + i * 8.0f;
-        DrawRectanglePro({x, y, 6.0f, 1.5f}, {18.0f, 9.0f - yOff}, rot, trackLine);
-        DrawRectanglePro({x, y, 6.0f, 1.5f}, {-12.0f, 9.0f - yOff}, rot, trackLine);
+        float yOff = -2.25f + i * 6.0f;
+        DrawRectanglePro({x, y, 4.5f, 1.1f}, {13.5f, 6.75f - yOff}, rot, trackLine);
+        DrawRectanglePro({x, y, 4.5f, 1.1f}, {-9.0f, 6.75f - yOff}, rot, trackLine);
     }
 
     // --- Thân xe (body) 3 lớp tạo chiều sâu ---
-    DrawRectanglePro({x, y, 28.0f, 28.0f}, {14.0f, 7.0f}, rot, c.dark);    // Viền tối
-    DrawRectanglePro({x, y, 24.0f, 24.0f}, {12.0f, 5.0f}, rot, c.body);    // Thân chính
-    DrawRectanglePro({x, y, 16.0f, 16.0f}, {8.0f, 1.0f}, rot, c.light);    // Highlight
+    DrawRectanglePro({x, y, 21.0f, 21.0f}, {10.5f, 5.25f}, rot, c.dark);    // Viền tối
+    DrawRectanglePro({x, y, 18.0f, 18.0f}, {9.0f, 3.75f}, rot, c.body);    // Thân chính
+    DrawRectanglePro({x, y, 12.0f, 12.0f}, {6.0f, 0.75f}, rot, c.light);    // Highlight
 
     // --- Nòng súng (barrel) ---
-    DrawRectanglePro({x, y, 8.0f, 18.0f}, {4.0f, 24.0f}, rot, c.dark);     // Nòng viền
-    DrawRectanglePro({x, y, 5.0f, 17.0f}, {2.5f, 23.5f}, rot, c.barrel);   // Nòng trong
+    DrawRectanglePro({x, y, 6.0f, 13.5f}, {3.0f, 18.0f}, rot, c.dark);     // Nòng viền
+    DrawRectanglePro({x, y, 3.75f, 12.75f}, {1.875f, 17.625f}, rot, c.barrel);   // Nòng trong
     // Lỗ nòng (đầu)
-    DrawRectanglePro({x, y, 4.0f, 3.0f}, {2.0f, 24.0f}, rot, {50,50,50,255});
+    DrawRectanglePro({x, y, 3.0f, 2.25f}, {1.5f, 18.0f}, rot, {50,50,50,255});
 
     // --- Tháp pháo (turret) — vòng tròn tại tâm xoay ---
-    DrawCircle((int)x, (int)y, 9.0f, c.dark);
-    DrawCircle((int)x, (int)y, 7.0f, c.body);
-    DrawCircle((int)x, (int)y, 4.0f, c.light);
+    DrawCircle((int)x, (int)y, 6.75f, c.dark);
+    DrawCircle((int)x, (int)y, 5.25f, c.body);
+    DrawCircle((int)x, (int)y, 3.0f, c.light);
 
     // --- Khiên bảo vệ ---
     if (tank.hasShield) {
         float time = (float)GetTime();
         float pulse = 0.7f + 0.3f * sinf(time * 5.0f);
-        DrawCircle((int)x, (int)y, 28.0f, ColorAlpha(SKYBLUE, 0.08f * pulse));
-        DrawCircle((int)x, (int)y, 25.0f, ColorAlpha(SKYBLUE, 0.12f * pulse));
-        DrawCircleLines((int)x, (int)y, 26.0f, ColorAlpha({80, 170, 255, 255}, 0.6f * pulse));
-        DrawCircleLines((int)x, (int)y, 28.0f, ColorAlpha({80, 170, 255, 255}, 0.3f * pulse));
+        DrawCircle((int)x, (int)y, 21.0f, ColorAlpha(SKYBLUE, 0.08f * pulse));
+        DrawCircle((int)x, (int)y, 18.75f, ColorAlpha(SKYBLUE, 0.12f * pulse));
+        DrawCircleLines((int)x, (int)y, 19.5f, ColorAlpha({80, 170, 255, 255}, 0.6f * pulse));
+        DrawCircleLines((int)x, (int)y, 21.0f, ColorAlpha({80, 170, 255, 255}, 0.3f * pulse));
         // Tia sáng trên khiên
         for (int i = 0; i < 6; i++) {
             float a = time * 2.0f + i * PI / 3.0f;
-            float px = x + cosf(a) * 26.0f;
-            float py = y + sinf(a) * 26.0f;
+            float px = x + cosf(a) * 19.5f;
+            float py = y + sinf(a) * 19.5f;
             DrawCircle((int)px, (int)py, 2.0f, ColorAlpha({180, 220, 255, 255}, 0.5f * pulse));
         }
     }

@@ -27,7 +27,7 @@ int main() {
     game.configs[2] = {KEY_I, KEY_K, KEY_J, KEY_L, KEY_U, KEY_O};
     game.configs[3] = {KEY_KP_8, KEY_KP_5, KEY_KP_4, KEY_KP_6, KEY_KP_7, KEY_KP_9};
 
-    std::vector<bool> isBot = {false, false, false, false};
+    std::vector<bool> isBot = {false, true, false, false}; // P1 là người, P2 mặc định là Bot
 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AZ Game");
     SetTargetFPS(60);
@@ -35,6 +35,7 @@ int main() {
 
     // Khởi tạo các Bot bên ngoài vòng lặp chính để chúng không bị "mất trí nhớ" mỗi frame
     std::vector<Bot*> bots(4, nullptr);
+    if (isBot[1]) bots[1] = new Bot(7, 1); // Khởi tạo Bot cấp 7 (Kẻ đào tẩu) cho P2
 
     while (!WindowShouldClose()) {
         // --- Xử lý Settings UI ---
@@ -47,7 +48,7 @@ int main() {
             // Cập nhật lại danh sách bot nếu có thay đổi trong cài đặt
             for (int i = 0; i < 4; i++) {
                 if (isBot[i]) {
-                    if (!bots[i]) bots[i] = new Bot(5, i);
+                    if (!bots[i]) bots[i] = new Bot(7, i); // Cài đặt Bot cấp 7
                 } else {
                     if (bots[i]) { delete bots[i]; bots[i] = nullptr; }
                 }
