@@ -3,33 +3,34 @@
 #include "constants.h"
 #include <vector>
 
-/**
- * @class Bot
- * @brief Hệ thống AI Bot tích hợp thẳng vào game C++.
- * Cho phép người chơi đấu với Bot trong main.exe hoặc dùng để train RL.
- */
 class Bot {
 public:
     int level;
     int playerIndex;
 
-    // Chuỗi waypoint mà bot đang đi theo (đi hết rồi mới tính lại A*)
-    std::vector<b2Vec2> cachedPath;    // Danh sách các waypoint đã smooth
-    int currentWaypointIdx = 0;        // Index waypoint đang đi tới
-    int stuckCounter = 0;              // Đếm frame bị kẹt để tự tính lại đường
-    
-    b2Vec2 lastEnemyPos = b2Vec2(0, 0); // Vị trí địch lần cuối tính A*
-    
-    // Khi kẹt: đánh dấu ô bị kẹt + lùi xe trước khi tìm đường mới
-    std::vector<std::pair<int,int>> blockedCells; // Các ô bị kẹt (row, col) - A* sẽ phạt nặng
-    int backupTimer = 0;               // Đếm frame lùi xe (> 0 = đang lùi)
+    // Pathfinding
+    std::vector<b2Vec2> cachedPath;
+    int currentWaypointIdx = 0;
+    int stuckCounter = 0;
+    b2Vec2 lastGoalPos = b2Vec2(0, 0);
+    b2Vec2 lastEnemyPos = b2Vec2(0, 0);
+    std::vector<std::pair<int,int>> blockedCells;
+    int backupTimer = 0;
+    int backupTurnDir = 1;
+    int pathRecalcCD = 0;
+
+    // Combat
+    int idleTimer = 0;
+    int strafeDir = 1;
+    int strafeTimer = 0;
+    int bounceSearchCD = 0;
+    float cachedBounceAngle = 0;
+    bool hasBounceShot = false;
+
+    // Dodge
+    int dodgeLockTimer = 0;
+    int dodgeLockDir = 1;
 
     Bot(int level, int playerIndex);
-
-    /**
-     * @brief Tính toán và trả về hành động của Bot trong frame hiện tại.
-     * @param game Con trỏ đến trạng thái game hiện tại.
-     * @return Hành động (phím bấm giả lập) của Bot.
-     */
     TankActions GetAction(Game* game);
 };

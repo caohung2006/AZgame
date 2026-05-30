@@ -61,7 +61,7 @@ int main() {
             for (int i = 0; i < 4; i++) {
                 if (bots[i]) {
                     bots[i]->cachedPath.clear();
-                    bots[i]->lastEnemyPos = b2Vec2(0, 0);
+                    bots[i]->lastGoalPos = b2Vec2(0, 0);
                     bots[i]->stuckCounter = 0;
                     bots[i]->currentWaypointIdx = 0;
                 }
