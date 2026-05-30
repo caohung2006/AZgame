@@ -76,12 +76,14 @@ static float RunEpisode(Network &agentNet, const PhaseConfig &cfg, int seed,
   EnemyType currentEnemy = cfg.enemyType;
   if (cfg.leagueRate > 0.0f) {
     if ((AZ::Rand() % 100) < (int)(cfg.leagueRate * 100)) {
-      if (cfg.phase == Phase::PHASE4)
-        currentEnemy = EnemyType::RULE_V2; // Trộn V2 để AI ôn bài "nghiệp dư"
+      if (cfg.phase == Phase::PHASE3)
+        currentEnemy = EnemyType::RULE_V1; // P3: Trộn V1 để ôn lách mê cung
+      else if (cfg.phase == Phase::PHASE4)
+        currentEnemy = EnemyType::RULE_V2; // P4: Trộn V2 để ôn bài chiến đấu
       else if (cfg.phase == Phase::PHASE5)
-        currentEnemy = EnemyType::RULE_V3; // Trộn V3 để AI giữ chuẩn Sniper
+        currentEnemy = EnemyType::RULE_V3; // P5: Trộn V3 để giữ chuẩn Sniper
       else
-        currentEnemy = EnemyType::STATIONARY; // P1,2,3: Trộn bao cát đứng yên
+        currentEnemy = EnemyType::STATIONARY; // P1,P2: Trộn bao cát đứng yên
     }
   }
 
@@ -100,7 +102,7 @@ static float RunEpisode(Network &agentNet, const PhaseConfig &cfg, int seed,
 
     std::vector<TankActions> actions(game.numPlayers);
     actions[0] = OutputToActions(agentOut);
-    if (actions[0].shoot)
+    if (agentObs[21] < 0.99f)
       agentDidShoot = true;
 
     switch (currentEnemy) {
@@ -232,14 +234,15 @@ static bool RunPhase(Population &pop, const PhaseConfig &cfg,
         printf("      [Checkpoint: %s]\n", ckpt.c_str());
     }
     if (cfg.promotionThreshold > 0.0f && best >= cfg.promotionThreshold) {
-      // Ép train ít nhất 15% số Generation tối đa để đảm bảo sự ổn định
-      int minGen = std::max(10, (int)(cfg.maxGenerations * 0.15f));
+      // Ép train ít nhất 5% số Generation tối đa để đảm bảo sự ổn định
+      int minGen = std::max(10, (int)(cfg.maxGenerations * 0.05f));
       if (gen >= minGen) {
         streak++;
         printf("  -> [Streak: %d/%d] Best fitness %.1f >= threshold!\n", streak,
                cfg.streakRequired, best);
         if (streak >= cfg.streakRequired) {
-          printf("\n  ✅ Promotion threshold %.1f maintained for %d gens! Next phase.\n",
+          printf("\n  ✅ Promotion threshold %.1f maintained for %d gens! Next "
+                 "phase.\n",
                  cfg.promotionThreshold, cfg.streakRequired);
           promoted = true;
           break;
@@ -258,6 +261,7 @@ static bool RunPhase(Population &pop, const PhaseConfig &cfg,
   if (logFile)
     fclose(logFile);
   return promoted;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 int main(int argc, char *argv[]) {
@@ -344,10 +348,14 @@ int main(int argc, char *argv[]) {
     printf("\n      >>> Phase %d Completed. Best Fitness: %.2f\n\n", p, bFit);
 
     if (!graduated) {
-      printf("\n  ❌ Phase %d: KHÔNG ĐẠT STREAK sau %d generations!\n", p, cfg.maxGenerations);
-      printf("  => Training DỪNG LẠI. Genome tốt nhất đã lưu tại: agents/%s_final.bin\n", cfg.name.c_str());
+      printf("\n  ❌ Phase %d: KHÔNG ĐẠT STREAK sau %d generations!\n", p,
+             cfg.maxGenerations);
+      printf("  => Training DỪNG LẠI. Genome tốt nhất đã lưu tại: "
+             "agents/%s_final.bin\n",
+             cfg.name.c_str());
       printf("  => Bạn có thể:\n");
-      printf("     1. Chạy lại: ./aztrain.exe 4 agents/%s_final.bin\n", cfg.name.c_str());
+      printf("     1. Chạy lại: ./aztrain.exe 4 agents/%s_final.bin\n",
+             cfg.name.c_str());
       printf("     2. Điều chỉnh Curriculum.h rồi train lại\n");
       break;
     }

@@ -104,9 +104,24 @@ inline float ComputeStepReward(const Game &game, int agentIdx, bool canSeeEnemy,
       if (angVel > 3.0f && speedNow < 0.5f)
         reward -= 3.0f * DT_SCALE;
 
-      // Thưởng nhẹ khi di chuyển về phía waypoint (giữ tín hiệu hướng dẫn tối thiểu)
+      // Thưởng nhẹ khi di chuyển về phía waypoint (giữ tín hiệu hướng dẫn)
       if (!canSeeEnemy && fwdSpeed > 0.5f && dotWp > 0.0f)
         reward += 1.0f * DT_SCALE;
+
+      // Approach nhẹ — chỉ là hint, không chi phối
+      float approachDelta = prevDist - outCurrDist;
+      if (approachDelta > 0.01f)
+        reward += std::min(approachDelta * 2.0f, 0.5f) * DT_SCALE;
+
+      // ★ PHẠT TƯỜNG + LÙI XE (Kỹ năng sinh tồn — phải duy trì ở MỌI Phase)
+      if (noseInWall) {
+        if (actions.forward)
+          reward -= 6.0f * DT_SCALE;
+        else if (actions.backward)
+          reward += 1.0f * DT_SCALE;
+        else
+          reward -= 2.0f * DT_SCALE;
+      }
 
       return reward;
     }
@@ -114,31 +129,87 @@ inline float ComputeStepReward(const Game &game, int agentIdx, bool canSeeEnemy,
     // =====================================================================
     // 📚 PHASE 1, 2, 3: DENSE REWARD (CẦM TAY CHỈ VIỆC)
     // =====================================================================
+    //
+    // Triết lý thiết kế: 2 CHẾ ĐỘ rõ ràng
+    //   NAVIGATION (chưa thấy địch): Đi theo waypoint, tìm kiếm
+    //   ENGAGEMENT (thấy địch):      Giữ tầm bắn, ngắm, bắn
+    // =====================================================================
+
+    // ══ KÊNH 0: QUẢN LÝ KHOẢNG CÁCH (Distance Management) ══
+    // Tạo "giếng hấp dẫn" tại 3-8m: AI bị hút về tầm bắn tối ưu
+    if (outCurrDist > 8.0f) {
+      // Xa quá → thưởng tiến gần (nhưng YẾU HƠN aim reward)
+      float approachDelta = prevDist - outCurrDist;
+      if (approachDelta > 0.01f) {
+        reward += std::min(approachDelta * 3.0f, 0.08f) * DT_SCALE * 60.0f;
+        // Tối đa ~5 pts/s — luôn thấp hơn aim reward (8 pts/s)
+      }
+    } else if (outCurrDist >= 3.0f) {
+      // ★ SWEET SPOT (3-8m): Thưởng LIÊN TỤC cho việc giữ vị trí tối ưu
+      reward += 3.0f * DT_SCALE;
+    } else if (outCurrDist >= 1.8f) {
+      // Hơi gần (1.8-3m): Phạt nhẹ để đẩy ra sweet spot
+      reward -= 3.0f * DT_SCALE;
+    }
+    // < 1.8m: Anti-Kamikaze bên dưới sẽ phạt nặng hơn
 
     // ══ KÊNH 1: VẬN ĐỘNG ══
 
-    // [Anti-Kamikaze]: Phạt áp sát quá gần (< 1.8m) khi không có khiên
-    if (outCurrDist < 1.8f && !actions.shield) {
+    // [Anti-Kamikaze]: Phạt áp sát quá gần (< 1.8m)
+    // Bypass khi khiên ĐANG BẬT (trạng thái thực, không phải nút bấm)
+    bool shieldActive = (agentObs[22] > 0.5f);
+    if (outCurrDist < 1.8f && !(shieldActive && phase >= Phase::PHASE3)) {
       reward -= 5.0f * DT_SCALE;
     }
 
-    if (noseInWall && speedNow < 0.2f && actions.forward) {
-      // Phạt húc tường
-      reward -= 4.0f * DT_SCALE;
-    } else {
+    if (noseInWall) {
+      if (actions.forward) {
+        reward -= 6.0f * DT_SCALE; // Phạt húc tường
+      } else if (actions.backward) {
+        reward += 1.0f * DT_SCALE; // Thưởng lùi NHẸ (chặn wall-scraping exploit)
+      } else {
+        reward -= 2.0f * DT_SCALE; // Phạt idle ở tường
+      }
+    } else if (!canSeeEnemy || outCurrDist > 8.0f) {
+      // ── NAVIGATION MODE ──
+      // Kích hoạt khi: chưa thấy địch HOẶC thấy địch nhưng còn XA (>8m)
+      // Fix: Phase 1 SPARSE luôn canSeeEnemy=true → cần outCurrDist>8m để AI học lái
       if (phase == Phase::PHASE1 || phase == Phase::PHASE2) {
-        // Chống Moonwalk: Bắt buộc đạp ga TỚI (fwdSpeed > 0) và HƯỚNG MẶT về đích
         if (fwdSpeed > 0.0f && dotWp > 0.0f) {
-          reward += (fwdSpeed / maxSpeed) * dotWp * 10.0f * DT_SCALE;
+          reward += (fwdSpeed / maxSpeed) * dotWp * 8.0f * DT_SCALE;
         }
       } else {
-        // Phase 3: Đi bình thường (chấp nhận lùi xe chiến thuật)
         if (moveDot > 0.0f)
-          reward += (moveDot / maxSpeed) * 10.0f * DT_SCALE;
+          reward += (moveDot / maxSpeed) * 8.0f * DT_SCALE;
+      }
+
+      // [Anti-Retreat P3+]: Phạt đi lùi khi không sát tường và chưa thấy địch
+      // → Ép AI phải TIẾN VỀ PHÍA TRƯỚC để tìm địch, không được lùi tránh
+      // BỎ QUA phạt nếu đang có cảnh báo đạn (để AI tự do lùi né đạn)
+      if (phase >= Phase::PHASE3 && actions.backward && !dangerAlert) {
+        reward -= 4.0f * DT_SCALE;
+      }
+    } else {
+      // ── ENGAGEMENT MODE (canSeeEnemy && dist <= 8m && !noseInWall) ──
+
+      // [Anti-Retreat P3+]: Phạt đi LÙI khi THẤY ĐỊCH ở tầm bắn
+      // → Đây là exploit chính của "turtle": lùi xe + giơ khiên
+      // NGOẠI TRỪ: (1) đạn đang bay tới (dangerAlert), (2) quá gần (< 3m) cần lùi ra sweet spot
+      if (phase >= Phase::PHASE3 && actions.backward && !dangerAlert && outCurrDist >= 3.0f) {
+        reward -= 6.0f * DT_SCALE;
       }
     }
 
-    // ══ KÊNH 2: KỶ LUẬT CẮM TRẠI & BEYBLADE (Áp dụng cho MỌI Phase 1-3) ══
+    // [Anti-Retreat P3+]: Phạt tăng khoảng cách khi thấy địch (bỏ chạy khỏi sweet spot)
+    // CHỈ phạt khi đang ở sweet spot (>=3m). Nếu <3m thì được phép lùi ra.
+    if (phase >= Phase::PHASE3 && canSeeEnemy && outCurrDist >= 3.0f && outCurrDist <= 8.0f && !dangerAlert) {
+      float retreatDelta = outCurrDist - prevDist;
+      if (retreatDelta > 0.01f) {
+        reward -= retreatDelta * 5.0f; // Khoảng -15 pts/s nếu lùi max tốc, cực kỳ đanh thép
+      }
+    }
+
+    // ══ KÊNH 2: KỶ LUẬT CẮM TRẠI & BEYBLADE (MỌI Phase 1-3) ══
     if (!canSeeEnemy) {
       // Đứng im khi chưa thấy địch → ăn phạt
       if (speedNow < 0.5f)
@@ -146,62 +217,87 @@ inline float ComputeStepReward(const Game &game, int agentIdx, bool canSeeEnemy,
       // Xoay tít mù → ăn phạt nặng hơn
       if (angVel > 2.5f)
         reward -= 5.0f * DT_SCALE;
+    } else if (outCurrDist > 8.0f) {
+      // Thấy địch nhưng XA → phạt đứng im (ép phải tiến gần)
+      if (speedNow < 0.5f)
+        reward -= 3.0f * DT_SCALE;
     } else {
-      // Thấy địch rồi mà vẫn đứng ngồi ngáp → ăn phạt nhẹ
-      if (speedNow < 0.5f && dotAim < 0.85f && angVel < 0.5f)
-        reward -= 2.0f * DT_SCALE;
+      // Thấy địch ở tầm gần mà vẫn đứng ngồi không ngắm → ăn phạt
+      if (speedNow < 0.3f && dotAim < 0.80f && angVel < 0.5f)
+        reward -= 3.0f * DT_SCALE;
     }
 
-    // ══ KÊNH 3: ĐỊNH HƯỚNG TẦM NHÌN ══
+    // ══ KÊNH 3: NGẮM BẮN (CHỈ khi thấy địch) ══
     if (canSeeEnemy) {
-      // Thưởng xoay mặt hướng về địch (nhưng giảm tuyến tính khi quá gần)
-      float aimScale = (outCurrDist > 3.0f) ? 10.0f : 5.0f;
+      // Thưởng ngắm chính xác — ĐÂY LÀ TÍN HIỆU CHÍNH khi engagement
+      float aimScale;
+      if (outCurrDist < 3.0f)
+        aimScale = 4.0f; // Gần: giảm, anti-kamikaze bù
+      else if (outCurrDist < 8.0f)
+        aimScale = 10.0f; // ★ Sweet spot: thưởng MẠNH NHẤT
+      else
+        aimScale = 3.0f; // Xa: giảm, ép tiến gần
       reward += dotAim * aimScale * DT_SCALE;
     } else if (!noseInWall) {
-      // Chưa thấy địch → Nhìn theo Waypoint
-      reward += dotWp * 5.0f * DT_SCALE;
+      // Chưa thấy địch → Nhìn theo Waypoint (hỗ trợ navigation)
+      reward += dotWp * 4.0f * DT_SCALE;
     }
 
-    // ══ KÊNH 4: KHIÊN (Chỉ mở ở Phase 3 trở lên) ══
+    // ══ KÊNH 4: KHIÊN (Phase 3+) ══
     if (phase == Phase::PHASE3) {
-      if (dangerAlert) {
-        if (actions.shield)
-          reward += 10.0f * DT_SCALE;
-        if (speedNow > 1.0f || std::abs(fwdSpeed) > 1.0f)
-          reward += 2.0f * DT_SCALE;
-      } else {
-        if (actions.shield)
-          reward -= 2.0f * DT_SCALE;
+      bool shieldReady = (agentObs[23] > 0.99f);  // Cooldown xong chưa?
+      // shieldActive đã khai báo ở trên (dòng anti-kamikaze)
+
+      if (actions.shield && shieldReady && !shieldActive) {
+        if (dangerAlert) {
+          // ★ BẬT ĐÚNG LÚC: Đạn tới -> Thưởng NÓNG 1 lần lớn (không nhân DT)
+          reward += 10.0f;
+        } else {
+          // Bật khiên lãng phí -> Phạt NÓNG 1 lần (không nhân DT)
+          reward -= 5.0f;
+        }
       }
+
+      // Thưởng/phạt khi khiên đang active
+      if (shieldActive) {
+        if (dangerAlert) {
+          reward += 3.0f * DT_SCALE;  // Đang che đạn → tốt
+        }
+      }
+
+      // Thưởng né đạn bằng di chuyển (dù có khiên hay không)
+      if (dangerAlert && speedNow > 1.0f)
+        reward += 2.0f * DT_SCALE;
     }
 
     // ══ KÊNH 5: XẠ THỦ ══
     if (actions.shoot) {
       if (phase == Phase::PHASE1 || phase == Phase::PHASE2) {
-        // Kỷ luật thép: Chỉ thưởng khi ngắm chuẩn VÀ thấy địch
-        if (canSeeEnemy && dotAim > 0.90f) {
-          reward += 15.0f * DT_SCALE;
+        if (canSeeEnemy && dotAim > 0.90f && outCurrDist < 10.0f) {
+          reward += 15.0f * DT_SCALE; // Bắn chuẩn: thưởng cao nhất
         } else {
-          reward -= 4.0f * DT_SCALE; // Phạt xả đạn linh tinh
+          reward -= 4.0f * DT_SCALE; // Xả đạn bừa
         }
       } else if (phase == Phase::PHASE3) {
-        // Đại học: Kỷ luật thép + kiểm tra đạn
         if (!canSeeEnemy)
-          reward -= 6.0f * DT_SCALE;
+          reward -= 4.0f * DT_SCALE;  // 6→4: Giảm nhẹ để AI không sợ bắn
         else {
           if (ammoLevel > 0.01f) {
-            if (dotAim > 0.90f)
-              reward += 10.0f * DT_SCALE;
+            if (dotAim > 0.85f && outCurrDist < 10.0f)
+              reward += 12.0f * DT_SCALE; // 10→12, 0.90→0.85: Dễ đạt hơn + thưởng cao hơn
+            else if (dotAim > 0.60f && outCurrDist < 10.0f)
+              reward -= 1.0f * DT_SCALE;  // Bắn lệch nhẹ: phạt NHẸ (không -5)
             else
-              reward -= 2.0f * DT_SCALE;
+              reward -= 3.0f * DT_SCALE;  // 5→3: Bắn bừa vẫn phạt nhưng NHẸ HƠN
           } else
             reward -= 1.0f * DT_SCALE;
         }
       }
     } else {
-      // Phạt chần chừ khi đã ngắm chuẩn ở P3
+      // Phạt chần chừ khi ngắm tương đối chuẩn tại sweet spot ở P3
+      // 0.95→0.85: Hạ ngưỡng để AI bị ép bắn sớm hơn, không chờ ngắm hoàn hảo
       if (phase == Phase::PHASE3 && canSeeEnemy && ammoLevel > 0.01f &&
-          dotAim > 0.95f) {
+          dotAim > 0.85f && outCurrDist >= 3.0f && outCurrDist < 8.0f) {
         reward -= 5.0f * DT_SCALE;
       }
     }
@@ -238,13 +334,10 @@ inline float ComputeEndBonus(const Game &game, int agentIdx,
   // =====================================================================
   if (phase == Phase::PHASE4 || phase == Phase::PHASE5) {
     if (agentWin) {
-      // Giết địch càng nhanh thưởng càng khủng
       bonus += 500.0f + (timeRatio * 500.0f);
     } else if (!agentAlive) {
-      // Chết là mất trắng
       bonus -= 500.0f;
     } else if (agentAlive && enemyAlive && stepsTaken >= maxSteps - 2) {
-      // Hết giờ mà không ai chết -> Cả 2 ăn phạt cực nặng
       bonus -= 500.0f;
     }
     return bonus;
@@ -254,24 +347,25 @@ inline float ComputeEndBonus(const Game &game, int agentIdx,
   // 📚 PHASE 1, 2, 3: ĐÁNH GIÁ CHUẨN
   // =====================================================================
   if (agentWin) {
-    // Thưởng thắng: Luôn cho 300 điểm dù thắng bằng cách nào
-    // (agentDidShoot check cũ gây ra bug "sợ thắng")
-    bonus += 300.0f;
+    bonus += 400.0f; // Tăng phần thưởng thắng để bù đắp rủi ro
     bonus += timeRatio * 200.0f;
-
-    // Thưởng thêm nếu thắng bằng SÚNG (khuyến khích bắn tỉa)
     if (agentDidShoot)
       bonus += 50.0f;
-  }
-
-  if (agentAlive) {
+  } else if (agentAlive) {
     if (enemyAlive && stepsTaken >= maxSteps - 2) {
-      bonus -= 200.0f; // Bỏ lỡ cơ hội giết địch
+      // Hết giờ nhưng vẫn sống (Hòa)
+      if (phase == Phase::PHASE3 && !agentDidShoot) {
+        bonus -= 500.0f; // Rùa rụt cổ, không bắn phát nào
+      } else {
+        bonus -= 300.0f; // Cố gắng chiến đấu nhưng chưa giết được (Phạt nặng)
+      }
     } else {
-      bonus += 100.0f; // Sống sót vẻ vang
+      bonus += 100.0f; // Sống sót (enemy chết do bom/ngoại cảnh)
     }
   } else {
-    bonus -= 150.0f; // Bị hạ gục
+    // CHẾT LÀ ĐIỀU TỒI TỆ (Nhưng vẫn tốt hơn rùa rụt cổ)
+    // Thang điểm: Thắng (+400) > Hòa có bắn (-300) > Chết (-400) > Rùa rụt cổ (-500)
+    bonus -= 400.0f; 
   }
 
   return bonus;

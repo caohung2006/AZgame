@@ -334,50 +334,41 @@ b2Vec2 GameMap::GetNextWaypoint(b2Vec2 agentPos, b2Vec2 enemyPos) const {
   int farR = pathBuf[targetIdx].first;
   int farC = pathBuf[targetIdx].second;
 
-  // 2. KỸ THUẬT "AUTO-ALIGN THÔNG MINH" (Bản chốt Không Góc Chết)
+  // 2. KỸ THUẬT PURE PURSUIT (CÀ RỐT TRÊN GẬY) - Chống giật 100%
+  b2Vec2 P1 = CellToWorld(sr, sc);
+  b2Vec2 P2 = (targetIdx == 0) ? enemyPos : CellToWorld(farR, farC);
   
-  int nextR = pathBuf[pathCount - 1].first;
-  int nextC = pathBuf[pathCount - 1].second;
-  b2Vec2 nextCenter = CellToWorld(nextR, nextC);
-  b2Vec2 currentCenter = CellToWorld(sr, sc);
+  b2Vec2 lineDir = P2 - P1;
+  float totalLen = lineDir.Length();
   
-  b2Vec2 dir = nextCenter - currentCenter;
-  if (dir.Length() > 1e-4f) dir.Normalize();
-
-  // Tính "Tiến độ" (Progress) dọc theo hướng đi
-  float progress = (agentPos.x - currentCenter.x) * dir.x + 
-                   (agentPos.y - currentCenter.y) * dir.y;
-
-  // Khóa Waypoint nếu xe chưa lọt qua ngã tư, HOẶC đã qua nhưng bị lấn làn (drift)
-  if (progress < 0.3f) {
-    float dx = std::abs(agentPos.x - currentCenter.x);
-    float dy = std::abs(agentPos.y - currentCenter.y);
-    
-    // Lộ trình đi NGANG, nhưng bị lệch Y -> Kéo Y về tâm
-    if (std::abs(dir.x) > 0.5f && dy > 0.8f) {
-        float targetX = currentCenter.x;
-        // [VÁ LỖI TỤT WAYPOINT]: Nếu xe đã chạy lố qua tâm X, cấm trả về currentCenter.x 
-        // Thay vào đó, đẩy targetX lên phía trước mũi xe 1.5 mét để xe cứ thế tiến lên!
-        if ((dir.x > 0 && agentPos.x > currentCenter.x) || 
-            (dir.x < 0 && agentPos.x < currentCenter.x)) {
-            targetX = agentPos.x + dir.x * 1.5f;
-        }
-        return b2Vec2(targetX, currentCenter.y); 
-    }
-    
-    // Lộ trình đi DỌC, nhưng bị lệch X -> Kéo X về tâm
-    if (std::abs(dir.y) > 0.5f && dx > 0.8f) {
-        float targetY = currentCenter.y;
-        // Tương tự, cấm điểm mục tiêu tụt lại phía sau lưng
-        if ((dir.y > 0 && agentPos.y > currentCenter.y) || 
-            (dir.y < 0 && agentPos.y < currentCenter.y)) {
-            targetY = agentPos.y + dir.y * 1.5f;
-        }
-        return b2Vec2(currentCenter.x, targetY); 
-    }
+  if (totalLen < 1e-4f) {
+      return enemyPos; 
   }
-
-  // 3. ĐÃ AN TOÀN QUAY CUA -> Phóng tầm mắt ra xa!
-  b2Vec2 farCenter = CellToWorld(farR, farC);
-  return farCenter;
+  
+  lineDir.Normalize();
+  
+  // Chiếu vị trí hiện tại của xe lên trục đường thẳng P1->P2
+  float projLen = (agentPos.x - P1.x) * lineDir.x + (agentPos.y - P1.y) * lineDir.y;
+  
+  // Tính khoảng cách vuông góc từ xe đến đường thẳng P1->P2
+  b2Vec2 projPoint(P1.x + lineDir.x * projLen, P1.y + lineDir.y * projLen);
+  float orthoDist = (agentPos - projPoint).Length();
+  
+  // [ANTI-CORNER CUTTING]: Nếu xe còn cách xa trục đường mới (đang tiến vào ngã rẽ),
+  // bắt buộc phải đi tới tâm ngã rẽ (P1) trước để tránh bẻ cua quá sớm gây kẹt tường.
+  if (orthoDist > 1.0f) {
+      return P1;
+  }
+  
+  // Lookahead: Luôn đặt "củ cà rốt" cách xe 3.0m (1 ô) về phía trước trên trục giữa
+  float lookahead = 3.0f; 
+  float targetDist = projLen + lookahead;
+  
+  // Nếu cà rốt vượt quá ngã rẽ, giữ nó ở tâm ngã rẽ để xe chuẩn bị cua
+  if (targetDist > totalLen) {
+      targetDist = totalLen;
+  }
+  
+  b2Vec2 carrot(P1.x + lineDir.x * targetDist, P1.y + lineDir.y * targetDist);
+  return carrot;
 }
