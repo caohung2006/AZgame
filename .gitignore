@@ -11,3 +11,4 @@ python/__pycache__/
 bridge_waypoints.txt
 *.log
 maps/
+run/

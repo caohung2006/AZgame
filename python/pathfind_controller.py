@@ -5,6 +5,8 @@ import os
 import tempfile
 import time
 from typing import Dict, List, Optional, Tuple
+import sys
+import csv
 
 from pathfind_env import BridgeEnv, heading_error
 from pathfind_planner import Planner
@@ -33,6 +35,10 @@ _BACKOFF_FRAMES = 12
 _TURN_ON_THRESHOLD = 0.18
 _TURN_OFF_THRESHOLD = 0.12
 _ENABLE_PERIODIC_REPLAN = True
+
+_PLANNER_ALGORITHM = os.environ.get("AZ_ALGO", "astar")
+_ASTAR_HEURISTIC = os.environ.get("AZ_HEURISTIC", "manhattan")
+_LOG_FILE = os.environ.get("AZ_LOG", None)
 
 
 def _tank(snapshot: Dict, player_index: int) -> Optional[Dict]:
@@ -207,7 +213,23 @@ def main() -> None:
                     planner = _build_planner(snapshot)
                     plan_start = time.perf_counter()
                     planned_waypoints = _plan_waypoints(planner, me, enemy)
-                    _record_plan_time((time.perf_counter() - plan_start) * 1000.0)
+                    duration_ms = (time.perf_counter() - plan_start) * 1000.0
+                    _record_plan_time(duration_ms)
+                    if _LOG_FILE:
+                        display_h = _ASTAR_HEURISTIC if _PLANNER_ALGORITHM == "astar" else "uninformed"
+                        try:
+                            with open(_LOG_FILE, "a", newline="") as f:
+                                writer = csv.writer(f)
+                                writer.writerow([
+                                    snapshot.get("dt", 0),
+                                    _PLANNER_ALGORITHM,
+                                    display_h,
+                                    planned_waypoints is not None,
+                                    duration_ms,
+                                    len(planned_waypoints) if planned_waypoints else 0
+                                ])
+                        except OSError:
+                            pass
                     if planned_waypoints is not None:
                         waypoints = planned_waypoints
                         last_good_waypoints = planned_waypoints

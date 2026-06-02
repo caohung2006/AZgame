@@ -305,9 +305,15 @@ class Planner:
 
         return dirs
 
-    def plan_astar(self, start: GridPos, goal: GridPos) -> PathResult:
+    def plan_astar(self, start: GridPos, goal: GridPos, heuristic: str = "manhattan") -> PathResult:
         if not self.is_walkable(start) or not self.is_walkable(goal):
             return PathResult(path=[], reached_goal=False)
+
+        heuristic_func = self.heuristic_manhattan
+        if heuristic == "euclidean":
+            heuristic_func = self.heuristic_euclidean
+        elif heuristic == "chebyshev":
+            heuristic_func = self.heuristic_chebyshev
 
         frontier = []
         heapq.heappush(frontier, (0, start))
@@ -321,7 +327,7 @@ class Planner:
                 new_cost = cost_so_far[current] + cost
                 if next_node not in cost_so_far or new_cost < cost_so_far[next_node]:
                     cost_so_far[next_node] = new_cost
-                    priority = new_cost + self.heuristic_manhattan(next_node, goal)
+                    priority = new_cost + heuristic_func(next_node, goal)
                     heapq.heappush(frontier, (priority, next_node))
                     came_from[next_node] = current
 
