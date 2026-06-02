@@ -20,6 +20,8 @@ const char* kControlFile = "run/bridge_control.txt";
 const char* kStateTmpFile = "run/bridge_state.tmp";
 const char* kStateFile = "run/bridge_state.json";
 const char* kWaypointsFile = "run/bridge_waypoints.txt";
+const char* kMazeManifestTxt = "maps/generated/manifest.txt";
+const char* kMazeDir = "maps/generated";
 
 struct WaypointOverlay {
   std::vector<Vector2> points;
@@ -30,6 +32,108 @@ struct WaypointOverlay {
   float pfAvgMs = 0.0f;
   bool valid = false;
 };
+
+struct MazeLibrary {
+  std::vector<std::string> files;
+  size_t index = 0;
+};
+
+std::vector<std::string> LoadMazeList(const char* manifestPath, const char* baseDir) {
+  std::vector<std::string> files;
+  std::ifstream in(manifestPath);
+  if (!in) {
+    return files;
+  }
+
+  std::string line;
+  while (std::getline(in, line)) {
+    if (line.empty() || line[0] == '#') {
+      continue;
+    }
+    if (!line.empty() && line.back() == '\r') {
+      line.pop_back();
+    }
+    files.push_back(std::string(baseDir) + "/" + line);
+  }
+
+  return files;
+}
+
+bool LoadMazeWalls(const std::string& path, std::vector<GameMap::WallRect>& out) {
+  out.clear();
+  std::ifstream in(path);
+  if (!in) {
+    return false;
+  }
+
+  std::string line;
+  while (std::getline(in, line)) {
+    if (line.empty() || line[0] == '#') {
+      continue;
+    }
+    std::istringstream ls(line);
+    GameMap::WallRect rect{};
+    if (ls >> rect.x >> rect.y >> rect.width >> rect.height) {
+      out.push_back(rect);
+    }
+  }
+
+  return !out.empty();
+}
+
+bool LoadNextMaze(MazeLibrary& library, std::vector<GameMap::WallRect>& out) {
+  if (library.files.empty()) {
+    return false;
+  }
+
+  size_t idx = library.index;
+  for (size_t attempts = 0; attempts < library.files.size(); ++attempts) {
+    const std::string& path = library.files[idx];
+    if (LoadMazeWalls(path, out)) {
+      library.index = (idx + 1) % library.files.size();
+      return true;
+    }
+    idx = (idx + 1) % library.files.size();
+  }
+
+  return false;
+}
+
+void ResetMatchWithMaze(Game& game, const std::vector<GameMap::WallRect>& walls) {
+  game.map.Clear(game.world);
+  for (Tank* t : game.tanks) { game.world.DestroyBody(t->body); delete t; }
+  for (Bullet* b : game.bullets) { game.world.DestroyBody(b->body); delete b; }
+  for (Item* i : game.items) { game.world.DestroyBody(i->body); delete i; }
+  game.tanks.clear();
+  game.bullets.clear();
+  game.items.clear();
+  game.itemSpawnTimer = 3.0f;
+
+  if (!walls.empty()) {
+    game.map.BuildFromRects(game.world, walls);
+  } else {
+    game.map.Build(game.world);
+  }
+
+  std::vector<b2Vec2> spawnCells;
+  while ((int)spawnCells.size() < game.numPlayers) {
+    b2Vec2 p = game.map.GetRandomCellCenter();
+    bool ok = true;
+    for (b2Vec2 sp : spawnCells) {
+      if ((p - sp).LengthSquared() < 1.0f) { ok = false; break; }
+    }
+    if (ok) spawnCells.push_back(p);
+  }
+
+  for (int i = 0; i < game.numPlayers; i++) {
+    Tank* t = new Tank(game.world, i);
+    t->body->SetTransform(spawnCells[i], (rand() % 4) * PI / 2.0f);
+    game.tanks.push_back(t);
+  }
+
+  game.portal.Reset();
+  game.needsRestart = false;
+}
 
 std::vector<TankActions> ReadActions(int numPlayers) {
   std::vector<TankActions> actions(std::max(numPlayers, 1));
@@ -197,6 +301,93 @@ void WriteState(const Game& game, float dt) {
   std::remove(kStateFile);
   std::rename(kStateTmpFile, kStateFile);
 }
+
+void RunBridgeFrame(Game& game, WaypointOverlay& waypointOverlay) {
+  std::vector<TankActions> actions = ReadActions(game.numPlayers);
+
+  // Player 2 can still be driven manually from keyboard.
+  if (game.numPlayers > 1) {
+    actions[1].forward = actions[1].forward || IsKeyDown(KEY_UP);
+    actions[1].backward = actions[1].backward || IsKeyDown(KEY_DOWN);
+    actions[1].turnLeft = actions[1].turnLeft || IsKeyDown(KEY_LEFT);
+    actions[1].turnRight = actions[1].turnRight || IsKeyDown(KEY_RIGHT);
+    actions[1].shoot = actions[1].shoot || IsKeyPressed(KEY_SLASH);
+    actions[1].shield = actions[1].shield || IsKeyPressed(KEY_PERIOD);
+  }
+
+  float dt = GetFrameTime();
+  game.Update(actions, dt);
+  Renderer::Update(game, dt);
+  WriteState(game, dt);
+  WaypointOverlay latestOverlay = ReadWaypointsOverlay();
+  if (latestOverlay.valid) {
+    waypointOverlay = latestOverlay;
+  }
+
+  BeginDrawing();
+  ClearBackground({245, 240, 230, 255});
+  Renderer::DrawWorld(game);
+  DrawWaypointsOverlay(waypointOverlay);
+  DrawText("P0: Python via bridge_control.txt", 12, 10, 18, DARKGRAY);
+  DrawText("P1: Arrow Keys + / + .", 12, 34, 18, DARKGRAY);
+  if (waypointOverlay.mazeWidth > 0 && waypointOverlay.mazeHeight > 0) {
+    const char* mazeText = TextFormat("maze: %d x %d",
+                                      waypointOverlay.mazeWidth,
+                                      waypointOverlay.mazeHeight);
+    int mazeWidthPx = MeasureText(mazeText, 18);
+    int mazeX = (SCREEN_WIDTH - mazeWidthPx) / 2;
+    DrawText(mazeText, mazeX, 10, 18, DARKGRAY);
+  }
+
+  const char* avgText = (waypointOverlay.pfAvgMs > 0.0f)
+                            ? TextFormat("avg_ms: %.3f", waypointOverlay.pfAvgMs)
+                            : "avg_ms: --";
+  int avgWidthPx = MeasureText(avgText, 18);
+  DrawText(avgText, SCREEN_WIDTH - avgWidthPx - 12, 10, 18, DARKGRAY);
+
+  EndDrawing();
+}
+
+void RunBridgeInfinite(Game& game) {
+  //game.ResetMatch();
+  WaypointOverlay waypointOverlay;
+  while (!WindowShouldClose()) {
+    if (game.needsRestart) {
+      game.ResetMatch();
+    }
+    RunBridgeFrame(game, waypointOverlay);
+  }
+}
+
+void RunBridgeMazeSequence(Game& game, MazeLibrary& mazeLibrary) {
+  if (mazeLibrary.files.empty()) {
+    RunBridgeInfinite(game);
+    return;
+  }
+  std::vector<GameMap::WallRect> mazeWalls;
+  size_t matchesRemaining = mazeLibrary.files.size();
+  if (!LoadNextMaze(mazeLibrary, mazeWalls)) {
+    RunBridgeInfinite(game);
+    return;
+  }
+  ResetMatchWithMaze(game, mazeWalls);
+  matchesRemaining = matchesRemaining > 0 ? matchesRemaining - 1 : 0;
+
+  WaypointOverlay waypointOverlay;
+  while (!WindowShouldClose()) {
+    if (game.needsRestart) {
+      if (matchesRemaining == 0) {
+        break;
+      }
+      if (!LoadNextMaze(mazeLibrary, mazeWalls)) {
+        break;
+      }
+      ResetMatchWithMaze(game, mazeWalls);
+      matchesRemaining--;
+    }
+    RunBridgeFrame(game, waypointOverlay);
+  }
+}
 }  // namespace
 
 int main() {
@@ -207,63 +398,20 @@ int main() {
   game.itemsEnabled = false;
   game.portalsEnabled = false;
   game.shieldsEnabled = false;
-  game.ResetMatch();
 
   std::ofstream(kControlFile, std::ios::trunc).close();
   std::ofstream(kWaypointsFile, std::ios::trunc).close();
 
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AZ Game Bridge");
   SetTargetFPS(60);
-  WaypointOverlay waypointOverlay;
 
-  while (!WindowShouldClose()) {
-    if (game.needsRestart) {
-      game.ResetMatch();
-    }
+  MazeLibrary mazeLibrary;
+  mazeLibrary.files = LoadMazeList(kMazeManifestTxt, kMazeDir);
 
-    std::vector<TankActions> actions = ReadActions(game.numPlayers);
-
-    // Player 2 can still be driven manually from keyboard.
-    if (game.numPlayers > 1) {
-      actions[1].forward = actions[1].forward || IsKeyDown(KEY_UP);
-      actions[1].backward = actions[1].backward || IsKeyDown(KEY_DOWN);
-      actions[1].turnLeft = actions[1].turnLeft || IsKeyDown(KEY_LEFT);
-      actions[1].turnRight = actions[1].turnRight || IsKeyDown(KEY_RIGHT);
-      actions[1].shoot = actions[1].shoot || IsKeyPressed(KEY_SLASH);
-      actions[1].shield = actions[1].shield || IsKeyPressed(KEY_PERIOD);
-    }
-
-    float dt = GetFrameTime();
-    game.Update(actions, dt);
-    Renderer::Update(game, dt);
-    WriteState(game, dt);
-    WaypointOverlay latestOverlay = ReadWaypointsOverlay();
-    if (latestOverlay.valid) {
-      waypointOverlay = latestOverlay;
-    }
-
-    BeginDrawing();
-    ClearBackground({245, 240, 230, 255});
-    Renderer::DrawWorld(game);
-    DrawWaypointsOverlay(waypointOverlay);
-    DrawText("P0: Python via bridge_control.txt", 12, 10, 18, DARKGRAY);
-    DrawText("P1: Arrow Keys + / + .", 12, 34, 18, DARKGRAY);
-    if (waypointOverlay.mazeWidth > 0 && waypointOverlay.mazeHeight > 0) {
-      const char* mazeText = TextFormat("maze: %d x %d",
-                                        waypointOverlay.mazeWidth,
-                                        waypointOverlay.mazeHeight);
-      int mazeWidthPx = MeasureText(mazeText, 18);
-      int mazeX = (SCREEN_WIDTH - mazeWidthPx) / 2;
-      DrawText(mazeText, mazeX, 10, 18, DARKGRAY);
-    }
-
-    const char* avgText = (waypointOverlay.pfAvgMs > 0.0f)
-                              ? TextFormat("avg_ms: %.3f", waypointOverlay.pfAvgMs)
-                              : "avg_ms: --";
-    int avgWidthPx = MeasureText(avgText, 18);
-    DrawText(avgText, SCREEN_WIDTH - avgWidthPx - 12, 10, 18, DARKGRAY);
-
-    EndDrawing();
+  if (mazeLibrary.files.empty()) {
+    RunBridgeInfinite(game);
+  } else {
+    RunBridgeMazeSequence(game, mazeLibrary);
   }
 
   CloseWindow();

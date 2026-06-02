@@ -11,8 +11,19 @@ private:
     std::vector<b2Body*> walls; ///< Danh sách các khối tường tĩnh Box2D
     
 public:
+    /// Dữ liệu tường dạng hình chữ nhật (tọa độ pixel, tâm, chiều rộng/cao)
+    struct WallRect {
+        float x;
+        float y;
+        float width;
+        float height;
+    };
+
     /// Sinh bản đồ ngẫu nhiên bằng Recursive Backtracker + đục tường tạo shortcut
     void Build(b2World& world);
+
+    /// Dựng bản đồ từ danh sách hình chữ nhật tường (tọa độ pixel)
+    void BuildFromRects(b2World& world, const std::vector<WallRect>& rects);
     
     /// Phá hủy toàn bộ tường hiện tại
     void Clear(b2World& world);

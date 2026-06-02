@@ -23,11 +23,9 @@ _PLAN_LAST_MS = 0.0
 
 _PLANNER_ALGORITHM = 'astar' # can be "astar", "dijkstra", "bfs", "dfs", "theta_star", "jps"
 
-_FREEZE_MOVEMENT = True
-_FREEZE_TIMER_ON_FIRST_PATH = False
+_FREEZE_MOVEMENT = False
 _FREEZE_AFTER_FIRST_PATH = False
-_FIRST_PATH_TIME: Optional[float] = None
-_LOCK_AFTER_FIRST_PATH = False
+_HAS_FIRST_PATH = False
 
 _STUCK_FRAMES = 10
 _STUCK_MOVE_EPS2 = 0.001
@@ -87,10 +85,7 @@ def _write_waypoints(waypoints: List[Tuple[float, float]], waypoint_idx: int, fo
         idx = 0
 
     avg_ms = (_PLAN_TOTAL_MS / _PLAN_COUNT) if _PLAN_COUNT else 0.0
-    if _FREEZE_TIMER_ON_FIRST_PATH and _FIRST_PATH_TIME is not None:
-        runtime_s = _FIRST_PATH_TIME - _RUN_START
-    else:
-        runtime_s = time.monotonic() - _RUN_START
+    runtime_s = time.monotonic() - _RUN_START
     payload = [
         f"idx {idx}\n",
         f"pf_total_ms {_PLAN_TOTAL_MS:.3f}\n",
@@ -155,7 +150,7 @@ def _remaining_waypoints_length(
 
 
 def main() -> None:
-    global _FIRST_PATH_TIME, _LOCK_AFTER_FIRST_PATH 
+    global _HAS_FIRST_PATH
 
     if os.path.exists(_WAYPOINTS_FILE):
         try:
@@ -217,10 +212,8 @@ def main() -> None:
                         waypoints = planned_waypoints
                         last_good_waypoints = planned_waypoints
                         waypoint_idx = 0
-                        if _FREEZE_TIMER_ON_FIRST_PATH and _FIRST_PATH_TIME is None:
-                            _FIRST_PATH_TIME = time.monotonic()
-                        if _FREEZE_AFTER_FIRST_PATH and not _LOCK_AFTER_FIRST_PATH:
-                            _LOCK_AFTER_FIRST_PATH = True
+                        if not _HAS_FIRST_PATH:
+                            _HAS_FIRST_PATH = True
                     elif not waypoints:
                         waypoints = last_good_waypoints
                         waypoint_idx = min(waypoint_idx, max(len(waypoints) - 1, 0))
@@ -289,7 +282,7 @@ def main() -> None:
             if abs(err) < _TURN_OFF_THRESHOLD:
                 turn_left = turn_right = False
 
-            if _FREEZE_MOVEMENT or (_FREEZE_AFTER_FIRST_PATH and _LOCK_AFTER_FIRST_PATH):
+            if _FREEZE_MOVEMENT or (_FREEZE_AFTER_FIRST_PATH and _HAS_FIRST_PATH):
                 env.set_flags(0, shoot=should_shoot)
                 env.flush_actions()
                 frame += 1

@@ -10,3 +10,4 @@ python/__pycache__/
 *.tmp
 bridge_waypoints.txt
 *.log
+maps/

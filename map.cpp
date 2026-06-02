@@ -88,6 +88,22 @@ void GameMap::Build(b2World& world) {
     }
 }
 
+void GameMap::BuildFromRects(b2World& world, const std::vector<WallRect>& rects) {
+    auto addWall = [&](float x, float y, float width, float height) {
+        b2BodyDef def; def.type = b2_staticBody;
+        def.position.Set(x / SCALE, (SCREEN_HEIGHT - y) / SCALE);
+        b2PolygonShape shape; shape.SetAsBox((width / 2.0f) / SCALE, (height / 2.0f) / SCALE);
+        b2FixtureDef fixture; fixture.shape = &shape; fixture.density = 0.0f;
+        b2Body* body = world.CreateBody(&def);
+        body->CreateFixture(&fixture);
+        walls.push_back(body);
+    };
+
+    for (const auto& rect : rects) {
+        addWall(rect.x, rect.y, rect.width, rect.height);
+    }
+}
+
 void GameMap::Clear(b2World& world) {
     for (b2Body* wall : walls) world.DestroyBody(wall);
     walls.clear();
