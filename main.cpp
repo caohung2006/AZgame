@@ -35,7 +35,7 @@ int main() {
 
     // Khởi tạo các Bot bên ngoài vòng lặp chính để chúng không bị "mất trí nhớ" mỗi frame
     std::vector<Bot*> bots(4, nullptr);
-    if (isBot[1]) bots[1] = new Bot(7, 1); // Khởi tạo Bot cấp 7 (Kẻ đào tẩu) cho P2
+    if (isBot[1]) bots[1] = new Bot(1, 1); // Bot Level 2 (Xạ thủ nảy tường)
 
     while (!WindowShouldClose()) {
         // --- Xử lý Settings UI ---
@@ -48,7 +48,7 @@ int main() {
             // Cập nhật lại danh sách bot nếu có thay đổi trong cài đặt
             for (int i = 0; i < 4; i++) {
                 if (isBot[i]) {
-                    if (!bots[i]) bots[i] = new Bot(7, i); // Cài đặt Bot cấp 7
+                    if (!bots[i]) bots[i] = new Bot(1, i); // Bot Level 2
                 } else {
                     if (bots[i]) { delete bots[i]; bots[i] = nullptr; }
                 }
@@ -58,13 +58,14 @@ int main() {
 
         if (game.needsRestart) {
             game.ResetMatch();
-            // Reset trạng thái bot khi bắt đầu trận mới để tránh dùng đường đi cũ
+            // Reset trạng thái bot khi bắt đầu trận mới
+            // Dùng requestPathClear thay vì trực tiếp xoá cachedPath (thread-safe)
             for (int i = 0; i < 4; i++) {
                 if (bots[i]) {
-                    bots[i]->cachedPath.clear();
-                    bots[i]->lastGoalPos = b2Vec2(0, 0);
+                    bots[i]->requestPathClear = true;
+                    bots[i]->lastEnemyPos = b2Vec2(0, 0);
                     bots[i]->stuckCounter = 0;
-                    bots[i]->currentWaypointIdx = 0;
+                    bots[i]->idleCounter  = 0;
                 }
             }
         }
