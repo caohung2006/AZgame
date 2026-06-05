@@ -99,21 +99,41 @@ float SolveIntercept(b2Vec2 s, b2Vec2 t, b2Vec2 tv, float bs, float mx = 5.f) {
     return r > 9998.f ? fb : std::min(r, mx);
 }
 
+/// Khoảng cách từ điểm P đến đoạn thẳng AB
+float SegDist(b2Vec2 P, b2Vec2 A, b2Vec2 B) {
+    b2Vec2 AB = B - A; b2Vec2 AP = P - A;
+    float ab2 = Dot2(AB, AB);
+    if (ab2 < 1e-6f) return (P - A).Length();
+    float t = Dot2(AP, AB) / ab2;
+    if (t < 0.f) t = 0.f; if (t > 1.f) t = 1.f;
+    b2Vec2 closest(A.x + t*AB.x, A.y + t*AB.y);
+    return (P - closest).Length();
+}
+
 /// Tìm đường bắn nảy tường full 360° (180 tia × 4 bounces, bước 2°)
+/// Có kiểm tra self-hit: loại bỏ đường bounce quay lại trúng chính mình
 bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out) {
     if (!g || !eb) return false;
     const float step = 0.035f;  // ~2° per ray
     const int numRays = (int)(2.f * PI / step);
+    const float selfSafe = 0.5f;  // ~15px safe radius quanh bot
     float best = 1e9f; bool found = false;
     for (int i = 0; i < numRays; i++) {
         float a = i * step;
         b2Vec2 dir(-sinf(a), cosf(a));
         b2Vec2 pos = mp; b2Vec2 d = dir; float rem = 80.f;
-        b2Vec2 firstWall(0,0); bool gotWall = false, hitE = false;
+        b2Vec2 firstWall(0,0); bool gotWall = false, hitE = false, selfHit = false;
         for (int bounce = 0; bounce < 4 && rem > 1.0f; bounce++) {
             ClosestHitCB cb;
             g->world.RayCast(&cb, pos, pos + rem * d);
             if (!cb.hit) break;
+
+            // Self-hit check: segment SAU bounce đầu có đi qua gần bot không?
+            if (bounce > 0) {
+                float distToSelf = SegDist(mp, pos, cb.point);
+                if (distToSelf < selfSafe) { selfHit = true; break; }
+            }
+
             if (!gotWall && cb.hitStatic) { firstWall = cb.point; gotWall = true; }
             if (cb.body == eb) { hitE = true; break; }
             if (!cb.hitStatic) break;
@@ -122,7 +142,7 @@ bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out) {
             if (d.LengthSquared() < 0.01f) break;
             pos = cb.point + 0.05f * d;
         }
-        if (hitE && gotWall) {
+        if (hitE && gotWall && !selfHit) {
             float sc = (firstWall - mp).Length();
             if (sc < best) { best = sc; out = firstWall; found = true; }
         }
@@ -646,26 +666,22 @@ TankActions Bot::GetAction(Game* game) {
     const ShootDecision& shoot = shootOut;
 
     // ---- Rotation-stuck detector ----
-    // Khi tank cần quay nhưng KHÔNG QUAY ĐƯỢC (kẹt tường trong Box2D)
-    // → cho phép movement di chuyển đến vị trí thoáng hơn
-    static float prevHeading = 0.f;
-    static int   rotStuckFrames = 0;
+    // So sánh heading hiện tại vs 16 frames trước (không dùng frame-to-frame
+    // vì Box2D vibration gây false reset)
+    static float headingBuf[16] = {};
+    static int   headingIdx = 0;
     bool rotationStuck = false;
 
-    if (shoot.hasTarget && (shoot.turnLeft || shoot.turnRight)) {
-        float headingDelta = fabsf(sensor.myAngle - prevHeading);
-        // Normalize: nếu heading vượt 2π thì delta lớn nhưng thực ra nhỏ
+    headingBuf[headingIdx & 15] = sensor.myAngle;
+    headingIdx++;
+
+    if (shoot.hasTarget && (shoot.turnLeft || shoot.turnRight) && headingIdx > 16) {
+        float oldHeading = headingBuf[headingIdx & 15];  // 16 frames trước
+        float headingDelta = fabsf(sensor.myAngle - oldHeading);
         if (headingDelta > PI) headingDelta = 2*PI - headingDelta;
-        if (headingDelta < 0.02f) {
-            rotStuckFrames++;
-        } else {
-            rotStuckFrames = 0;
-        }
-        if (rotStuckFrames > 15) rotationStuck = true;
-    } else {
-        rotStuckFrames = 0;
+        // Ở 3 rad/s, 16 frames = 0.8 rad kỳ vọng. Nếu < 0.15 → stuck
+        if (headingDelta < 0.15f) rotationStuck = true;
     }
-    prevHeading = sensor.myAngle;
 
     // Forward/backward:
     //   Rotation stuck → DÙNG MOVEMENT di chuyển tìm chỗ thoáng

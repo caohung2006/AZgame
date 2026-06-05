@@ -20,6 +20,7 @@ Bullet::Bullet(b2World& world, b2Vec2 position, b2Vec2 velocity, bool _isLaser, 
     b2CircleShape shape; 
     shape.m_radius = (isFrag || isMissile) ? 5.0f / SCALE : 3.0f / SCALE;
     b2FixtureDef fix; fix.shape = &shape; fix.density = 1.0f; fix.friction = 0.0f; fix.restitution = 1.0f;
+    fix.restitutionThreshold = 0.0f;  // Nảy hoàn hảo ở MỌI góc chạm (kể cả xiên)
     fix.filter.groupIndex = -1;
     body->CreateFixture(&fix);
     
