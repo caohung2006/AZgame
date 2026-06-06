@@ -40,6 +40,10 @@ public:
     std::vector<PlayerConfig> configs;
     std::vector<b2Vec2> botPaths[4]; // Lưu đường đi A* để debug đồ họa
 
+    // ---- Debug: Bounce ray visualization ----
+    std::vector<b2Vec2> botBounceRays[4];   ///< Đường bounce (list of points)
+    b2Vec2 botBounceTarget[4] = {};          ///< Wall point đang nhắm
+
     // ---- Sự kiện dùng cho hiệu ứng đồ họa (Renderer đọc) ----
     std::vector<DeathEvent> recentDeaths;  ///< Xe tăng bị tiêu diệt frame này
 

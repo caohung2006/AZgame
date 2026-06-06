@@ -111,27 +111,46 @@ float SegDist(b2Vec2 P, b2Vec2 A, b2Vec2 B) {
 }
 
 /// Tìm đường bắn nảy tường full 360° (180 tia × 4 bounces, bước 2°)
-/// Có kiểm tra self-hit: loại bỏ đường bounce quay lại trúng chính mình
-bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out) {
+/// Self-hit check: loại bỏ đường bounce trúng chính mình (hiện tại + vị trí tương lai)
+/// futurePos: vị trí bot sẽ đi tới trong ~2s (theo A*), dùng kiểm tra self-hit
+bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out,
+                std::vector<b2Vec2>* debugPath = nullptr,
+                const std::vector<b2Vec2>* futurePos = nullptr) {
     if (!g || !eb) return false;
     const float step = 0.035f;  // ~2° per ray
     const int numRays = (int)(2.f * PI / step);
-    const float selfSafe = 0.5f;  // ~15px safe radius quanh bot
+    const float selfSafe = 1.5f;  // ~45px safe radius (tank ~21px + margin)
     float best = 1e9f; bool found = false;
     for (int i = 0; i < numRays; i++) {
         float a = i * step;
         b2Vec2 dir(-sinf(a), cosf(a));
         b2Vec2 pos = mp; b2Vec2 d = dir; float rem = 80.f;
         b2Vec2 firstWall(0,0); bool gotWall = false, hitE = false, selfHit = false;
+        std::vector<b2Vec2> path;  // Lưu điểm cho debug
+        path.push_back(mp);
+
+        // Phase 1: trace đến enemy (max 4 bounces)
         for (int bounce = 0; bounce < 4 && rem > 1.0f; bounce++) {
             ClosestHitCB cb;
             g->world.RayCast(&cb, pos, pos + rem * d);
             if (!cb.hit) break;
 
-            // Self-hit check: segment SAU bounce đầu có đi qua gần bot không?
+            path.push_back(cb.point);
+
+            // Self-hit check: segment SAU bounce đầu
+            // Kiểm tra vị trí HIỆN TẠI + các vị trí TƯƠNG LAI (A* path)
             if (bounce > 0) {
                 float distToSelf = SegDist(mp, pos, cb.point);
                 if (distToSelf < selfSafe) { selfHit = true; break; }
+                // Kiểm tra vị trí tương lai dọc A* path
+                if (futurePos) {
+                    for (const b2Vec2& fp : *futurePos) {
+                        if (SegDist(fp, pos, cb.point) < selfSafe) {
+                            selfHit = true; break;
+                        }
+                    }
+                    if (selfHit) break;
+                }
             }
 
             if (!gotWall && cb.hitStatic) { firstWall = cb.point; gotWall = true; }
@@ -142,9 +161,42 @@ bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out) {
             if (d.LengthSquared() < 0.01f) break;
             pos = cb.point + 0.05f * d;
         }
+
+        // Phase 2: nếu trúng enemy, trace thêm 3 bounce "nếu miss"
+        if (hitE && gotWall && !selfHit) {
+            b2Vec2 contPos = pos; b2Vec2 contD = d; float contRem = rem;
+            contPos = ep + 0.1f * contD;
+            contRem = 40.f;
+            for (int extra = 0; extra < 3 && contRem > 1.0f; extra++) {
+                ClosestHitCB cb2;
+                g->world.RayCast(&cb2, contPos, contPos + contRem * contD);
+                if (!cb2.hit) break;
+                // Check vị trí hiện tại
+                float distToSelf = SegDist(mp, contPos, cb2.point);
+                if (distToSelf < selfSafe) { selfHit = true; break; }
+                // Check vị trí tương lai (2s dọc A*)
+                if (futurePos) {
+                    for (const b2Vec2& fp : *futurePos) {
+                        if (SegDist(fp, contPos, cb2.point) < selfSafe) {
+                            selfHit = true; break;
+                        }
+                    }
+                    if (selfHit) break;
+                }
+                if (!cb2.hitStatic) break;
+                float dist2 = (cb2.point - contPos).Length(); contRem -= dist2;
+                contD = Refl(SafeN(cb2.point - contPos), cb2.normal);
+                if (contD.LengthSquared() < 0.01f) break;
+                contPos = cb2.point + 0.05f * contD;
+            }
+        }
+
         if (hitE && gotWall && !selfHit) {
             float sc = (firstWall - mp).Length();
-            if (sc < best) { best = sc; out = firstWall; found = true; }
+            if (sc < best) {
+                best = sc; out = firstWall; found = true;
+                if (debugPath) *debugPath = path;
+            }
         }
     }
     return found;
@@ -375,13 +427,29 @@ void Bot::CollectSensorData() {
     // Direct shot: kiểm tra line-of-sight
     s.clearShot = CanSee(game->world, s.myPos, s.enemyPos);
 
-    // Bounce shot: FindBounce (80 tia tập trung × 4 bounces)
+    // Tính vị trí tương lai (~2s) dọc A* path để check self-hit
+    std::vector<b2Vec2> futurePos;
+    {
+        float distBudget = 6.0f;  // ~2s ở tốc độ 3 unit/s
+        for (size_t wi = (size_t)currentWaypointIdx; wi < cachedPath.size() && distBudget > 0; wi++) {
+            futurePos.push_back(cachedPath[wi]);
+            if (wi + 1 < cachedPath.size())
+                distBudget -= (cachedPath[wi+1] - cachedPath[wi]).Length();
+        }
+    }
+
+    // Bounce shot: FindBounce (180 tia × 4 bounces + debug path + future self-hit)
+    game->botBounceRays[playerIndex].clear();
     if (me->currentWeapon != ItemType::DEATH_RAY &&
         me->currentWeapon != ItemType::MISSILE) {
         b2Vec2 bp(0,0);
-        if (FindBounce(game, s.myPos, enemy->body, s.enemyPos, bp)) {
+        std::vector<b2Vec2> dbgPath;
+        if (FindBounce(game, s.myPos, enemy->body, s.enemyPos, bp,
+                       &dbgPath, futurePos.empty() ? nullptr : &futurePos)) {
             s.hasBounce   = true;
             s.bouncePoint = bp;
+            game->botBounceRays[playerIndex] = dbgPath;
+            game->botBounceTarget[playerIndex] = bp;
         }
     }
 
@@ -486,6 +554,9 @@ void Bot::ShootingThreadFunc() {
     // ---- Lock-on: ngăn oscillation giữa 2 bounce target ----
     float lockedBounceAngle = 0.f;
     int   bounceLockFrames  = 0;
+    // ---- Alternating shot pattern ----
+    int   shotCounter       = 0;   // Chẵn = thẳng, Lẻ = chặn đầu
+    int   shotCooldown      = 0;   // Delay giữa mỗi viên (frames)
 
     while (true) {
         {
@@ -498,13 +569,16 @@ void Bot::ShootingThreadFunc() {
         const SensorData& s = sensor;
         ShootDecision dec;
 
+        // ---- Cooldown giữa mỗi viên ----
+        if (shotCooldown > 0) shotCooldown--;
+
         // ---- Kiểm tra slot đạn ----
         bool hasBulletSlot;
         if (s.currentWeapon == ItemType::NORMAL)
-            hasBulletSlot = (s.activeBullets < 2);
+            hasBulletSlot = (s.activeBullets < 5);
         else
             hasBulletSlot = (s.activeBullets == 0);
-        bool canFire = hasBulletSlot && (s.shootCooldown <= 0.0f);
+        bool canFire = hasBulletSlot && (s.shootCooldown <= 0.0f) && (shotCooldown <= 0);
 
         // ============ PHASE 1: DIRECT SHOT — Laser Fan ============
         float bestDirectAngle = 0.f;
@@ -517,19 +591,29 @@ void Bot::ShootingThreadFunc() {
             float dist = ray.segments[0].length;
             if (dist < bestDirectDist) {
                 bestDirectDist  = dist;
-                bestDirectAngle = ray.angle;
                 foundDirect     = true;
             }
         }
 
-        // Fallback direct: CanSee + Intercept (nếu laser fan miss)
+        // Fallback direct: CanSee (nếu laser fan miss)
         if (!foundDirect && s.clearShot) {
-            float bSpd = BulletSpd(s.currentWeapon);
-            float t = SolveIntercept(s.myPos, s.enemyPos, s.enemyVel, bSpd);
-            b2Vec2 predicted = s.enemyPos + t * s.enemyVel;
-            bestDirectAngle = Ang2(s.myPos, predicted);
             bestDirectDist  = s.enemyDist;
             foundDirect     = true;
+        }
+
+        // ---- Aim theo pattern xen kẽ ----
+        // Viên chẵn (0,2,4...): bắn thẳng vào vị trí HIỆN TẠI enemy
+        // Viên lẻ  (1,3,5...): bắn chặn đầu (lead prediction)
+        if (foundDirect) {
+            bool useLead = (shotCounter % 2 == 1) && (s.enemyVel.Length() > 0.3f);
+            if (useLead) {
+                float bSpd = BulletSpd(s.currentWeapon);
+                float t = SolveIntercept(s.myPos, s.enemyPos, s.enemyVel, bSpd);
+                b2Vec2 predicted = s.enemyPos + t * s.enemyVel;
+                bestDirectAngle = Ang2(s.myPos, predicted);
+            } else {
+                bestDirectAngle = Ang2(s.myPos, s.enemyPos);
+            }
         }
 
         // ============ PHASE 2: BOUNCE SHOT — FindBounce + LOCK-ON ============
@@ -547,24 +631,20 @@ void Bot::ShootingThreadFunc() {
         // Lock-on: commit vào 1 bounce target, không cho nhảy
         if (foundBounce) {
             if (bounceLockFrames > 0) {
-                // Đang lock → giữ angle cũ, countdown
                 bounceAngle = lockedBounceAngle;
                 bounceLockFrames--;
             } else {
-                // Hết lock / chưa lock → lock angle mới
                 lockedBounceAngle = bounceAngle;
-                bounceLockFrames = 60;  // ~1 giây
+                bounceLockFrames = 60;
             }
         } else {
-            bounceLockFrames = 0;  // Mất bounce → reset lock
+            bounceLockFrames = 0;
         }
 
-        // Direct shot phá lock (direct luôn ưu tiên hơn)
+        // Direct shot phá lock
         if (foundDirect) bounceLockFrames = 0;
 
         // ============ CHỌN MỤC TIÊU ============
-        // Direct LUÔN ưu tiên (nhanh, chính xác)
-        // Bounce CHỈ dùng khi KHÔNG có direct (tường chắn)
         float targetAngle = 0.f;
         bool  hasTarget   = false;
 
@@ -582,18 +662,33 @@ void Bot::ShootingThreadFunc() {
             dec.overrideTurn = true;
 
             float aimErr = NormAng(targetAngle - s.myAngle);
-            dec.turnLeft  = (aimErr >  0.02f);
-            dec.turnRight = (aimErr < -0.02f);
 
-            // Tolerance bắn tùy vũ khí + khoảng cách + loại shot
-            float fireTol = 0.10f;
-            if (s.currentWeapon == ItemType::GATLING) fireTol = 0.20f;
-            if (s.enemyDist < 5.f) fireTol = 0.25f;
-            if (foundBounce && !foundDirect) fireTol = 0.15f;
+            // Turn control
+            float turnDead = (foundBounce && !foundDirect) ? 0.008f : 0.02f;
+            dec.turnLeft  = (aimErr >  turnDead);
+            dec.turnRight = (aimErr < -turnDead);
+
+            // Tolerance bắn
+            float fireTol;
+            if (foundDirect && s.enemyDist < 2.0f) {
+                fireTol = 0.50f;  // EMERGENCY
+            } else if (foundBounce && !foundDirect) {
+                fireTol = 0.03f;  // Bounce: chính xác
+            } else if (s.currentWeapon == ItemType::GATLING) {
+                fireTol = 0.20f;
+            } else if (s.enemyDist < 3.0f) {
+                fireTol = 0.30f;  // Rất gần
+            } else if (s.enemyDist < 5.0f) {
+                fireTol = 0.20f;  // Gần
+            } else {
+                fireTol = 0.10f;  // Direct bình thường
+            }
 
             if (canFire && fabsf(aimErr) <= fireTol) {
                 dec.shoot = true;
-                bounceLockFrames = 0;  // Bắn xong → reset lock, tìm target mới
+                bounceLockFrames = 0;
+                shotCounter++;          // Viên tiếp theo đổi pattern
+                shotCooldown = 20;      // ~0.33s delay trước viên tiếp
             }
         }
 
