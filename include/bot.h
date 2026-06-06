@@ -74,6 +74,11 @@ struct SensorData {
     float  shootCooldown = 0.f;
     int    activeBullets = 0;
     bool   fragReady     = false;
+
+    // Dodge/evasion (Main Thread tính)
+    bool   dangerDetected = false;  ///< Có đạn địch bay về phía bot
+    b2Vec2 dodgeDir = {0,0};        ///< Hướng né (vuông góc với đạn)
+    float  dangerDist = 999.f;      ///< Khoảng cách đạn gần nhất
 };
 
 // ============================================================================
@@ -128,6 +133,10 @@ public:
     int  backupTimer     = 0;
     int  backupTurnDir   = 1;
     bool requestPathClear = false;
+
+    // ---- Dodge state (Arbiter) ----
+    int  dodgeTimer     = 0;     ///< Frames còn lại trong trạng thái né
+    bool dodgeActive    = false; ///< Đang né hay không
 
     // ==== 2 Worker Threads ====
     std::thread moveThread;

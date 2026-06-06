@@ -465,6 +465,53 @@ void Bot::CollectSensorData() {
     s.fragReady = (me->currentWeapon == ItemType::FRAG) &&
                   ShouldFrag(game->bullets, playerIndex, s.enemyPos);
 
+    // ====== DANGER DETECTION — Quét đạn địch bay về phía bot ======
+    s.dangerDetected = false;
+    s.dangerDist = 999.f;
+    for (Bullet* b : game->bullets) {
+        if (!b || b->time <= 0 || b->ownerPlayerIndex == playerIndex) continue;
+
+        b2Vec2 bPos = b->body->GetPosition();
+        b2Vec2 bVel = b->body->GetLinearVelocity();
+        float bSpd = bVel.Length();
+        if (bSpd < 0.5f) continue;  // Đạn quá chậm, bỏ qua
+
+        // Vector từ đạn đến bot
+        b2Vec2 toBot = s.myPos - bPos;
+        float dist = toBot.Length();
+        if (dist > 8.0f || dist < 0.3f) continue;  // Quá xa hoặc quá gần
+
+        // Đạn có đang bay về phía bot? (dot product > 0)
+        b2Vec2 bDir(bVel.x / bSpd, bVel.y / bSpd);
+        float dot = Dot2(bDir, toBot);
+        if (dot < 0) continue;  // Đạn bay ngược chiều
+
+        // Khoảng cách vuông góc từ bot đến đường đạn
+        float cross = bDir.x * toBot.y - bDir.y * toBot.x;
+        float perpDist = fabsf(cross);
+        if (perpDist > 2.0f) continue;  // Đạn bay xa, không nguy hiểm
+
+        // Thời gian đạn đến vị trí gần bot nhất
+        float timeToHit = dot / bSpd;
+        if (timeToHit > 2.0f) continue;  // Quá lâu, không cần né ngay
+
+        // Đây là đạn nguy hiểm!
+        if (dist < s.dangerDist) {
+            s.dangerDetected = true;
+            s.dangerDist = dist;
+
+            // Hướng né: vuông góc với đường đạn, chọn bên thoáng hơn
+            b2Vec2 perpL(-bDir.y,  bDir.x);  // Vuông góc trái
+            b2Vec2 perpR( bDir.y, -bDir.x);  // Vuông góc phải
+
+            // Chọn bên thoáng hơn (lateral whisker)
+            if (s.lateralLeft > s.lateralRight)
+                s.dodgeDir = perpL;
+            else
+                s.dodgeDir = perpR;
+        }
+    }
+
     sensor = s;
 }
 
@@ -756,59 +803,98 @@ TankActions Bot::GetAction(Game* game) {
     }
     if (shutdownFlag) return act;
 
-    // 4. Trọng tài — kết hợp Movement + Shooting
+    // 4. Trọng tài — kết hợp Movement + Shooting + Dodge
     const MoveDecision&  move  = moveOut;
     const ShootDecision& shoot = shootOut;
 
-    // ---- Rotation-stuck detector ----
-    // So sánh heading hiện tại vs 16 frames trước (không dùng frame-to-frame
-    // vì Box2D vibration gây false reset)
-    static float headingBuf[16] = {};
-    static int   headingIdx = 0;
-    bool rotationStuck = false;
-
-    headingBuf[headingIdx & 15] = sensor.myAngle;
-    headingIdx++;
-
-    if (shoot.hasTarget && (shoot.turnLeft || shoot.turnRight) && headingIdx > 16) {
-        float oldHeading = headingBuf[headingIdx & 15];  // 16 frames trước
-        float headingDelta = fabsf(sensor.myAngle - oldHeading);
-        if (headingDelta > PI) headingDelta = 2*PI - headingDelta;
-        // Ở 3 rad/s, 16 frames = 0.8 rad kỳ vọng. Nếu < 0.15 → stuck
-        if (headingDelta < 0.15f) rotationStuck = true;
+    // ---- DODGE SYSTEM ----
+    // Khi phát hiện đạn nguy hiểm → né vuông góc với đường đạn
+    // Khi hết nguy hiểm → quay về giữa lối đi → tiếp tục bình thường
+    if (sensor.dangerDetected && sensor.dangerDist < 5.0f) {
+        dodgeActive = true;
+        dodgeTimer = 15;  // ~0.25s duration
+    } else if (dodgeTimer > 0) {
+        dodgeTimer--;
+    } else {
+        dodgeActive = false;
     }
 
-    // Forward/backward:
-    //   Rotation stuck → DÙNG MOVEMENT di chuyển tìm chỗ thoáng
-    //   Có target + quay được → ĐỨNG YÊN
-    //   Không có target → di chuyển bình thường
-    if (shoot.hasTarget) {
-        if (rotationStuck) {
-            // Kẹt cứng → movement lái xe đến giữa lối đi
-            act.forward  = move.forward;
-            act.backward = move.backward;
-            // Vẫn để shooting xoay, nhưng movement cũng hỗ trợ di chuyển
+    if (dodgeActive) {
+        // Tính góc né so với heading hiện tại
+        float dodgeAngle = atan2f(-sensor.dodgeDir.x, sensor.dodgeDir.y);
+        float dodgeErr = NormAng(dodgeAngle - sensor.myAngle);
+        float absDodge = fabsf(dodgeErr);
+
+        if (absDodge < 1.2f) {
+            // Hướng tương đối đúng → tiến
+            act.forward  = true;
+            act.backward = false;
+        } else if (absDodge > 2.5f) {
+            // Quay lưng → lùi (né nhanh hơn xoay)
+            act.backward = true;
+            act.forward  = false;
         } else {
+            // Xoay sang hướng né
             act.forward  = false;
             act.backward = false;
         }
-    } else {
-        act.forward  = move.forward;
-        act.backward = move.backward;
-    }
 
-    // Turn: Shooting override khi có target (ưu tiên CAO)
-    //       Movement chỉ lái khi Shooting rảnh (ưu tiên THẤP)
-    if (shoot.overrideTurn && !rotationStuck) {
-        act.turnLeft  = shoot.turnLeft;
-        act.turnRight = shoot.turnRight;
-    } else {
-        act.turnLeft  = move.turnLeft;
-        act.turnRight = move.turnRight;
-    }
+        // Xoay về hướng né (nếu shooting không override)
+        if (!shoot.overrideTurn) {
+            act.turnLeft  = (dodgeErr >  0.1f);
+            act.turnRight = (dodgeErr < -0.1f);
+        } else {
+            // Shooting vẫn xoay aim, nhưng di chuyển né
+            act.turnLeft  = shoot.turnLeft;
+            act.turnRight = shoot.turnRight;
+        }
 
-    // Shoot: từ Shooting Thread
-    act.shoot = shoot.shoot;
+        // Shooting vẫn bắn bình thường khi đang né
+        act.shoot = shoot.shoot;
+    } else {
+        // ---- NORMAL ARBITER (không đang né) ----
+
+        // ---- Rotation-stuck detector ----
+        static float headingBuf[16] = {};
+        static int   headingIdx = 0;
+        bool rotationStuck = false;
+
+        headingBuf[headingIdx & 15] = sensor.myAngle;
+        headingIdx++;
+
+        if (shoot.hasTarget && (shoot.turnLeft || shoot.turnRight) && headingIdx > 16) {
+            float oldHeading = headingBuf[headingIdx & 15];
+            float headingDelta = fabsf(sensor.myAngle - oldHeading);
+            if (headingDelta > PI) headingDelta = 2*PI - headingDelta;
+            if (headingDelta < 0.15f) rotationStuck = true;
+        }
+
+        // Forward/backward
+        if (shoot.hasTarget) {
+            if (rotationStuck) {
+                act.forward  = move.forward;
+                act.backward = move.backward;
+            } else {
+                act.forward  = false;
+                act.backward = false;
+            }
+        } else {
+            act.forward  = move.forward;
+            act.backward = move.backward;
+        }
+
+        // Turn: Shooting override khi có target
+        if (shoot.overrideTurn && !rotationStuck) {
+            act.turnLeft  = shoot.turnLeft;
+            act.turnRight = shoot.turnRight;
+        } else {
+            act.turnLeft  = move.turnLeft;
+            act.turnRight = move.turnRight;
+        }
+
+        // Shoot
+        act.shoot = shoot.shoot;
+    }
 
     // DEBUG: in trạng thái bắn mỗi 30 frame
     {
