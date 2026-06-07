@@ -35,7 +35,7 @@ int main() {
 
     // Khởi tạo các Bot bên ngoài vòng lặp chính để chúng không bị "mất trí nhớ" mỗi frame
     std::vector<Bot*> bots(4, nullptr);
-    if (isBot[1]) bots[1] = new Bot(4, 1); // Bot Level 4 (Xạ thủ nảy tường)
+    if (isBot[1]) bots[1] = new Bot(7, 1); // Bot Level 7 (Full Sniper nảy tường)
 
     while (!WindowShouldClose()) {
         // --- Xử lý Settings UI ---
@@ -48,7 +48,7 @@ int main() {
             // Cập nhật lại danh sách bot nếu có thay đổi trong cài đặt
             for (int i = 0; i < 4; i++) {
                 if (isBot[i]) {
-                    if (!bots[i]) bots[i] = new Bot(4, i); // Bot Level 4
+                    if (!bots[i]) bots[i] = new Bot(7, i); // Bot Level 7
                 } else {
                     if (bots[i]) { delete bots[i]; bots[i] = nullptr; }
                 }

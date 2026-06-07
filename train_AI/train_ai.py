@@ -27,21 +27,25 @@ class ProgressCallback(BaseCallback):
                   f"Cập nhật quá trình học...")
         return True
 
-# LỘ TRÌNH 8 GIAI ĐOẠN HUẤN LUYỆN (ANTI-BOUNCE SNIPER)
+# LỘ TRÌNH 10 GIAI ĐOẠN HUẤN LUYỆN (ANTI-BOUNCE SNIPER v2 — 7 Bot Levels)
+# Level 1: Đứng yên | Level 2: Chỉ chạy | Level 3: Bắn thụ động | Level 4: Bắn thẳng chủ động
+# Level 5: Nảy 1 lần | Level 6: Nảy 2 lần | Level 7: Full sniper (4 bounces)
 PHASES = {
-    # CHƯƠNG 1: NỀN TẢNG (Bãi đất trống, bot đơn giản)
-    1: {"map": False, "items": False, "mode": 0, "bot_level": [1],    "steps": 300_000},   # L1 đứng yên: Học lái xe + tiếp cận + bắn
-    2: {"map": False, "items": False, "mode": 0, "bot_level": [2],    "steps": 500_000},   # L2 chỉ chạy: Học đuổi mục tiêu di động
-    3: {"map": False, "items": False, "mode": 0, "bot_level": [3],    "steps": 1_000_000}, # L3 bắn thẳng: Học né đạn + bắn lại
+    # CHƯƠNG 1: NỀN TẢNG (Bãi trống)
+    1:  {"map": False, "items": False, "mode": 0, "bot_level": [1], "steps": 300_000},     # L1: Bia tập bắn
+    2:  {"map": False, "items": False, "mode": 0, "bot_level": [2], "steps": 500_000},     # L2: Đuổi mục tiêu di động
+    3:  {"map": False, "items": False, "mode": 0, "bot_level": [3], "steps": 800_000},     # L3: Né bắn thụ động
+    4:  {"map": False, "items": False, "mode": 0, "bot_level": [4], "steps": 1_000_000},   # L4: Combat thẳng chủ động
 
-    # CHƯƠNG 2: MÊ CUNG + BOT SNIPER NẢY TƯỜNG
-    4: {"map": True,  "items": False, "mode": 0, "bot_level": [2],    "steps": 1_000_000}, # L2 mê cung: Học A* navigation
-    5: {"map": True,  "items": False, "mode": 0, "bot_level": [3],    "steps": 1_500_000}, # L3 mê cung: Combat + né đạn thẳng
-    6: {"map": True,  "items": False, "mode": 0, "bot_level": [4],    "steps": 3_000_000}, # L4 FULL SNIPER: Né đạn nảy + Rush
+    # CHƯƠNG 2: MÊ CUNG + BOUNCE
+    5:  {"map": True,  "items": False, "mode": 0, "bot_level": [4], "steps": 1_500_000},   # L4 + mê cung (học A* navigation)
+    6:  {"map": True,  "items": False, "mode": 0, "bot_level": [5], "steps": 2_000_000},   # L5: Nảy 1 lần
+    7:  {"map": True,  "items": False, "mode": 0, "bot_level": [6], "steps": 2_500_000},   # L6: Nảy 2 lần
+    8:  {"map": True,  "items": False, "mode": 0, "bot_level": [7], "steps": 3_000_000},   # L7: FULL SNIPER
 
     # CHƯƠNG 3: NÂNG CAO
-    7: {"map": True,  "items": True,  "mode": 0, "bot_level": [4],    "steps": 3_000_000}, # Full combat + items
-    8: {"map": True,  "items": True,  "mode": 0, "op_phase": 7,       "steps": 6_000_000}, # Self-Play
+    9:  {"map": True,  "items": True,  "mode": 0, "bot_level": [7], "steps": 3_000_000},   # Full combat + items
+    10: {"map": True,  "items": True,  "mode": 0, "op_phase": 9,    "steps": 6_000_000},   # Self-Play
 }
 
 import random
@@ -162,9 +166,9 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     self_play_cb = SelfPlayCallback(opponent_pool)
 
     # 3. PPO Hyperparameters tùy theo giai đoạn
-    #    Phase 1-3: Khám phá nhiều (ent_coef cao, batch lớn hơn)
-    #    Phase 4-7: Khai thác kiến thức (ent_coef thấp, batch nhỏ hơn)
-    is_early_phase = (phase_id <= 3)
+    #    Phase 1-4: Khám phá nhiều (ent_coef cao, batch lớn hơn)
+    #    Phase 5-10: Khai thác kiến thức (ent_coef thấp, batch nhỏ hơn)
+    is_early_phase = (phase_id <= 4)
     ppo_params = {
         "n_steps": 4096 if is_early_phase else 2048,
         "batch_size": 128 if is_early_phase else 64,
@@ -287,9 +291,9 @@ def test_model(phase_id):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pipeline", action="store_true", help="Chạy tự động từ GĐ 1 đến 10")
-    parser.add_argument("--phase", type=int, choices=range(1, 9), help="Chỉ định chạy 1 GĐ cụ thể")
+    parser.add_argument("--phase", type=int, choices=range(1, 11), help="Chỉ định chạy 1 GĐ cụ thể")
     parser.add_argument("--render", action="store_true", help="Mở cửa sổ Raylib xem (TRAIN RẤT CHẬM)")
-    parser.add_argument("--test", type=int, choices=range(1, 9), help="Xem AI múa ở Phase X (sau khi train)")
+    parser.add_argument("--test", type=int, choices=range(1, 11), help="Xem AI múa ở Phase X (sau khi train)")
     parser.add_argument("--resume", action="store_true", help="Tiếp tục học từ file save đang dở")
     args = parser.parse_args()
 

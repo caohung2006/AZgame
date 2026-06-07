@@ -115,7 +115,8 @@ float SegDist(b2Vec2 P, b2Vec2 A, b2Vec2 B) {
 /// futurePos: vị trí bot sẽ đi tới trong ~2s (theo A*), dùng kiểm tra self-hit
 bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out,
                 std::vector<b2Vec2>* debugPath = nullptr,
-                const std::vector<b2Vec2>* futurePos = nullptr) {
+                const std::vector<b2Vec2>* futurePos = nullptr,
+                int maxBounce = 4) {
     if (!g || !eb) return false;
     const float step = 0.035f;  // ~2° per ray
     const int numRays = (int)(2.f * PI / step);
@@ -135,8 +136,8 @@ bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out,
         path.push_back(mp);      // Vẽ từ center cho đẹp
         path.push_back(muzzle);  // Qua muzzle
 
-        // Phase 1: trace đến enemy (max 4 bounces)
-        for (int bounce = 0; bounce < 4 && rem > 1.0f; bounce++) {
+        // Phase 1: trace đến enemy (max bounces theo tham số)
+        for (int bounce = 0; bounce < maxBounce && rem > 1.0f; bounce++) {
             ClosestHitCB cb;
             g->world.RayCast(&cb, pos, pos + rem * d);
             if (!cb.hit) break;
@@ -457,8 +458,9 @@ void Bot::CollectSensorData() {
         me->currentWeapon != ItemType::MISSILE) {
         b2Vec2 bp(0,0);
         std::vector<b2Vec2> dbgPath;
+        int maxBnc = (level == 5) ? 1 : (level == 6) ? 2 : 4;
         if (FindBounce(game, s.myPos, enemy->body, s.enemyPos, bp,
-                       &dbgPath, futurePos.empty() ? nullptr : &futurePos)) {
+                       &dbgPath, futurePos.empty() ? nullptr : &futurePos, maxBnc)) {
             s.hasBounce   = true;
             s.bouncePoint = bp;
             game->botBounceRays[playerIndex] = dbgPath;
@@ -740,10 +742,11 @@ TankActions Bot::GetAction(Game* game) {
     currentEnemy = enemy;
     CollectSensorData();
 
-    // Level 3: Chỉ bắn thẳng, tắt bounce
-    if (level == 3) {
+    // Level 3-4: Tắt bounce (chỉ bắn thẳng)
+    if (level <= 4) {
         sensor.hasBounce = false;
     }
+    // Level 5-6: Bounce giới hạn (đã xử lý trong CollectSensorData qua maxBnc)
 
     // 2. Kích hoạt 2 worker threads
     {
@@ -767,6 +770,14 @@ TankActions Bot::GetAction(Game* game) {
         shootOut.hasTarget = false;
         shootOut.shoot = false;
         shootOut.overrideTurn = false;
+    }
+    // Level 3: Bắn thụ động — không chủ động xoay ngắm, chỉ bắn khi tình cờ thấy địch
+    else if (level == 3) {
+        shootOut.overrideTurn = false;
+        if (!sensor.clearShot) {
+            shootOut.shoot = false;
+            shootOut.hasTarget = false;
+        }
     }
 
     // 4. Trọng tài — kết hợp Movement + Shooting + Dodge
