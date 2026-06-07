@@ -25,6 +25,7 @@ public:
   bool hasShield;            ///< Trạng thái khiên
   float shieldTimer;         ///< Thời gian tồn tại khiên
   float shieldCooldownTimer; ///< Thời gian chờ kích hoạt lại khiên
+  bool selfDamageImmune = false; ///< Miễn nhiễm đạn của chính mình (dùng cho Bot)
 
   Tank(b2World &world, int _playerIndex);
   void Update(b2World &world, std::vector<Bullet *> &bullets,

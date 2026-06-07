@@ -234,11 +234,11 @@ void UI::ShowKeyBindingScreen(int& fw, int& bw, int& tl, int& tr, int& sh, int& 
 // Màn hình Cài đặt chính (Settings Screen)
 // ========================================================================
 void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEnabled,
-    bool& shieldsEnabled, std::vector<PlayerConfig>& configs, std::vector<bool>& isBot) {
+    bool& shieldsEnabled, bool& botSelfDamageImmune, std::vector<PlayerConfig>& configs, std::vector<bool>& isBot) {
 
     SetExitKey(0);
 
-    float panelW = 520, panelH = 610;
+    float panelW = 520, panelH = 660;
     float panelX = (SCREEN_WIDTH - panelW) / 2.0f;
     float panelY = (SCREEN_HEIGHT - panelH) / 2.0f;
 
@@ -269,7 +269,10 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
         float row3Y = rowStart + 3 * rowH;
         Rectangle btnShield = {controlX, row3Y, 85, 32};
 
-        float keySectionY = rowStart + 4 * rowH + 8;
+        float row4Y = rowStart + 4 * rowH;
+        Rectangle btnBotImmune = {controlX, row4Y, 85, 32};
+
+        float keySectionY = rowStart + 5 * rowH + 8;
         Rectangle keyBtns[4];
         for (int i = 0; i < 4; i++) {
             keyBtns[i] = {panelX + 30, keySectionY + 34 + i * 46.0f, panelW - 60, 40};
@@ -284,6 +287,7 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
             if (CheckCollisionPointRec(mouse, btnPortal)) portalsEnabled = !portalsEnabled;
             if (CheckCollisionPointRec(mouse, btnItem)) itemsEnabled = !itemsEnabled;
             if (CheckCollisionPointRec(mouse, btnShield)) shieldsEnabled = !shieldsEnabled;
+            if (CheckCollisionPointRec(mouse, btnBotImmune)) botSelfDamageImmune = !botSelfDamageImmune;
 
             for (int i = 0; i < 4; i++) {
                 if (i < numPlayers) {
@@ -360,6 +364,16 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
         const char* sTxt = shieldsEnabled ? "BAT" : "TAT";
         int stw = MeasureGameText(sTxt, 18);
         DrawGameText(sTxt, btnShield.x + btnShield.width / 2 - stw / 2.0f, btnShield.y + 8, 18, WHITE);
+
+        // ---- Row 4: Bot bất tử ----
+        DrawGameText("Bot bat tu:", labelX, row4Y + 7, 20, {50, 52, 62, 255});
+        bool hBotImmune = CheckCollisionPointRec(mouse, btnBotImmune);
+        Color biColor = botSelfDamageImmune ? Color{50, 170, 70, 255} : Color{190, 55, 55, 255};
+        if (hBotImmune) { biColor.r = (unsigned char)fminf(biColor.r + 25, 255); biColor.g = (unsigned char)fminf(biColor.g + 25, 255); biColor.b = (unsigned char)fminf(biColor.b + 25, 255); }
+        DrawRectangleRounded(btnBotImmune, 0.4f, 10, biColor);
+        const char* biTxt = botSelfDamageImmune ? "BAT" : "TAT";
+        int bitw = MeasureGameText(biTxt, 18);
+        DrawGameText(biTxt, btnBotImmune.x + btnBotImmune.width / 2 - bitw / 2.0f, btnBotImmune.y + 8, 18, WHITE);
 
         // ---- Section: Phím điều khiển ----
         const char* keyTitle = "PHIM DIEU KHIEN";

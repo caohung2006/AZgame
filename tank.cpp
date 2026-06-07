@@ -220,6 +220,11 @@ void Tank::CheckCollisions(std::vector<Bullet *> &bullets,
 
       for (Bullet *bullet : bullets) {
         if (otherBody == bullet->body) {
+          // Bot miễn nhiễm đạn tự bắn: đạn biến mất nhưng không gây sát thương
+          if (selfDamageImmune && bullet->ownerPlayerIndex == playerIndex) {
+            bullet->time = 0.0f; // Hủy đạn
+            continue;            // Bỏ qua damage
+          }
           bullet->time = 0.0f;
           if (hasShield) {
             hasShield = false;

@@ -41,7 +41,7 @@ int main() {
         // --- Xử lý Settings UI ---
         if (UI::CheckSettingsButtonClicked()) {
             int oldNumPlayers = game.numPlayers;
-            UI::ShowSettingsScreen(game.numPlayers, game.portalsEnabled, game.itemsEnabled, game.shieldsEnabled, game.configs, isBot);
+            UI::ShowSettingsScreen(game.numPlayers, game.portalsEnabled, game.itemsEnabled, game.shieldsEnabled, game.botSelfDamageImmune, game.configs, isBot);
             if (game.numPlayers != oldNumPlayers) {
                 for (int i = 0; i < 4; i++) game.playerScores[i] = 0;
             }
@@ -66,6 +66,14 @@ int main() {
                     bots[i]->lastEnemyPos = b2Vec2(0, 0);
                     bots[i]->stuckCounter = 0;
                     bots[i]->idleCounter  = 0;
+                }
+            }
+            // Gán miễn nhiễm đạn tự bắn cho bot tanks
+            if (game.botSelfDamageImmune) {
+                for (auto t : game.tanks) {
+                    if (isBot[t->playerIndex]) {
+                        t->selfDamageImmune = true;
+                    }
                 }
             }
         }

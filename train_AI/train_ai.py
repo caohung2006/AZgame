@@ -120,11 +120,15 @@ def make_env(phase_id, opponent_pool=None, render_mode=None):
         # Nếu không có bot_level, dùng Self-Play từ Opponent Pool
         opponent_model = opponent_pool.sample() if opponent_pool else None
 
+    # Bot miễn nhiễm đạn tự bắn từ Phase 5 trở đi (mê cung + bounce)
+    use_bot_immune = (phase_id >= 5)
+
     return AZTankEnv(
         num_players=2, # Cần 2 vì còn có địch để bắn
         map_enabled=cfg["map"],
         items_enabled=cfg["items"],
         training_mode=cfg["mode"],
+        bot_self_immune=use_bot_immune,
         opponent_model=opponent_model,
         opponent_pool=opponent_pool,  # Truyền pool để swap đối thủ mỗi episode
         render_mode=render_mode

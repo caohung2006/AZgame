@@ -35,6 +35,7 @@ public:
     bool itemsEnabled;                  ///< Bật/tắt vật phẩm
     bool shieldsEnabled;                ///< Bật/tắt khiên
     bool mapEnabled;                    ///< Bật/tắt chướng ngại vật (dùng cho RL Curriculum)
+    bool botSelfDamageImmune = false;   ///< Bot miễn nhiễm đạn tự bắn (training mode)
 
     // ---- Cấu hình phím (chỉ dùng cho human play) ----
     std::vector<PlayerConfig> configs;

@@ -49,7 +49,7 @@ class AZTankEnv(gym.Env):
 
     metadata = {"render_modes": ["human"]}
 
-    def __init__(self, num_players=2, map_enabled=False, items_enabled=False, training_mode=0, opponent_model=None, opponent_pool=None, render_mode=None):
+    def __init__(self, num_players=2, map_enabled=False, items_enabled=False, training_mode=0, bot_self_immune=False, opponent_model=None, opponent_pool=None, render_mode=None):
         super().__init__()
 
         self.opponent_model = opponent_model
@@ -61,7 +61,8 @@ class AZTankEnv(gym.Env):
             num_players=num_players,
             map_enabled=map_enabled,
             items_enabled=items_enabled,
-            training_mode=training_mode
+            training_mode=training_mode,
+            bot_self_immune=bot_self_immune
         )
 
         # Không gian hành động: MultiDiscrete(3, 3, 2)
