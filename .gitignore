@@ -6,6 +6,22 @@ build/
 
 # Python & AI Training
 __pycache__/
-train_AI/models/
+train_AI/models/checkpoints/
 train_AI/logs/
+
+# Loại bỏ các thư mục models cũ/phụ
+train_AI/models1/
+train_AI/models2/
+train_AI/models3/
+train_AI/models_3/
+train_AI/models_4/
+train_AI/models_5/
+train_AI/models_6/
+train_AI/models_backup/
+train_AI/models_phe/
+train_AI/models_temp_backup/
+
+# Bỏ qua toàn bộ file zip ngoại trừ các model chính thức của các Phase
 *.zip
+!train_AI/models/*.zip
+
