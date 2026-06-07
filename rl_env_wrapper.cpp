@@ -7,8 +7,103 @@
 #include <tuple>
 #include <vector>
 #include "bot.h"
+#include <algorithm>
 
 namespace py = pybind11;
+
+// ============================================================================
+//  BOUNCE HINT — Tìm đường bắn nảy tường tốt nhất cho AI
+//  Phiên bản đơn giản của FindBounce trong bot.cpp, dùng để "phím bài" cho Agent.
+//  Quét 180 tia (bước 2°), mỗi tia trace tối đa 4 lần nảy tường.
+//  Nếu tìm thấy đường đạn trúng địch → trả về điểm đập tường đầu tiên.
+// ============================================================================
+namespace {
+
+class BounceRayCastCallback : public b2RayCastCallback {
+public:
+    bool hit = false, hitStatic = false;
+    b2Body* body = nullptr;
+    b2Vec2 point = b2Vec2(0,0), normal = b2Vec2(0,0);
+    float ReportFixture(b2Fixture* f, const b2Vec2& p, const b2Vec2& n, float fr) override {
+        if (f->IsSensor()) return -1.f;
+        hit = true;
+        body = f->GetBody();
+        hitStatic = (body->GetType() == b2_staticBody);
+        point = p; normal = n;
+        return fr;
+    }
+};
+
+inline b2Vec2 BounceReflect(b2Vec2 incident, b2Vec2 normal) {
+    float len = incident.Length();
+    if (len < 1e-4f) return b2Vec2(0,0);
+    b2Vec2 i(incident.x / len, incident.y / len);
+    float d = i.x * normal.x + i.y * normal.y;
+    b2Vec2 r(i.x - 2.f * d * normal.x, i.y - 2.f * d * normal.y);
+    float rl = r.Length();
+    return rl < 1e-4f ? b2Vec2(0,0) : b2Vec2(r.x / rl, r.y / rl);
+}
+
+/// Tìm điểm đập tường đầu tiên của đường đạn nảy trúng enemy.
+/// @param world    Thế giới Box2D
+/// @param myPos    Vị trí xe tăng AI
+/// @param enemyBody Body của kẻ địch
+/// @param outPoint [OUT] Điểm đập tường đầu tiên (để AI ngắm vào đây)
+/// @return true nếu tìm thấy đường bắn nảy hợp lệ
+bool FindBounceHint(b2World& world, b2Vec2 myPos, b2Body* enemyBody, b2Vec2& outPoint) {
+    const float step = 0.035f;  // ~2° per ray
+    const int numRays = (int)(2.f * 3.14159265f / step);
+    const float bulletR = 3.0f / SCALE;
+    const float muzzleOffset = 22.5f / SCALE;
+    float bestScore = 1e9f;
+    bool found = false;
+
+    for (int i = 0; i < numRays; i++) {
+        float a = i * step;
+        b2Vec2 dir(-sinf(a), cosf(a));
+        b2Vec2 muzzle = myPos + muzzleOffset * dir;
+        b2Vec2 pos = muzzle;
+        b2Vec2 d = dir;
+        float rem = 80.f;
+        b2Vec2 firstWall(0,0);
+        bool gotWall = false, hitEnemy = false;
+
+        for (int bounce = 0; bounce < 4 && rem > 1.0f; bounce++) {
+            BounceRayCastCallback cb;
+            world.RayCast(&cb, pos, pos + rem * d);
+            if (!cb.hit) break;
+
+            if (!gotWall && cb.hitStatic) {
+                firstWall = cb.point;
+                gotWall = true;
+            }
+            if (cb.body == enemyBody) {
+                hitEnemy = true;
+                break;
+            }
+            if (!cb.hitStatic) break;
+
+            float dist = (cb.point - pos).Length();
+            rem -= dist;
+            // Phản xạ
+            d = BounceReflect(cb.point - pos, cb.normal);
+            if (d.LengthSquared() < 0.01f) break;
+            pos = cb.point + bulletR * cb.normal + 0.02f * d;
+        }
+
+        if (hitEnemy && gotWall) {
+            float dist = (firstWall - myPos).Length();
+            if (dist < bestScore) {
+                bestScore = dist;
+                outPoint = firstWall;
+                found = true;
+            }
+        }
+    }
+    return found;
+}
+
+} // anonymous namespace
 
 /**
  * @class RLEnv
@@ -704,9 +799,33 @@ public:
       state.push_back(mShoot == 0 ? 1.0f : 0.0f); // [48]
       state.push_back(mShoot == 1 ? 1.0f : 0.0f); // [49]
 
+      // Nhóm 8: Bounce Hint (3 Tham số) — "Phím bài" cho AI bắn nảy tường
+      // Dùng cùng thuật toán ray-tracing 180 tia như Bot C++ để tìm điểm đập tường
+      // tối ưu. AI chỉ cần học: "Xoay nòng khớp với bounceLocalX/Y rồi bắn".
+      if (enemyTank && !enemyTank->isDestroyed && game->mapEnabled) {
+          b2Vec2 bouncePoint(0,0);
+          bool hasBounce = FindBounceHint(game->world, myPos, enemyTank->body, bouncePoint);
+          if (hasBounce) {
+              state.push_back(1.0f); // [50] Has Bounce Target
+              b2Vec2 toBounce = bouncePoint - myPos;
+              float bLocalX = toBounce.x * rightDir.x + toBounce.y * rightDir.y;
+              float bLocalY = toBounce.x * forwardDir.x + toBounce.y * forwardDir.y;
+              state.push_back(bLocalX / rayLength); // [51] Bounce Local X
+              state.push_back(bLocalY / rayLength); // [52] Bounce Local Y
+          } else {
+              state.push_back(0.0f); // [50] No bounce available
+              state.push_back(0.0f); // [51]
+              state.push_back(0.0f); // [52]
+          }
+      } else {
+          state.push_back(0.0f); // [50]
+          state.push_back(0.0f); // [51]
+          state.push_back(0.0f); // [52]
+      }
+
     } else {
-      // Tank dead -> fill 52 zeros
-      state.insert(state.end(), 52, 0.0f);
+      // Tank dead -> fill 55 zeros (52 cũ + 3 bounce hint)
+      state.insert(state.end(), 55, 0.0f);
     }
 
     return state;

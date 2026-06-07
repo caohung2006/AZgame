@@ -28,7 +28,7 @@ class AZTankEnv(gym.Env):
     Bọc (wrap) RLEnv của C++ theo chuẩn Gymnasium để
     tương thích với Stable Baselines3.
 
-    State (52 floats):
+    State (55 floats):
         [0 -> 4]: Self State (Heading Cos/Sin, Local Vx/Vy, Angular Vel)
         [5 -> 14]: Enemy Info (Local X/Y, Distance, LOS, Local Vx/Vy, Heading Cos/Sin, Approach Speed, Am I Visible)
         [15 -> 22]: Bullet Radar (2 most dangerous bullets: Local X/Y, TTC, Miss Dist)
@@ -37,6 +37,7 @@ class AZTankEnv(gym.Env):
         [34 -> 38]: Status (Ammo, Shoot Cooldown, Enemy Ammo, Shield Active, Shield Cooldown)
         [39 -> 43]: Weapon Type One-Hot (Normal, Gatling, Frag, Missile, Death Ray)
         [44 -> 51]: Previous Action One-Hot (Move, Turn, Shoot)
+        [52 -> 54]: Bounce Hint (Has Bounce, Bounce Local X/Y)
 
     Action (MultiBinary - 5 phím có thể nhấn cùng lúc):
         [0]: Tiến (1=có, 0=không)
@@ -69,11 +70,11 @@ class AZTankEnv(gym.Env):
         # 2: Shoot (0=idle, 1=shoot)
         self.action_space = spaces.MultiDiscrete([3, 3, 2])
 
-        # Định nghĩa không gian quan sát: 52 con số thực
+        # Định nghĩa không gian quan sát: 55 con số thực (52 cũ + 3 bounce hint)
         self.observation_space = spaces.Box(
             low=-1.0,
             high=1.0,
-            shape=(52,),
+            shape=(55,),
             dtype=np.float32
         )
 
