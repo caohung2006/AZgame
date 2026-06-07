@@ -27,36 +27,21 @@ class ProgressCallback(BaseCallback):
                   f"Cập nhật quá trình học...")
         return True
 
-# LỘ TRÌNH 11 GIAI ĐOẠN HUẤN LUYỆN (CURRICULUM LEARNING V5.0)
+# LỘ TRÌNH 8 GIAI ĐOẠN HUẤN LUYỆN (ANTI-BOUNCE SNIPER)
 PHASES = {
-    # CHƯƠNG 1: BÃI ĐẤT TRỐNG (Rút ngắn thời gian vì AI học nhanh hơn)
-    1: {"map": False, "items": False, "mode": 0, "bot_level": [1],    "steps": 300_000}, # Học lái và tiến lại gần
-    2: {"map": False, "items": False, "mode": 0, "bot_level": [2],    "steps": 500_000}, # Học rượt mục tiêu
-    3: {"map": False, "items": False, "mode": 0, "bot_level": [3],    "steps": 800_000}, # Học lách đạn ngang
+    # CHƯƠNG 1: NỀN TẢNG (Bãi đất trống, bot đơn giản)
+    1: {"map": False, "items": False, "mode": 0, "bot_level": [1],    "steps": 300_000},   # L1 đứng yên: Học lái xe + tiếp cận + bắn
+    2: {"map": False, "items": False, "mode": 0, "bot_level": [2],    "steps": 500_000},   # L2 chỉ chạy: Học đuổi mục tiêu di động
+    3: {"map": False, "items": False, "mode": 0, "bot_level": [3],    "steps": 1_000_000}, # L3 bắn thẳng: Học né đạn + bắn lại
 
-    # CHƯƠNG 2: MÊ CUNG & BÀI TEST THỢ SĂN
-    4: {"map": True,  "items": False, "mode": 0, "bot_level": [1],    "steps": 1_000_000}, # Làm quen Tường
-    
-    # 🔴 PHASE 5: BÀI THI SĂN MỒI
-    # Mix 80% Fleeing Bot (Level 7) và 20% Bot đứng im (Level 1)
-    5: {"map": True,  "items": False, "mode": 0, "bot_level": [7, 7, 7, 7, 1], "steps": 1_500_000}, 
+    # CHƯƠNG 2: MÊ CUNG + BOT SNIPER NẢY TƯỜNG
+    4: {"map": True,  "items": False, "mode": 0, "bot_level": [2],    "steps": 1_000_000}, # L2 mê cung: Học A* navigation
+    5: {"map": True,  "items": False, "mode": 0, "bot_level": [3],    "steps": 1_500_000}, # L3 mê cung: Combat + né đạn thẳng
+    6: {"map": True,  "items": False, "mode": 0, "bot_level": [4],    "steps": 3_000_000}, # L4 FULL SNIPER: Né đạn nảy + Rush
 
-    # 🟣 PHASE 6 (MỚI): BÀI THI PHỤC KÍCH
-    # Bot Level 4 (Xạ Thủ) chủ động tìm kiếm AI → AI học chờ đợi + phủ đầu
-    # Camping penalty đã smart (không phạt khi địch gần) → AI có thể núp
-    6: {"map": True,  "items": False, "mode": 0, "bot_level": [4, 4], "steps": 1_500_000},
-
-    # CHƯƠNG 3: HUẤN LUYỆN CHIẾN ĐẤU CHỦ ĐỘNG (Bot đa dạng)
-    7: {"map": True,  "items": False, "mode": 0, "bot_level": [3, 4, 5, 7, 1], "steps": 2_000_000}, # Đa dạng chiến thuật
-    8: {"map": True,  "items": False, "mode": 0, "bot_level": [4, 5, 6, 6, 7], "steps": 2_500_000}, # Ép góc nâng cao
-    9: {"map": True,  "items": True,  "mode": 0, "bot_level": [6, 6, 6, 5, 7], "steps": 3_000_000}, # Bậc thầy + Items
-
-    # STAGE 2: TIẾN HÓA VƯỢT BẬC (Self-Play)
-    # Phase 10 - Đấu Không Cân Xứng (Asymmetric): Model B vs Model A (Phase 9 frozen)
-    10: {"map": True,  "items": True,  "mode": 0, "op_phase": 9, "steps": 6_000_000},
-
-    # Phase 11 - Đấu Cân Bằng (Symmetric): Model B vs Model B (Cả 2 đều cập nhật)
-    11: {"map": True,  "items": True,  "mode": 0, "op_phase": 11, "steps": 10_000_000},
+    # CHƯƠNG 3: NÂNG CAO
+    7: {"map": True,  "items": True,  "mode": 0, "bot_level": [4],    "steps": 3_000_000}, # Full combat + items
+    8: {"map": True,  "items": True,  "mode": 0, "op_phase": 7,       "steps": 6_000_000}, # Self-Play
 }
 
 import random
@@ -302,9 +287,9 @@ def test_model(phase_id):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pipeline", action="store_true", help="Chạy tự động từ GĐ 1 đến 10")
-    parser.add_argument("--phase", type=int, choices=range(1, 12), help="Chỉ định chạy 1 GĐ cụ thể")
+    parser.add_argument("--phase", type=int, choices=range(1, 9), help="Chỉ định chạy 1 GĐ cụ thể")
     parser.add_argument("--render", action="store_true", help="Mở cửa sổ Raylib xem (TRAIN RẤT CHẬM)")
-    parser.add_argument("--test", type=int, choices=range(1, 12), help="Xem AI múa ở Phase X (sau khi train)")
+    parser.add_argument("--test", type=int, choices=range(1, 9), help="Xem AI múa ở Phase X (sau khi train)")
     parser.add_argument("--resume", action="store_true", help="Tiếp tục học từ file save đang dở")
     args = parser.parse_args()
 

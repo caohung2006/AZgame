@@ -188,7 +188,7 @@ void Tank::FireWeapon(b2World &world, std::vector<Bullet *> &bullets,
           break;
         }
         default: {
-          if (activeMyBullets < 5) {
+          if (activeMyBullets < 3) {
             bullets.push_back(new Bullet(world, spawnPos, 6.0f * forwardDir,
                                          false, false, false, playerIndex));
             shootCooldownTimer = 0.15f;

@@ -624,8 +624,8 @@ void Bot::ShootingThreadFunc() {
 
         if (shotCooldown > 0) shotCooldown--;
 
-        // Chỉ bắn khi KHÔNG còn viên đạn nào trên map
-        bool canFire = (s.activeBullets == 0) && (s.shootCooldown <= 0.0f) && (shotCooldown <= 0);
+        // Cho phép tối đa 3 viên đạn cùng lúc trên map
+        bool canFire = (s.activeBullets < 3) && (s.shootCooldown <= 0.0f) && (shotCooldown <= 0);
 
         // ============ BOUNCE SHOT — FindBounce + LOCK-ON ============
         float bounceAngle = 0.f;
@@ -721,6 +721,10 @@ TankActions Bot::GetAction(Game* game) {
     }
     if (!me || me->isDestroyed || !enemy) return act;
 
+    // === LEVEL-BASED BEHAVIOR ===
+    // Level 1: Đứng yên (bia tập bắn)
+    if (level <= 1) return act;
+
     // --- Lùi thoát kẹt ---
     if (backupTimer > 0) {
         backupTimer--;
@@ -735,6 +739,11 @@ TankActions Bot::GetAction(Game* game) {
     currentMe    = me;
     currentEnemy = enemy;
     CollectSensorData();
+
+    // Level 3: Chỉ bắn thẳng, tắt bounce
+    if (level == 3) {
+        sensor.hasBounce = false;
+    }
 
     // 2. Kích hoạt 2 worker threads
     {
@@ -752,6 +761,13 @@ TankActions Bot::GetAction(Game* game) {
         });
     }
     if (shutdownFlag) return act;
+
+    // Level 2: Chỉ di chuyển, không bắn
+    if (level == 2) {
+        shootOut.hasTarget = false;
+        shootOut.shoot = false;
+        shootOut.overrideTurn = false;
+    }
 
     // 4. Trọng tài — kết hợp Movement + Shooting + Dodge
     const MoveDecision&  move  = moveOut;
@@ -850,7 +866,7 @@ TankActions Bot::GetAction(Game* game) {
     {
         static int dbgFrame = 0;
         dbgFrame++;
-        if (dbgFrame % 30 == 0) {
+        if (false) { // Tắt log debug
             // Tính target angle (giống Shooting Thread)
             float dbgAimErr = 99.f;
             if (sensor.clearShot) {

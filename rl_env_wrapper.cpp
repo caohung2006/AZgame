@@ -267,10 +267,16 @@ public:
             b2Vec2 oldPos = posHistory[historyIndex];
             float displacement = (currentPos - oldPos).Length() * SCALE;
             if (displacement < 50.0f) {
-                // Chỉ phạt camping nếu địch CÒN XA (không phạt khi phục kích gần địch)
-                float distToEnemy = getRawDistanceToEnemy(0); // Khoảng cách tới địch (pixels)
-                if (distToEnemy > 240.0f) { // > 8 units = địch còn xa
-                    reward -= 0.005f; // Giảm xuống -0.005 mỗi frame (tương đương -0.3/s) để tránh làm sụp đổ Q-values
+                float distToEnemy = getRawDistanceToEnemy(0);
+                if (distToEnemy > 240.0f) {
+                    // Enhanced: nếu ĐỊCH CŨNG đứng yên → phạt gấp 4x
+                    float enemySpd = 0.f;
+                    if (enemyTank && !enemyTank->isDestroyed)
+                        enemySpd = enemyTank->body->GetLinearVelocity().Length();
+                    if (enemySpd < 0.15f)
+                        reward -= 0.02f;  // 4x penalty: cả 2 camping = bế tắc
+                    else
+                        reward -= 0.005f; // Penalty bình thường
                 }
             }
         }
@@ -309,6 +315,62 @@ public:
 
     // Phạt / Thưởng bắn (đã tính trước khi Update để có Action Masking)
     reward += shootReward;
+
+    // === BULLET PROXIMITY PENALTY ===
+    // Phạt gradient khi đạn ĐỊCH bay gần Agent → dạy né đạn sớm
+    if (p0Alive && myTank) {
+        for (auto b : game->bullets) {
+            if (!b || b->time <= 0 || b->ownerPlayerIndex == 0) continue;
+            b2Vec2 bPos = b->body->GetPosition();
+            b2Vec2 bVel = b->body->GetLinearVelocity();
+            b2Vec2 toMe = myTank->body->GetPosition() - bPos;
+            float dist = toMe.Length();
+            if (dist > 8.0f || dist < 0.2f) continue;
+            float bSpd = bVel.Length();
+            if (bSpd < 0.5f) continue;
+            b2Vec2 bDir(bVel.x / bSpd, bVel.y / bSpd);
+            float dot = (bDir.x * toMe.x + bDir.y * toMe.y) / dist;
+            if (dot < 0.3f) continue;
+            float cross = bDir.x * toMe.y - bDir.y * toMe.x;
+            float perpDist = fabsf(cross);
+            if (perpDist < 2.5f) {
+                float proximity = 1.0f - std::min(1.0f, perpDist / 2.5f);
+                float closeness = 1.0f - std::min(1.0f, dist / 8.0f);
+                reward -= 0.015f * proximity * closeness;
+            }
+        }
+    }
+
+    // === RUSH REWARD ===
+    // Thưởng áp sát khi kẻ địch ĐỨNG YÊN (đang ngắm sniper)
+    if (p0Alive && enemyTank && !enemyTank->isDestroyed && action0.size() == 3 && action0[0] == 1) {
+        float enemySpeed = enemyTank->body->GetLinearVelocity().Length();
+        if (enemySpeed < 0.15f) {
+            b2Vec2 myFwd(-sinf(myTank->body->GetAngle()), cosf(myTank->body->GetAngle()));
+            b2Vec2 toEnemy = enemyTank->body->GetPosition() - myTank->body->GetPosition();
+            float dist = toEnemy.Length();
+            if (dist > 0.1f) {
+                toEnemy.x /= dist; toEnemy.y /= dist;
+                float facingEnemy = myFwd.x * toEnemy.x + myFwd.y * toEnemy.y;
+                if (facingEnemy > 0.5f)
+                    reward += 0.03f;
+            }
+        }
+    }
+
+    // === ACTIVE MOVEMENT BONUS ===
+    // Thưởng di chuyển khi có đạn địch bay → phá bounce calculation của bot
+    if (p0Alive && myTank) {
+        bool hasEnemyBullet = false;
+        for (auto b : game->bullets) {
+            if (b && b->time > 0 && b->ownerPlayerIndex != 0) {
+                hasEnemyBullet = true; break;
+            }
+        }
+        float mySpeed = myTank->body->GetLinearVelocity().Length();
+        if (hasEnemyBullet && mySpeed > 0.5f)
+            reward += 0.01f;
+    }
 
     // 1. Thưởng khi GIẾT (score tăng) = +100
     int scoreDiff = game->playerScores[0] - lastScores[0];
