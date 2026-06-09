@@ -138,6 +138,10 @@ public:
     int  dodgeTimer     = 0;     ///< Frames còn lại trong trạng thái né
     bool dodgeActive    = false; ///< Đang né hay không
 
+    // ---- Performance mode (training optimization) ----
+    bool fastMode         = false; ///< Bật tối ưu cho training headless
+    int  sensorSkipCounter = 0;    ///< Đếm frame để skip sensor collection
+
     // ==== 2 Worker Threads ====
     std::thread moveThread;
     std::thread shootThread;

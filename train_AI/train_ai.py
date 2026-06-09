@@ -13,6 +13,7 @@ if sys.stdout.encoding.lower() != 'utf-8':
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 from gymnasium_wrapper import AZTankEnv
 
@@ -27,25 +28,70 @@ class ProgressCallback(BaseCallback):
                   f"Cập nhật quá trình học...")
         return True
 
+
+class GraduationCallback(BaseCallback):
+    """
+    Performance Gate: Kiểm tra reward trung bình mỗi check_freq bước.
+    - Nếu reward >= grad_reward liên tục patience lần → TỐT NGHIỆP SỚM (đỡ kểo dài)
+    - Nếu hết max steps mà chưa đạt → vẫn qua nhưng cảnh báo
+    """
+    def __init__(self, grad_reward, min_steps=100_000, check_freq=50_000, patience=3):
+        super().__init__()
+        self.grad_reward = grad_reward
+        self.min_steps = min_steps      # Tối thiểu phải train bao nhiêu bước
+        self.check_freq = check_freq    # Kiểm tra mỗi bao nhiêu bước
+        self.patience = patience        # Số lần liên tục đạt ngưỡng mới tốt nghiệp
+        self.consecutive_pass = 0
+        self.graduated = False
+        self.last_mean_reward = None
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps < self.min_steps:
+            return True  # Chưa đủ steps tối thiểu
+
+        if self.n_calls % self.check_freq == 0:
+            # Lấy ep_rew_mean từ SB3 logger
+            if len(self.model.ep_info_buffer) > 0:
+                mean_reward = sum(ep['r'] for ep in self.model.ep_info_buffer) / len(self.model.ep_info_buffer)
+                self.last_mean_reward = mean_reward
+
+                if mean_reward >= self.grad_reward:
+                    self.consecutive_pass += 1
+                    print(f"  \u2705 [Gate] Reward={mean_reward:.2f} >= {self.grad_reward:.1f} "
+                          f"({self.consecutive_pass}/{self.patience} lần liên tục)")
+                    if self.consecutive_pass >= self.patience:
+                        print(f"  \U0001f393 [Gate] TỐT NGHIỆP SỚM! Reward ổn định tại {mean_reward:.2f}")
+                        self.graduated = True
+                        return False  # Dừng training sớm
+                else:
+                    self.consecutive_pass = 0
+                    print(f"  \u23f3 [Gate] Reward={mean_reward:.2f} < {self.grad_reward:.1f} "
+                          f"(chưa đạt, tiếp tục...)")
+
+        return True
+
 # LỘ TRÌNH 10 GIAI ĐOẠN HUẤN LUYỆN (ANTI-BOUNCE SNIPER v2 — 7 Bot Levels)
 # Level 1: Đứng yên | Level 2: Chỉ chạy | Level 3: Bắn thụ động | Level 4: Bắn thẳng chủ động
 # Level 5: Nảy 1 lần | Level 6: Nảy 2 lần | Level 7: Full sniper (4 bounces)
 PHASES = {
     # CHƯƠNG 1: NỀN TẢNG (Bãi trống)
-    1:  {"map": False, "items": False, "mode": 0, "bot_level": [1], "steps": 300_000},     # L1: Bia tập bắn
-    2:  {"map": False, "items": False, "mode": 0, "bot_level": [2], "steps": 500_000},     # L2: Đuổi mục tiêu di động
-    3:  {"map": False, "items": False, "mode": 0, "bot_level": [3], "steps": 800_000},     # L3: Né bắn thụ động
-    4:  {"map": False, "items": False, "mode": 0, "bot_level": [4], "steps": 1_000_000},   # L4: Combat thẳng chủ động
+    # grad_reward: ngưỡng reward trung bình cần đạt để "tốt nghiệp" sớm
+    1:  {"map": False, "items": False, "mode": 0, "bot_level": [1], "steps": 300_000,   "grad_reward": 5.0},
+    2:  {"map": False, "items": False, "mode": 0, "bot_level": [2], "steps": 500_000,   "grad_reward": 3.0},
+    3:  {"map": False, "items": False, "mode": 0, "bot_level": [3], "steps": 800_000,   "grad_reward": 1.0},
+    4:  {"map": False, "items": False, "mode": 0, "bot_level": [4], "steps": 1_000_000, "grad_reward": 0.5},
 
     # CHƯƠNG 2: MÊ CUNG + BOUNCE
-    5:  {"map": True,  "items": False, "mode": 0, "bot_level": [4], "steps": 1_500_000},   # L4 + mê cung (học A* navigation)
-    6:  {"map": True,  "items": False, "mode": 0, "bot_level": [5], "steps": 2_000_000},   # L5: Nảy 1 lần
-    7:  {"map": True,  "items": False, "mode": 0, "bot_level": [6], "steps": 2_500_000},   # L6: Nảy 2 lần
-    8:  {"map": True,  "items": False, "mode": 0, "bot_level": [7], "steps": 3_000_000},   # L7: FULL SNIPER
+    # Phase 5: Bot yếu (chỉ chạy) → AI tập di chuyển mê cung + khám phá nảy tường
+    # Phase 6+: Tăng dần bot mạnh hơn
+    5:  {"map": True,  "items": False, "mode": 0, "bot_level": [2], "steps": 1_500_000, "grad_reward": 0.5},
+    6:  {"map": True,  "items": False, "mode": 0, "bot_level": [4], "steps": 2_000_000, "grad_reward": 0.0},
+    7:  {"map": True,  "items": False, "mode": 0, "bot_level": [6], "steps": 2_500_000, "grad_reward": 0.0},
+    8:  {"map": True,  "items": False, "mode": 0, "bot_level": [7], "steps": 3_000_000, "grad_reward": -2.0},
 
     # CHƯƠNG 3: NÂNG CAO
-    9:  {"map": True,  "items": True,  "mode": 0, "bot_level": [7], "steps": 3_000_000},   # Full combat + items
-    10: {"map": True,  "items": True,  "mode": 0, "op_phase": 9,    "steps": 6_000_000},   # Self-Play
+    9:  {"map": True,  "items": True,  "mode": 0, "bot_level": [7], "steps": 3_000_000, "grad_reward": -2.0},
+    10: {"map": True,  "items": True,  "mode": 0, "op_phase": 9,    "steps": 6_000_000, "grad_reward": 0.0},
 }
 
 import random
@@ -150,10 +196,13 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     opponent_pool = OpponentPool(cfg, current_phase=phase_id)
 
     # 2. Khởi tạo môi trường
-    # Nếu đang bật xem trực tiếp (render) thì phải ép n_envs=1 để khỏi bay nhiều cửa sổ
-    num_envs = 1 if render else 4
+    # SubprocVecEnv: mỗi env chạy trong process riêng → tận dụng đa nhân CPU
+    # i5-13500 (20 threads): 8 envs × 3 threads/env = tối ưu ~70% CPU
+    num_envs = 1 if render else 8
     render_mode = "human" if render else None
-    env = make_vec_env(lambda: make_env(phase_id, opponent_pool, render_mode), n_envs=num_envs)
+    env = make_vec_env(lambda: make_env(phase_id, opponent_pool, render_mode),
+                       n_envs=num_envs,
+                       vec_env_cls=SubprocVecEnv if num_envs > 1 else None)
 
     # 3. Callback đặc biệt cho Self-Play: Cập nhật pool mỗi khi có checkpoint mới
     class SelfPlayCallback(BaseCallback):
@@ -223,10 +272,58 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     if render:
         print("\n  [Chú ý] Chế độ biểu diễn ĐANG BẬT. Tốc độ train sẽ bị dìm xuống mức thấp nhất (bằng tốc độ mắt nhìn)...")
 
+    # Graduation callback — kiểm tra reward để tốt nghiệp sớm
+    grad_reward = cfg.get("grad_reward", 0.0)
+    base_steps = cfg["steps"]
+    max_steps = base_steps * 3  # Tối đa 3x steps nếu chưa đạt ngưỡng
+
+    grad_cb = GraduationCallback(
+        grad_reward=grad_reward,
+        min_steps=max(100_000, base_steps // 5),
+        check_freq=50_000,
+        patience=3
+    )
+
     try:
-        model.learn(total_timesteps=cfg["steps"], callback=[checkpoint_cb, progress_cb, self_play_cb], reset_num_timesteps=False)
-        model.save(model_path)
-        print(f"\n  [Hoàn Thành] Giai đoạn {phase_id} lưu tại: {model_path}.zip\n")
+        # VÒNG LẶP TRAIN: tiếp tục cho đến khi đạt ngưỡng hoặc hết giới hạn
+        total_trained = 0
+        attempt = 1
+        while total_trained < max_steps:
+            remaining = min(base_steps, max_steps - total_trained)
+            
+            if attempt > 1:
+                print(f"\n  🔄 [Retry #{attempt}] Reward chưa đạt! Thêm {remaining:,} steps (đã train: {total_trained:,}/{max_steps:,})...")
+                # Reset graduation counter cho lần thử mới
+                grad_cb.consecutive_pass = 0
+                grad_cb.graduated = False
+
+            model.learn(total_timesteps=remaining,
+                        callback=[checkpoint_cb, progress_cb, self_play_cb, grad_cb],
+                        reset_num_timesteps=False)
+            total_trained += remaining
+            model.save(model_path)
+
+            # Kiểm tra đã tốt nghiệp chưa
+            if grad_cb.graduated:
+                print(f"\n  🎓 [Hoàn Thành] Phase {phase_id} TỐT NGHIỆP! "
+                      f"(reward={grad_cb.last_mean_reward:.2f} >= {grad_reward}, "
+                      f"sau {total_trained:,} steps)")
+                break
+            elif grad_cb.last_mean_reward is not None and grad_cb.last_mean_reward >= grad_reward:
+                print(f"\n  ✅ [Hoàn Thành] Phase {phase_id} ĐẠT CHUẨN "
+                      f"(reward={grad_cb.last_mean_reward:.2f}, sau {total_trained:,} steps)")
+                break
+            else:
+                # Chưa đạt → thử thêm nếu còn quota
+                if total_trained >= max_steps:
+                    rew_str = f"{grad_cb.last_mean_reward:.2f}" if grad_cb.last_mean_reward is not None else "N/A"
+                    print(f"\n  ⚠️ [Cảnh báo] Phase {phase_id} đã train {total_trained:,} steps (3x) "
+                          f"nhưng reward={rew_str} < {grad_reward}")
+                    print(f"     Chuyển sang phase tiếp theo — có thể cần điều chỉnh reward function.")
+                    break
+                attempt += 1
+        
+        print(f"  Lưu tại: {model_path}.zip\n")
         
         env.close()
         del model

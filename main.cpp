@@ -35,7 +35,10 @@ int main() {
 
     // Khởi tạo các Bot bên ngoài vòng lặp chính để chúng không bị "mất trí nhớ" mỗi frame
     std::vector<Bot*> bots(4, nullptr);
-    if (isBot[1]) bots[1] = new Bot(7, 1); // Bot Level 7 (Full Sniper nảy tường)
+    if (isBot[1]) {
+        bots[1] = new Bot(7, 1); // Bot Level 7 (Full Sniper nảy tường)
+        bots[1]->fastMode = true; // Test: bật tối ưu hiệu năng
+    }
 
     while (!WindowShouldClose()) {
         // --- Xử lý Settings UI ---
@@ -49,6 +52,7 @@ int main() {
             for (int i = 0; i < 4; i++) {
                 if (isBot[i]) {
                     if (!bots[i]) bots[i] = new Bot(7, i); // Bot Level 7
+                    bots[i]->fastMode = true;
                 } else {
                     if (bots[i]) { delete bots[i]; bots[i] = nullptr; }
                 }

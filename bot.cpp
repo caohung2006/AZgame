@@ -116,9 +116,9 @@ float SegDist(b2Vec2 P, b2Vec2 A, b2Vec2 B) {
 bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out,
                 std::vector<b2Vec2>* debugPath = nullptr,
                 const std::vector<b2Vec2>* futurePos = nullptr,
-                int maxBounce = 4) {
+                int maxBounce = 4, bool fastScan = false) {
     if (!g || !eb) return false;
-    const float step = 0.035f;  // ~2° per ray
+    const float step = fastScan ? 0.07f : 0.035f;  // fastMode: ~4° (90 tia), normal: ~2° (180 tia)
     const int numRays = (int)(2.f * PI / step);
     const float bulletR = 3.0f / SCALE;  // Bán kính bullet thực (0.1 unit)
     const float selfSafe = 1.5f;  // ~45px safe radius (tank ~21px + margin)
@@ -350,8 +350,10 @@ void Bot::CollectSensorData() {
         currentWaypointIdx++;
         if (currentWaypointIdx >= (int)cachedPath.size()) needRecalc = true;
     }
+    // fastMode: tăng threshold recalc (20 vs 12) để giảm tần suất A*
+    float recalcThreshold = fastMode ? 20.0f : 12.0f;
     if (needRecalc ||
-        (lastEnemyPos - s.enemyPos).LengthSquared() > 12.0f) {
+        (lastEnemyPos - s.enemyPos).LengthSquared() > recalcThreshold) {
         cachedPath = game->map.GetFullPath(
             game->world, s.myPos, s.enemyPos, blockedCells);
         currentWaypointIdx = 1;
@@ -375,8 +377,9 @@ void Bot::CollectSensorData() {
     }
 
     // ====== LASER FAN 360° (72 tia × tối đa 2 bounces) ======
-    // Mỗi tia: bắn từ trung tâm bot, trace bounce khi chạm tường.
-    // Nếu tia (sau bounce) trúng enemy → Shooting Thread sẽ xoay nòng bắn.
+    // fastMode: Bỏ QUA hoàn toàn — Laser Fan chỉ dùng cho debug visualization
+    // Bot dùng FindBounce riêng cho quyết định bắn
+    if (!fastMode) {
     const float rayStep   = (2.f * PI) / BOT_LASER_RAYS;
     const float maxRayLen = 30.f;  // Box2D units (~900 pixels)
 
@@ -399,7 +402,6 @@ void Bot::CollectSensorData() {
             seg.start = pos;
 
             if (!cb.hit) {
-                // Tia bay vào khoảng trống (không chạm gì)
                 seg.end      = pos + remaining * dir;
                 seg.hitStatic = false;
                 seg.hitBody  = nullptr;
@@ -416,26 +418,26 @@ void Bot::CollectSensorData() {
             seg.length   = (cb.point - pos).Length();
             ray.numSegments = bounce + 1;
 
-            // Trúng enemy → đánh dấu và dừng trace tia này
             if (cb.body == enemy->body) {
                 ray.hitEnemy        = true;
                 ray.enemySegmentIdx = bounce;
                 break;
             }
 
-            // Chạm tường → phản xạ và tiếp tục
             if (cb.hitStatic) {
                 remaining -= seg.length;
                 dir = Refl(SafeN(cb.point - pos), cb.normal);
                 if (dir.LengthSquared() < 0.01f) break;
-                pos = cb.point + 0.05f * dir;  // offset nhẹ tránh self-hit
+                pos = cb.point + 0.05f * dir;
             } else {
-                // Chạm dynamic body khác (không phải enemy) → dừng
                 break;
             }
         }
     }
     s.numLaserRays = BOT_LASER_RAYS;
+    } else {
+        s.numLaserRays = 0;  // fastMode: không có laser data
+    }
 
     // ====== COMBAT CHECKS ======
     // Direct shot: kiểm tra line-of-sight
@@ -452,7 +454,7 @@ void Bot::CollectSensorData() {
         }
     }
 
-    // Bounce shot: FindBounce (180 tia × 4 bounces + debug path + future self-hit)
+    // Bounce shot: FindBounce (fastMode: 90 tia, normal: 180 tia + debug path + future self-hit)
     game->botBounceRays[playerIndex].clear();
     if (me->currentWeapon != ItemType::DEATH_RAY &&
         me->currentWeapon != ItemType::MISSILE) {
@@ -460,11 +462,15 @@ void Bot::CollectSensorData() {
         std::vector<b2Vec2> dbgPath;
         int maxBnc = (level == 5) ? 1 : (level == 6) ? 2 : 4;
         if (FindBounce(game, s.myPos, enemy->body, s.enemyPos, bp,
-                       &dbgPath, futurePos.empty() ? nullptr : &futurePos, maxBnc)) {
+                       fastMode ? nullptr : &dbgPath,
+                       futurePos.empty() ? nullptr : &futurePos,
+                       maxBnc, fastMode)) {
             s.hasBounce   = true;
             s.bouncePoint = bp;
-            game->botBounceRays[playerIndex] = dbgPath;
-            game->botBounceTarget[playerIndex] = bp;
+            if (!fastMode) {
+                game->botBounceRays[playerIndex] = dbgPath;
+                game->botBounceTarget[playerIndex] = bp;
+            }
         }
     }
 
@@ -740,13 +746,30 @@ TankActions Bot::GetAction(Game* game) {
     currentGame  = game;
     currentMe    = me;
     currentEnemy = enemy;
+
+    // fastMode: Chỉ scan đầy đủ mỗi 3 frame, các frame khác chỉ cập nhật vị trí
+    if (fastMode) {
+        sensorSkipCounter++;
+        if (sensorSkipCounter % 3 != 0 && !sensor.dangerDetected) {
+            // Lightweight update: chỉ cập nhật vị trí + vận tốc (không raycast)
+            sensor.myPos   = me->body->GetPosition();
+            sensor.myVel   = me->body->GetLinearVelocity();
+            sensor.myAngle = me->body->GetAngle();
+            sensor.fwd     = b2Vec2(-sinf(sensor.myAngle), cosf(sensor.myAngle));
+            sensor.enemyPos  = enemy->body->GetPosition();
+            sensor.enemyVel  = enemy->body->GetLinearVelocity();
+            sensor.enemyDist = (sensor.enemyPos - sensor.myPos).Length();
+            // Sử dụng sensor data cũ cho mọi thứ khác (bounce, whisker, etc.)
+            goto skip_full_sensor;
+        }
+    }
     CollectSensorData();
+    skip_full_sensor:
 
     // Level 3-4: Tắt bounce (chỉ bắn thẳng)
     if (level <= 4) {
         sensor.hasBounce = false;
     }
-    // Level 5-6: Bounce giới hạn (đã xử lý trong CollectSensorData qua maxBnc)
 
     // 2. Kích hoạt 2 worker threads
     {

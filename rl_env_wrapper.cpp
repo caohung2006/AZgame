@@ -44,6 +44,16 @@ inline b2Vec2 BounceReflect(b2Vec2 incident, b2Vec2 normal) {
     return rl < 1e-4f ? b2Vec2(0,0) : b2Vec2(r.x / rl, r.y / rl);
 }
 
+inline float SegDist(b2Vec2 P, b2Vec2 A, b2Vec2 B) {
+    b2Vec2 AB = B - A; b2Vec2 AP = P - A;
+    float ab2 = AB.x*AB.x + AB.y*AB.y;
+    if (ab2 < 1e-6f) return (P - A).Length();
+    float t = (AP.x*AB.x + AP.y*AB.y) / ab2;
+    if (t < 0.f) t = 0.f; if (t > 1.f) t = 1.f;
+    b2Vec2 closest(A.x + t*AB.x, A.y + t*AB.y);
+    return (P - closest).Length();
+}
+
 /// Tìm điểm đập tường đầu tiên của đường đạn nảy trúng enemy.
 /// @param world    Thế giới Box2D
 /// @param myPos    Vị trí xe tăng AI
@@ -55,6 +65,7 @@ bool FindBounceHint(b2World& world, b2Vec2 myPos, b2Body* enemyBody, b2Vec2& out
     const int numRays = (int)(2.f * 3.14159265f / step);
     const float bulletR = 3.0f / SCALE;
     const float muzzleOffset = 22.5f / SCALE;
+    const float selfSafe = 1.5f; // Bán kính an toàn ~45px
     float bestScore = 1e9f;
     bool found = false;
 
@@ -66,12 +77,18 @@ bool FindBounceHint(b2World& world, b2Vec2 myPos, b2Body* enemyBody, b2Vec2& out
         b2Vec2 d = dir;
         float rem = 80.f;
         b2Vec2 firstWall(0,0);
-        bool gotWall = false, hitEnemy = false;
+        bool gotWall = false, hitEnemy = false, selfHit = false;
 
         for (int bounce = 0; bounce < 4 && rem > 1.0f; bounce++) {
             BounceRayCastCallback cb;
             world.RayCast(&cb, pos, pos + rem * d);
             if (!cb.hit) break;
+
+            // Kiểm tra self-hit sau khi nảy tường
+            if (bounce > 0) {
+                float distToSelf = SegDist(myPos, pos, cb.point);
+                if (distToSelf < selfSafe) { selfHit = true; break; }
+            }
 
             if (!gotWall && cb.hitStatic) {
                 firstWall = cb.point;
@@ -91,7 +108,7 @@ bool FindBounceHint(b2World& world, b2Vec2 myPos, b2Body* enemyBody, b2Vec2& out
             pos = cb.point + bulletR * cb.normal + 0.02f * d;
         }
 
-        if (hitEnemy && gotWall) {
+        if (hitEnemy && gotWall && !selfHit) {
             float dist = (firstWall - myPos).Length();
             if (dist < bestScore) {
                 bestScore = dist;
@@ -288,7 +305,7 @@ public:
       else if (action0[1] == 2) tankActions0.turnRight = true;
 
       if (action0[2] == 1 && trainingMode != 2) {
-          // === Kiểm tra có Bounce Hint hợp lệ không + tính độ chính xác ===
+          // === Kiểm tra có Bounce Hint hợp lệ không + tính độ chính xác === 
           bool hasBounceTarget = false;
           float bounceAimPrecision = 0.0f; // Cos(góc lệch nòng vs bounce point)
           if (myTank && enemyTank && !enemyTank->isDestroyed && game->mapEnabled) {
@@ -315,19 +332,26 @@ public:
               // Có đường bounce → thưởng theo ĐỘ CHÍNH XÁC ngắm
               tankActions0.shoot = true;
               if (bounceAimPrecision > 0.97f) {
-                  // Ngắm rất chuẩn (sai số < ~14°) → thưởng lớn như direct shot
                   shootReward += 0.08f;
               } else if (bounceAimPrecision > 0.90f) {
-                  // Ngắm tạm OK → thưởng trung bình
                   shootReward += 0.03f;
               } else {
-                  // Ngắm chệch quá → phạt nhẹ (dạy AI kiên nhẫn xoay rồi hãy bắn)
                   shootReward -= 0.03f;
               }
+          } else if (!game->mapEnabled) {
+              // BÃI TRỐNG (Phase 1-4): CHO BẮN TỰ DO → AI tự học từ kết quả
+              // Chỉ phạt nhẹ nếu ngắm quá chệch (không chặn bắn!)
+              tankActions0.shoot = true;
+              if (dotProd > 0.3f) {
+                  shootReward += 0.01f;   // Ngắm gần đúng hướng → khuyến khích
+              } else {
+                  shootReward -= 0.01f;   // Ngắm lệch → phạt nhẹ (KHÔNG chặn bắn)
+              }
           } else {
-              // Không thấy địch VÀ không có bounce → tịch thu + phạt
-              tankActions0.shoot = false;
-              shootReward -= 0.1f;
+              // MÊ CUNG: Bỏ chặn bắn! Để AI tự do khám phá cách đạn nảy.
+              // Chỉ phạt cực nhẹ để nó không xả đạn vô tội vạ.
+              tankActions0.shoot = true;
+              shootReward -= 0.005f; 
           }
       }
       
@@ -359,10 +383,11 @@ public:
     currentStep++;
 
     // ╔══════════════════════════════════════════════════════════════════╗
-    // ║              REWARD FUNCTION v2 — ANTI-BOUNCE SNIPER           ║
+    // ║         REWARD FUNCTION v3 — ĐƠN GIẢN, KHÔNG MÂU THUẪN        ║
+    // ║  Chỉ 5 tín hiệu: Alive + Approach + Shoot + Kill/Death + Time ║
     // ╚══════════════════════════════════════════════════════════════════╝
 
-    float reward = -0.01f; // Time Step Penalty: ép AI hành động nhanh
+    float reward = 0.0f;
 
     // --- Tìm lại tank sau khi Update ---
     myTank = nullptr;
@@ -374,9 +399,17 @@ public:
     bool p0Alive = (myTank != nullptr && !myTank->isDestroyed);
 
     // ====================================================================
-    //  1. DELTA DISTANCE REWARD — Thưởng/phạt mỗi bước dựa trên thay đổi
-    //     khoảng cách đến địch. Dùng A* path distance nếu có map,
-    //     Euclidean nếu bản đồ trống.
+    //  1. ALIVE BONUS — Sống = tốt. Đơn giản vậy thôi.
+    //     +0.005/frame × 8000 = +40/episode baseline
+    // ====================================================================
+    if (p0Alive) {
+        reward += 0.005f;
+    }
+
+    // ====================================================================
+    //  2. APPROACH SHAPING — Tiến gần địch = tốt, lùi xa = xấu
+    //     Dùng A* distance (mê cung) hoặc Euclidean (bãi trống)
+    //     Đây là TÍN HIỆU DUY NHẤT về di chuyển — không cần camping/rush/zone
     // ====================================================================
     float currentDistToTarget = 0.0f;
     if (game->mapEnabled && p0Alive && enemyTank && !enemyTank->isDestroyed) {
@@ -391,154 +424,60 @@ public:
 
     if (p0Alive && enemyTank && !enemyTank->isDestroyed && lastDistanceToTarget > 0.1f) {
         float delta = lastDistanceToTarget - currentDistToTarget;
-        // Clamp để tránh reward spike khi teleport/respawn
         delta = std::max(-2.0f, std::min(2.0f, delta));
-        reward += delta * 0.05f;  // Dương = tiến gần, Âm = lùi xa
+        reward += delta * 0.1f;
     }
     lastDistanceToTarget = currentDistToTarget;
 
     // ====================================================================
-    //  2. CAMPING PENALTY — Phạt đứng im khi địch ở xa
-    //     Nếu CẢ 2 đứng yên → phạt nặng gấp 4x (phá deadlock)
-    // ====================================================================
-    if (myTank) {
-        b2Vec2 currentPos = myTank->body->GetPosition();
-        posHistory[historyIndex] = currentPos;
-        historyIndex = (historyIndex + 1) % 60;
-        if (historyCount < 60) historyCount++;
-
-        if (historyCount == 60) {
-            b2Vec2 oldPos = posHistory[historyIndex];
-            float displacement = (currentPos - oldPos).Length() * SCALE;
-            if (displacement < 50.0f) {
-                float distToEnemy = getRawDistanceToEnemy(0);
-                if (distToEnemy > 240.0f) {
-                    float enemySpd = 0.f;
-                    if (enemyTank && !enemyTank->isDestroyed)
-                        enemySpd = enemyTank->body->GetLinearVelocity().Length();
-                    if (enemySpd < 0.15f)
-                        reward -= 0.02f;  // 4x penalty: cả 2 camping = bế tắc
-                    else
-                        reward -= 0.005f; // Penalty bình thường
-                }
-            }
-        }
-    }
-
-    // ====================================================================
-    //  3. WALL COLLISION PENALTY + STUCK PENALTY
-    // ====================================================================
-    if (myTank) {
-      for (b2ContactEdge *edge = myTank->body->GetContactList(); edge;
-           edge = edge->next) {
-        if (edge->contact->IsTouching() &&
-            edge->other->GetType() == b2_staticBody) {
-          reward -= 0.02f;
-
-          // Stuck: nhấn tiến/lùi mà không di chuyển được khi chạm tường
-          float speed = myTank->body->GetLinearVelocity().Length();
-          if (speed < 0.2f && action0.size() == 3 &&
-              (action0[0] == 1 || action0[0] == 2)) {
-            reward -= 0.03f;
-          }
-          break;
-        }
-      }
-    }
-
-    // ====================================================================
-    //  4. JERKY MOVEMENT PENALTY — Chỉ phạt giật xoay trái-phải
-    //     BỎ phạt tiến-lùi → cho phép peek-and-shoot trong mê cung
-    // ====================================================================
-    if (action0.size() == 3 && lastAction0.size() == 3) {
-        if (action0[1] != lastAction0[1] && action0[1] != 0 && lastAction0[1] != 0) {
-            reward -= 0.003f; // Giảm từ 0.005 → 0.003 (cho phép juking vừa phải)
-        }
-    }
-
-    // ====================================================================
-    //  5. SHOOTING REWARD/PENALTY (đã tính ở phần Action Masking)
+    //  3. SHOOT ACCURACY — Chỉ thưởng/phạt khi AI BẤM BẮN
+    //     Không phạt khi không bắn. Không phạt quá nặng khi bắn trượt.
     // ====================================================================
     reward += shootReward;
 
     // ====================================================================
-    //  6. BULLET PROXIMITY PENALTY + DODGE SUCCESS REWARD
+    //  4. DODGE REWARD (Tín hiệu Né đạn) — Rất cần cho Phase khó
+    //     Phạt nhẹ khi đạn bay thẳng vào người, thưởng khi đạn chệch đi
     // ====================================================================
     int currentDangerBullets = 0;
     if (p0Alive && myTank) {
         for (auto b : game->bullets) {
             if (!b || b->time <= 0 || b->ownerPlayerIndex == 0) continue;
-            b2Vec2 bPos = b->body->GetPosition();
-            b2Vec2 bVel = b->body->GetLinearVelocity();
-            b2Vec2 toMe = myTank->body->GetPosition() - bPos;
+            b2Vec2 toMe = myTank->body->GetPosition() - b->body->GetPosition();
             float dist = toMe.Length();
             if (dist > 8.0f || dist < 0.2f) continue;
+            
+            b2Vec2 bVel = b->body->GetLinearVelocity();
             float bSpd = bVel.Length();
             if (bSpd < 0.5f) continue;
+            
             b2Vec2 bDir(bVel.x / bSpd, bVel.y / bSpd);
             float dot = (bDir.x * toMe.x + bDir.y * toMe.y) / dist;
-            if (dot < 0.3f) continue;
-            float cross = bDir.x * toMe.y - bDir.y * toMe.x;
-            float perpDist = fabsf(cross);
-            if (perpDist < 2.5f) {
-                float proximity = 1.0f - std::min(1.0f, perpDist / 2.5f);
-                float closeness = 1.0f - std::min(1.0f, dist / 8.0f);
-                reward -= 0.015f * proximity * closeness;
+            if (dot < 0.3f) continue; // Đạn không bay về hướng mình
+            
+            float perpDist = fabsf(bDir.x * toMe.y - bDir.y * toMe.x);
+            if (perpDist < 2.5f) { // Quỹ đạo đạn cắt ngang người
                 currentDangerBullets++;
+                reward -= 0.01f; // Phạt nhẹ nguy hiểm
             }
         }
     }
-
-    // Dodge Success: số đạn nguy hiểm GIẢM mà AI vẫn sống → né thành công
+    
+    // Thưởng khi số đạn nguy hiểm giảm (né thành công)
     if (p0Alive && prevDangerBulletCount > currentDangerBullets) {
-        reward += 0.04f * (prevDangerBulletCount - currentDangerBullets);
+        reward += 0.03f * (prevDangerBulletCount - currentDangerBullets);
     }
     prevDangerBulletCount = currentDangerBullets;
 
     // ====================================================================
-    //  7. RUSH REWARD — Thưởng áp sát khi địch đứng yên
-    //     Giảm từ 0.03 → 0.01 để tránh AI kamikaze
-    // ====================================================================
-    if (p0Alive && enemyTank && !enemyTank->isDestroyed
-        && action0.size() == 3 && action0[0] == 1) {
-        float enemySpeed = enemyTank->body->GetLinearVelocity().Length();
-        if (enemySpeed < 0.15f) {
-            b2Vec2 myFwd(-sinf(myTank->body->GetAngle()),
-                          cosf(myTank->body->GetAngle()));
-            b2Vec2 toEnemy = enemyTank->body->GetPosition()
-                           - myTank->body->GetPosition();
-            float dist = toEnemy.Length();
-            if (dist > 0.1f) {
-                toEnemy.x /= dist; toEnemy.y /= dist;
-                float facingEnemy = myFwd.x * toEnemy.x + myFwd.y * toEnemy.y;
-                if (facingEnemy > 0.5f)
-                    reward += 0.01f;
-            }
-        }
-    }
-
-    // ====================================================================
-    //  8. ACTIVE MOVEMENT BONUS — Phá bounce calculation của bot
-    //     Tăng từ 0.01 → 0.02 để bù Time Penalty
-    // ====================================================================
-    if (p0Alive && myTank) {
-        bool hasEnemyBullet = false;
-        for (auto b : game->bullets) {
-            if (b && b->time > 0 && b->ownerPlayerIndex != 0) {
-                hasEnemyBullet = true; break;
-            }
-        }
-        float mySpeed = myTank->body->GetLinearVelocity().Length();
-        if (hasEnemyBullet && mySpeed > 0.5f)
-            reward += 0.02f;
-    }
-
-    // ====================================================================
-    //  9. KILL / DEATH / SUICIDE
+    //  5. KILL / DEATH / SUICIDE — Tín hiệu chính
     // ====================================================================
     int scoreDiff = game->playerScores[0] - lastScores[0];
     if (scoreDiff > 0) {
-      reward += 100.0f * scoreDiff;
+      float killBonus = 100.0f;
+      if (game->mapEnabled && game->itemsEnabled) killBonus = 200.0f;
+      else if (game->mapEnabled)                   killBonus = 150.0f;
+      reward += killBonus * scoreDiff;
       lastScores[0] = game->playerScores[0];
     }
 
@@ -550,112 +489,20 @@ public:
                 break;
             }
         }
-        if (suicided) {
-            reward -= 250.0f; // Phạt tự sát nặng
-        } else {
-            reward -= 100.0f; // Bị địch giết
-        }
+        reward -= suicided ? 120.0f : 100.0f;
     }
 
     // ====================================================================
-    //  10. RAMMING PENALTY — Phạt ôm sát địch
-    // ====================================================================
-    if (p0Alive && enemyTank && !enemyTank->isDestroyed) {
-      for (b2ContactEdge *edge = myTank->body->GetContactList();
-           edge; edge = edge->next) {
-        if (edge->contact->IsTouching() && edge->other == enemyTank->body) {
-          reward -= 0.02f;
-          break;
-        }
-      }
-    }
-
-    // ====================================================================
-    //  11. COMBAT ZONE SHAPING — Chỉ dùng trên bản đồ trống
-    // ====================================================================
-    if (!game->mapEnabled) {
-      float currentDist = getRawDistanceToEnemy(0);
-      if (p0Alive && currentDist < 1000.0f) {
-        if (currentDist > 350.0f) {
-          reward -= 0.02f;
-        } else if (currentDist < 80.0f) {
-          reward -= 0.05f;
-        }
-      }
-    }
-
-    // ====================================================================
-    //  12. A* FOLLOWING REWARD — Thưởng bám waypoint trong mê cung
-    // ====================================================================
-    if (game->mapEnabled && p0Alive && enemyTank && !enemyTank->isDestroyed) {
-      int pathDist = 0;
-      b2Vec2 waypoint =
-          game->map.GetNextWaypoint(game->world, myTank->body->GetPosition(),
-                                    enemyTank->body->GetPosition(), pathDist);
-      b2Vec2 toWP = waypoint - myTank->body->GetPosition();
-      float wpAbsAngle = atan2f(-toWP.x, toWP.y);
-      float wpRelAngle = wpAbsAngle - myTank->body->GetAngle();
-      float wpFacing = cosf(wpRelAngle);
-
-      if (wpFacing > 0.7f && action0.size() == 3 && action0[0] == 1) {
-        reward += 0.025f;
-      }
-    }
-
-    // ====================================================================
-    //  13. FACING REWARD + BOUNCE AIM PRECISION REWARD
-    //      Tín hiệu chỉ đường cho AI: "xoay nòng về đây rồi hãy bắn"
-    // ====================================================================
-    if (p0Alive && enemyTank && !enemyTank->isDestroyed) {
-      if (isEnemyInSight) {
-        // Thấy địch trực tiếp → thưởng ngắm thẳng
-        b2Vec2 toEnemy =
-            enemyTank->body->GetPosition() - myTank->body->GetPosition();
-        float absAngle = atan2f(-toEnemy.x, toEnemy.y);
-        float relAngle = absAngle - myTank->body->GetAngle();
-        float facingScore = cosf(relAngle);
-        if (facingScore > 0.85f) {
-          reward += 0.004f;
-        }
-      } else if (game->mapEnabled) {
-        // Không thấy địch + có map → DẪN DẮT ngắm bounce point
-        // Graduated reward: càng chính xác càng thưởng cao
-        b2Vec2 bp;
-        if (FindBounceHint(game->world, myTank->body->GetPosition(),
-                            enemyTank->body, bp)) {
-          b2Vec2 toBounce = bp - myTank->body->GetPosition();
-          float bAngle = atan2f(-toBounce.x, toBounce.y);
-          float bRelAngle = bAngle - myTank->body->GetAngle();
-          while (bRelAngle > PI) bRelAngle -= 2*PI;
-          while (bRelAngle < -PI) bRelAngle += 2*PI;
-          float bFacing = cosf(bRelAngle);
-
-          if (bFacing > 0.97f) {
-            reward += 0.015f;  // Ngắm chuẩn (< ~14°) → "SẴN SÀNG BẮN!"
-          } else if (bFacing > 0.85f) {
-            reward += 0.008f;  // Gần chuẩn → "TIẾP TỤC XOAY!"
-          } else if (bFacing > 0.5f) {
-            reward += 0.003f;  // Đúng hướng → khuyến khích xoay thêm
-          }
-          // bFacing < 0.5 → quay lưng, không thưởng
-        }
-      }
-    }
-
-    // ====================================================================
-    //  14. TIMEOUT PENALTY — Giảm nhẹ hơn bản cũ
-    //      [-10, -50] thay vì [-30, -100]
+    //  5. TIMEOUT — Hết giờ mà chưa giết được = phạt nhẹ
     // ====================================================================
     bool isTimeout = (currentStep >= maxSteps);
     bool done = game->needsRestart || isTimeout || (!p0Alive);
 
     if (isTimeout && p0Alive) {
       if (trainingMode == 2) {
-        reward += 100.0f; // CHẾ ĐỘ NÉ TRÁNH: Sống sót = THẮNG!
+        reward += 100.0f;
       } else {
-        float dist = getRawDistanceToEnemy(0);
-        float penalty = -10.0f - 40.0f * std::min(1.0f, dist / 500.0f);
-        reward += penalty;
+        reward -= 20.0f;  // Phạt cố định, đơn giản
       }
     }
 
@@ -937,6 +784,7 @@ public:
       if (!bots[playerIdx] || bots[playerIdx]->level != level) {
           delete bots[playerIdx];
           bots[playerIdx] = new Bot(level, playerIdx);
+          bots[playerIdx]->fastMode = true;  // Tối ưu hiệu năng cho training
       }
 
       TankActions acts = bots[playerIdx]->GetAction(game);
