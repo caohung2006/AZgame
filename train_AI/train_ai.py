@@ -85,7 +85,8 @@ PHASES = {
     # Phase 5: Bot yếu (chỉ chạy) → AI tập di chuyển mê cung + khám phá nảy tường
     # Phase 6+: Tăng dần bot mạnh hơn
     5:  {"map": True,  "items": False, "mode": 0, "bot_level": [2], "steps": 1_500_000, "grad_reward": 0.5},
-    6:  {"map": True,  "items": False, "mode": 0, "bot_level": [4], "steps": 2_000_000, "grad_reward": 0.0},
+    # Trui rèn Phase 6 (Bot bắn thẳng) đến khi cực kỳ thuần thục:
+    6:  {"map": True,  "items": False, "mode": 0, "bot_level": [4], "steps": 10_000_000, "grad_reward": 100.0},
     7:  {"map": True,  "items": False, "mode": 0, "bot_level": [6], "steps": 2_500_000, "grad_reward": 0.0},
     8:  {"map": True,  "items": False, "mode": 0, "bot_level": [7], "steps": 3_000_000, "grad_reward": -2.0},
 
@@ -224,14 +225,14 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     is_early_phase = (phase_id <= 4)
     ppo_params = {
         "n_steps": 4096 if is_early_phase else 2048,
-        "batch_size": 128 if is_early_phase else 64,
+        "batch_size": 128 if is_early_phase else 256,
         "ent_coef": 0.05 if is_early_phase else 0.01,
     }
     print(f"  [PPO] n_steps={ppo_params['n_steps']} | batch_size={ppo_params['batch_size']} | ent_coef={ppo_params['ent_coef']}")
 
     # 4. Khởi tạo Model AI (Tiếp tục từ phase trước, hoặc resume file)
     training_device = "cpu" 
-    
+     
     if resume_model_path and os.path.exists(resume_model_path + ".zip"):
         print(f"  [Info] Kế thừa trí tuệ từ model: {resume_model_path}.zip")
         model = PPO.load(resume_model_path, env=env, device=training_device,
@@ -254,7 +255,7 @@ def train_phase(phase_id, resume_model_path=None, render=False):
         model = PPO(
             policy="MlpPolicy",
             env=env,
-            learning_rate=3e-4,
+            learning_rate=1e-4,
             n_steps=ppo_params["n_steps"],
             batch_size=ppo_params["batch_size"],
             n_epochs=10,
