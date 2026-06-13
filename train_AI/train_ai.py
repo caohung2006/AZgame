@@ -87,12 +87,12 @@ PHASES = {
     5:  {"map": True,  "items": False, "mode": 0, "bot_level": [2], "steps": 1_500_000, "grad_reward": 0.5},
     # Trui rèn Phase 6 (Bot bắn thẳng) đến khi cực kỳ thuần thục:
     6:  {"map": True,  "items": False, "mode": 0, "bot_level": [4], "steps": 10_000_000, "grad_reward": 100.0},
-    7:  {"map": True,  "items": False, "mode": 0, "bot_level": [6], "steps": 2_500_000, "grad_reward": 0.0},
-    8:  {"map": True,  "items": False, "mode": 0, "bot_level": [7], "steps": 3_000_000, "grad_reward": -2.0},
+    7:  {"map": True,  "items": False, "mode": 0, "bot_level": [7], "steps": 20_000_000, "grad_reward": 60.0},
+    # 8:  {"map": True,  "items": False, "mode": 0, "bot_level": [7], "steps": 20_000_000, "grad_reward": 50.0},
 
     # CHƯƠNG 3: NÂNG CAO
-    9:  {"map": True,  "items": True,  "mode": 0, "bot_level": [7], "steps": 3_000_000, "grad_reward": -2.0},
-    10: {"map": True,  "items": True,  "mode": 0, "op_phase": 9,    "steps": 6_000_000, "grad_reward": 0.0},
+    # 9:  {"map": True,  "items": True,  "mode": 0, "bot_level": [7], "steps": 20_000_000, "grad_reward": 50.0},
+    8: {"map": True,  "items": False,  "mode": 0, "op_phase": 9,    "steps": 20_000_000, "grad_reward": 50.0},
 }
 
 import random
@@ -199,7 +199,7 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     # 2. Khởi tạo môi trường
     # SubprocVecEnv: mỗi env chạy trong process riêng → tận dụng đa nhân CPU
     # i5-13500 (20 threads): 8 envs × 3 threads/env = tối ưu ~70% CPU
-    num_envs = 1 if render else 8
+    num_envs = 1 if render else 20
     render_mode = "human" if render else None
     env = make_vec_env(lambda: make_env(phase_id, opponent_pool, render_mode),
                        n_envs=num_envs,

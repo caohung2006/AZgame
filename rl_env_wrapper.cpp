@@ -8,6 +8,7 @@
 #include <vector>
 #include "bot.h"
 #include <algorithm>
+#include <random>
 
 namespace py = pybind11;
 
@@ -176,6 +177,16 @@ public:
   RLEnv(int num_players = 2, bool map_enabled = false,
         bool items_enabled = false, int training_mode = 0,
         bool bot_self_immune = false) {
+    
+    // Bắt đầu fix: Sửa lỗi random map bị lặp lại trong môi trường train
+    static bool randSeeded = false;
+    if (!randSeeded) {
+        std::random_device rd;
+        srand(rd());
+        randSeeded = true;
+    }
+    // Kết thúc fix
+
     game = new Game();                    // Tạo đối tượng Game mới
     game->numPlayers = num_players;       // Số lượng người chơi
     game->mapEnabled = map_enabled;       // Có sử dụng bản đồ (vật cản) không
