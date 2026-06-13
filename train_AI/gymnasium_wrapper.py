@@ -36,7 +36,7 @@ class AZTankEnv(gym.Env):
         [31 -> 33]: A* Navigation (Waypoint Local X/Y, Path Distance)
         [34 -> 38]: Status (Ammo, Shoot Cooldown, Enemy Ammo, Shield Active, Shield Cooldown)
         [39 -> 43]: Weapon Type One-Hot (Normal, Gatling, Frag, Missile, Death Ray)
-        [44 -> 51]: Previous Action One-Hot (Move, Turn, Shoot)
+        [44 -> 51]: Previous Action One-Hot (Move 3, Turn 3, Shoot 2)
 
     Action (MultiBinary - 5 phím có thể nhấn cùng lúc):
         [0]: Tiến (1=có, 0=không)
@@ -48,7 +48,7 @@ class AZTankEnv(gym.Env):
 
     metadata = {"render_modes": ["human"]}
 
-    def __init__(self, num_players=2, map_enabled=False, items_enabled=False, training_mode=0, opponent_model=None, opponent_pool=None, render_mode=None):
+    def __init__(self, num_players=2, map_enabled=False, items_enabled=False, training_mode=0, opponent_model=None, opponent_pool=None, render_mode=None, shaping_factor=1.0):
         super().__init__()
 
         self.opponent_model = opponent_model
@@ -60,7 +60,8 @@ class AZTankEnv(gym.Env):
             num_players=num_players,
             map_enabled=map_enabled,
             items_enabled=items_enabled,
-            training_mode=training_mode
+            training_mode=training_mode,
+            shaping_factor=shaping_factor
         )
 
         # Không gian hành động: MultiDiscrete(3, 3, 2)
@@ -80,6 +81,9 @@ class AZTankEnv(gym.Env):
     def reset(self, seed=None, options=None):
         """Bắt đầu ván chơi mới, trả về trạng thái ban đầu."""
         super().reset(seed=seed)
+        if seed is not None:
+            self._env.seed(seed)
+            
         # Swap đối thủ mỗi ván mới → tăng diversity
         if self.opponent_pool is not None:
             new_opponent = self.opponent_pool.sample()

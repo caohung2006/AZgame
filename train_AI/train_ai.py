@@ -27,25 +27,47 @@ class ProgressCallback(BaseCallback):
                   f"Cập nhật quá trình học...")
         return True
 
-# LỘ TRÌNH 10 GIAI ĐOẠN HUẤN LUYỆN (ANTI-BOUNCE SNIPER v2 — 7 Bot Levels)
+# LỘ TRÌNH 10 GIAI ĐOẠN HUẤN LUYỆN (ANTI-BOUNCE SNIPER v3 — Curriculum Optimized)
 # Level 1: Đứng yên | Level 2: Chỉ chạy | Level 3: Bắn thụ động | Level 4: Bắn thẳng chủ động
-# Level 5: Nảy 1 lần | Level 6: Nảy 2 lần | Level 7: Full sniper (4 bounces)
+# Level 5: Nảy 1 lần | Level 6: Nảy 2 lần
+#
+# Hyperparameters per-phase:
+#   lr          = Learning Rate — tốc độ cập nhật trọng số mạng neural.
+#                 Giảm dần qua các phase để tránh "quên kiến thức cũ" (catastrophic forgetting).
+#                 Phase đầu (3e-4): bước nhảy lớn, học nhanh từ zero.
+#                 Phase cuối (5e-5): bước nhảy nhỏ, tinh chỉnh (fine-tune) kỹ năng đã có.
+#
+#   ent_coef    = Entropy Coefficient — hệ số khám phá ngẫu nhiên.
+#                 Giá trị cao (0.05) = AI thử nhiều hành động khác nhau → tốt cho giai đoạn đầu.
+#                 Giá trị thấp (0.005) = AI ổn định chính sách, ít ngẫu nhiên → tốt cho giai đoạn cuối.
+#                 Nếu giảm quá đột ngột → AI "đóng băng" chính sách sớm, không thích ứng được.
+#
+#   shaping_factor (SF) = Hệ số khuếch đại Reward Shaping (các phần thưởng dẫn dắt nhỏ).
+#                 SF=1.0: Reward shaping mạnh → dạy kỹ năng cơ bản (tìm đường, né đạn...).
+#                 SF=0.05: Reward shaping gần như tắt → AI chỉ tối ưu Kill/Death thực sự.
+#
+#   bot_level   = Danh sách level Bot đối thủ. Khi có nhiều level (vd [4,5,6]),
+#                 mỗi ván sẽ ngẫu nhiên chọn 1 level → AI phải giỏi đánh MỌI loại đối thủ,
+#                 tránh overfit (chỉ biết đánh 1 kiểu bot cụ thể).
 PHASES = {
-    # CHƯƠNG 1: NỀN TẢNG (Bãi trống)
-    1:  {"map": False, "items": False, "mode": 0, "bot_level": [1], "steps": 300_000},     # L1: Bia tập bắn
-    2:  {"map": False, "items": False, "mode": 0, "bot_level": [2], "steps": 500_000},     # L2: Đuổi mục tiêu di động
-    3:  {"map": False, "items": False, "mode": 0, "bot_level": [3], "steps": 800_000},     # L3: Né bắn thụ động
-    4:  {"map": False, "items": False, "mode": 0, "bot_level": [4], "steps": 1_000_000},   # L4: Combat thẳng chủ động
+    # CHƯƠNG 1: NỀN TẢNG (Bãi trống, khám phá nhiều, LR cao)
+    1:  {"map": False, "items": False, "mode": 0, "bot_level": [1], "steps": 500_000,   "shaping_factor": 1.0,  "lr": 3e-4, "ent_coef": 0.05},   # L1: Bia tập bắn (tăng từ 300K → 500K để hội tụ kỹ năng cơ bản)
+    2:  {"map": False, "items": False, "mode": 0, "bot_level": [2], "steps": 500_000,   "shaping_factor": 1.0,  "lr": 3e-4, "ent_coef": 0.05},   # L2: Đuổi mục tiêu di động
+    3:  {"map": False, "items": False, "mode": 0, "bot_level": [3], "steps": 800_000,   "shaping_factor": 1.0,  "lr": 3e-4, "ent_coef": 0.05},   # L3: Né bắn thụ động
+    4:  {"map": False, "items": False, "mode": 0, "bot_level": [4], "steps": 1_000_000, "shaping_factor": 1.0,  "lr": 3e-4, "ent_coef": 0.05},   # L4: Combat thẳng chủ động
 
-    # CHƯƠNG 2: MÊ CUNG + BOUNCE
-    5:  {"map": True,  "items": False, "mode": 0, "bot_level": [4], "steps": 1_500_000},   # L4 + mê cung (học A* navigation)
-    6:  {"map": True,  "items": False, "mode": 0, "bot_level": [5], "steps": 2_000_000},   # L5: Nảy 1 lần
-    7:  {"map": True,  "items": False, "mode": 0, "bot_level": [6], "steps": 2_500_000},   # L6: Nảy 2 lần
-    8:  {"map": True,  "items": False, "mode": 0, "bot_level": [7], "steps": 3_000_000},   # L7: FULL SNIPER
+    # CHƯƠNG 2: MÊ CUNG + BOUNCE (LR giảm dần, ent_coef chuyển tiếp mượt)
+    5:  {"map": True,  "items": False, "mode": 0, "bot_level": [4],    "steps": 1_500_000, "shaping_factor": 0.9,  "lr": 2e-4, "ent_coef": 0.03},   # L4 + mê cung (SF giảm nhẹ vì đã biết cơ bản)
+    6:  {"map": True,  "items": False, "mode": 0, "bot_level": [5],    "steps": 2_000_000, "shaping_factor": 0.7,  "lr": 2e-4, "ent_coef": 0.03},   # L5: Nảy 1 lần
+    7:  {"map": True,  "items": False, "mode": 0, "bot_level": [6],    "steps": 3_000_000, "shaping_factor": 0.5,  "lr": 1e-4, "ent_coef": 0.01},   # L6: Nảy 2 lần
+    8:  {"map": True,  "items": False, "mode": 0, "bot_level": [6],    "steps": 3_000_000, "shaping_factor": 0.3,  "lr": 1e-4, "ent_coef": 0.01},   # L6: Củng cố với SF thấp hơn
 
-    # CHƯƠNG 3: NÂNG CAO
-    9:  {"map": True,  "items": True,  "mode": 0, "bot_level": [7], "steps": 3_000_000},   # Full combat + items
-    10: {"map": True,  "items": True,  "mode": 0, "op_phase": 9,    "steps": 6_000_000},   # Self-Play
+    # CHƯƠNG 3: NÂNG CAO (LR thấp = fine-tune, bot trộn để chống overfit)
+    9:  {"map": True,  "items": True,  "mode": 0, "bot_level": [5, 6],    "steps": 3_000_000,  "shaping_factor": 0.15, "lr": 5e-5, "ent_coef": 0.01},   # Full combat + items, trộn 2 loại bot
+    10: {"map": True,  "items": True,  "mode": 0, "bot_level": [4, 5, 6], "steps": 10_000_000, "shaping_factor": 0.05, "lr": 5e-5, "ent_coef": 0.005},  # Marathon: trộn 3 loại bot chống overfit
+
+    # CHƯƠNG 4: BOSS RUSH (Chỉ đánh Bot mạnh nhất — tinh chỉnh tối đa)
+    11: {"map": True,  "items": True,  "mode": 0, "bot_level": [7],       "steps": 5_000_000,  "shaping_factor": 0.03, "lr": 3e-5, "ent_coef": 0.003},  # Boss Rush: 1v1 Bot L7 bounce 4 lần, LR cực thấp
 }
 
 import random
@@ -127,7 +149,8 @@ def make_env(phase_id, opponent_pool=None, render_mode=None):
         training_mode=cfg["mode"],
         opponent_model=opponent_model,
         opponent_pool=opponent_pool,  # Truyền pool để swap đối thủ mỗi episode
-        render_mode=render_mode
+        render_mode=render_mode,
+        shaping_factor=cfg.get("shaping_factor", 1.0)
     )
 
 def train_phase(phase_id, resume_model_path=None, render=False):
@@ -165,19 +188,33 @@ def train_phase(phase_id, resume_model_path=None, render=False):
     
     self_play_cb = SelfPlayCallback(opponent_pool)
 
-    # 3. PPO Hyperparameters tùy theo giai đoạn
-    #    Phase 1-4: Khám phá nhiều (ent_coef cao, batch lớn hơn)
-    #    Phase 5-10: Khai thác kiến thức (ent_coef thấp, batch nhỏ hơn)
+    # 3. PPO Hyperparameters — đọc từ cấu hình per-phase
+    #    Phase 1-4: Khám phá nhiều (ent_coef cao, LR cao, batch lớn)
+    #    Phase 5-10: Khai thác kiến thức (ent_coef/LR giảm dần, batch nhỏ hơn)
     is_early_phase = (phase_id <= 4)
     ppo_params = {
         "n_steps": 4096 if is_early_phase else 2048,
         "batch_size": 128 if is_early_phase else 64,
-        "ent_coef": 0.05 if is_early_phase else 0.01,
+        "ent_coef": cfg.get("ent_coef", 0.05 if is_early_phase else 0.01),
+        "learning_rate": cfg.get("lr", 3e-4),
     }
-    print(f"  [PPO] n_steps={ppo_params['n_steps']} | batch_size={ppo_params['batch_size']} | ent_coef={ppo_params['ent_coef']}")
+    print(f"  [PPO] n_steps={ppo_params['n_steps']} | batch={ppo_params['batch_size']} | ent={ppo_params['ent_coef']} | lr={ppo_params['learning_rate']}")
 
     # 4. Khởi tạo Model AI (Tiếp tục từ phase trước, hoặc resume file)
     training_device = "cpu" 
+
+    # Tính toán target_timesteps để khi resume không bị train lố
+    base_timesteps = 0
+    if phase_id > 1 and os.path.exists(f"models/ppo_tank_phase{phase_id - 1}.zip"):
+        try:
+            # Lấy num_timesteps của phase trước
+            temp_model = PPO.load(f"models/ppo_tank_phase{phase_id - 1}.zip", custom_objects={"env": None}, device="cpu")
+            base_timesteps = temp_model.num_timesteps
+            del temp_model
+        except Exception:
+            base_timesteps = sum(PHASES[p]["steps"] for p in range(1, phase_id))
+    
+    target_timesteps = base_timesteps + cfg["steps"]
     
     if resume_model_path and os.path.exists(resume_model_path + ".zip"):
         print(f"  [Info] Kế thừa trí tuệ từ model: {resume_model_path}.zip")
@@ -186,6 +223,7 @@ def train_phase(phase_id, resume_model_path=None, render=False):
                              "n_steps": ppo_params["n_steps"],
                              "batch_size": ppo_params["batch_size"],
                              "ent_coef": ppo_params["ent_coef"],
+                             "learning_rate": ppo_params["learning_rate"],
                          })
     elif phase_id > 1 and os.path.exists(f"models/ppo_tank_phase{phase_id - 1}.zip"):
         prev_path = f"models/ppo_tank_phase{phase_id - 1}"
@@ -195,13 +233,14 @@ def train_phase(phase_id, resume_model_path=None, render=False):
                              "n_steps": ppo_params["n_steps"],
                              "batch_size": ppo_params["batch_size"],
                              "ent_coef": ppo_params["ent_coef"],
+                             "learning_rate": ppo_params["learning_rate"],
                          })
     else:
         print("  [Info] Khởi tạo Model hoàn toàn mới!")
         model = PPO(
             policy="MlpPolicy",
             env=env,
-            learning_rate=3e-4,
+            learning_rate=ppo_params["learning_rate"],
             n_steps=ppo_params["n_steps"],
             batch_size=ppo_params["batch_size"],
             n_epochs=10,
@@ -212,6 +251,25 @@ def train_phase(phase_id, resume_model_path=None, render=False):
             tensorboard_log="./logs/curriculum/"
         )
 
+    # Nếu model đã train đủ hoặc lố số steps mục tiêu, tự động chuyển phase
+    if model.num_timesteps >= target_timesteps:
+        print(f"\n  [Hoàn Thành] Giai đoạn {phase_id} ĐÃ HOÀN THÀNH TỪ TRƯỚC (Current steps: {model.num_timesteps:,} >= Target: {target_timesteps:,})")
+        if resume_model_path:
+            model.save(model_path)
+        env.close()
+        del model
+        del opponent_pool
+        del env
+        import gc
+        gc.collect()
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return
+
+    remaining_steps = target_timesteps - model.num_timesteps
+    print(f"  [Info] Target Phase {phase_id}: {target_timesteps:,} steps. Hiện tại: {model.num_timesteps:,} steps -> Cần train thêm: {remaining_steps:,} steps")
+
     # Callback
     checkpoint_cb = CheckpointCallback(save_freq=50_000, save_path="./models/checkpoints/", name_prefix=f"ppo_phase{phase_id}")
     progress_cb = ProgressCallback(print_freq=20_000)
@@ -220,7 +278,7 @@ def train_phase(phase_id, resume_model_path=None, render=False):
         print("\n  [Chú ý] Chế độ biểu diễn ĐANG BẬT. Tốc độ train sẽ bị dìm xuống mức thấp nhất (bằng tốc độ mắt nhìn)...")
 
     try:
-        model.learn(total_timesteps=cfg["steps"], callback=[checkpoint_cb, progress_cb, self_play_cb], reset_num_timesteps=False)
+        model.learn(total_timesteps=remaining_steps, callback=[checkpoint_cb, progress_cb, self_play_cb], reset_num_timesteps=False)
         model.save(model_path)
         print(f"\n  [Hoàn Thành] Giai đoạn {phase_id} lưu tại: {model_path}.zip\n")
         
@@ -291,9 +349,9 @@ def test_model(phase_id):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pipeline", action="store_true", help="Chạy tự động từ GĐ 1 đến 10")
-    parser.add_argument("--phase", type=int, choices=range(1, 11), help="Chỉ định chạy 1 GĐ cụ thể")
+    parser.add_argument("--phase", type=int, choices=range(1, 12), help="Chỉ định chạy 1 GĐ cụ thể")
     parser.add_argument("--render", action="store_true", help="Mở cửa sổ Raylib xem (TRAIN RẤT CHẬM)")
-    parser.add_argument("--test", type=int, choices=range(1, 11), help="Xem AI múa ở Phase X (sau khi train)")
+    parser.add_argument("--test", type=int, choices=range(1, 12), help="Xem AI múa ở Phase X (sau khi train)")
     parser.add_argument("--resume", action="store_true", help="Tiếp tục học từ file save đang dở")
     args = parser.parse_args()
 

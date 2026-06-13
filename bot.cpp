@@ -118,7 +118,7 @@ bool FindBounce(Game* g, b2Vec2 mp, b2Body* eb, b2Vec2 ep, b2Vec2& out,
                 const std::vector<b2Vec2>* futurePos = nullptr,
                 int maxBounce = 4) {
     if (!g || !eb) return false;
-    const float step = 0.035f;  // ~2° per ray
+    const float step = 0.087f;  // ~5° per ray
     const int numRays = (int)(2.f * PI / step);
     const float bulletR = 3.0f / SCALE;  // Bán kính bullet thực (0.1 unit)
     const float selfSafe = 1.5f;  // ~45px safe radius (tank ~21px + margin)

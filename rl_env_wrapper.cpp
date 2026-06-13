@@ -6,6 +6,7 @@
 #include <raylib.h>
 #include <tuple>
 #include <vector>
+#include <random>
 #include "bot.h"
 
 namespace py = pybind11;
@@ -27,6 +28,7 @@ private:
   float lastDistanceToTarget;
 
   int trainingMode;
+  float shapingFactor;
   std::vector<int> lastAction0 = {0, 0, 0};
   std::vector<int> lastAction1 = {0, 0, 0};
 
@@ -61,13 +63,18 @@ private:
 public:
   // Hàm khởi tạo môi trường
   RLEnv(int num_players = 2, bool map_enabled = false,
-        bool items_enabled = false, int training_mode = 0) {
+        bool items_enabled = false, int training_mode = 0, float shaping_factor = 1.0f) {
+    // Tự động gieo seed ngẫu nhiên dựa trên std::random_device để tránh trùng seed giữa các tiến trình con
+    std::random_device rd;
+    srand(rd());
+
     game = new Game();                    // Tạo đối tượng Game mới
     game->numPlayers = num_players;       // Số lượng người chơi
     game->mapEnabled = map_enabled;       // Có sử dụng bản đồ (vật cản) không
     game->itemsEnabled = items_enabled;   // Có xuất hiện vật phẩm không
     game->portalsEnabled = items_enabled; // Cổng dịch chuyển
     trainingMode = training_mode;
+    shapingFactor = shaping_factor;
     maxSteps = (trainingMode == 2) ? 1000 : 8000; // Tăng maxSteps lên 8000 (khoảng 133 giây) để agent có đủ thời gian tìm địch
     currentStep = 0;                      // Bước hiện tại
     for (int i = 0; i < 4; i++)
@@ -138,6 +145,10 @@ public:
     return getState(0); // Trả về trạng thái của người chơi 0
   }
 
+  void seed(long long seedVal) {
+    srand(static_cast<unsigned int>(seedVal));
+  }
+
   /**
    * @brief Thực hiện một hành động (Step) trong môi trường.
    * @param action Mã hành động (0-5) từ phía AI Python gửi sang.
@@ -180,12 +191,16 @@ public:
       else if (action0[1] == 2) tankActions0.turnRight = true;
 
       if (action0[2] == 1 && trainingMode != 2) {
+          // Chỉ tính reward/penalty khi bắn THỰC SỰ được (hết cooldown)
+          bool canActuallyShoot = (myTank && myTank->shootCooldownTimer <= 0.0f);
           if (isEnemyInSight) {
               tankActions0.shoot = true;
-              shootReward += 0.05f + std::max(0.0f, dotProd * 0.05f); // Thưởng ngắm chuẩn
+              if (canActuallyShoot)
+                  shootReward += (0.02f + std::max(0.0f, dotProd * 0.02f)) * shapingFactor; // Thưởng ngắm chuẩn
           } else {
               tankActions0.shoot = false; // Tịch thu lệnh bắn
-              shootReward -= 0.1f; // Phạt spam bắn mù
+              if (canActuallyShoot)
+                  shootReward -= 0.03f * shapingFactor; // Phạt spam bắn mù
           }
       }
       
@@ -217,9 +232,9 @@ public:
     currentStep++;
 
     // --- LOGIC TÍNH PHẦN THƯỞNG (Reward) ---
-    float reward = -0.01f; // 3. Time Step Penalty: Trừ nhẹ mỗi frame để ép AI hành động nhanh
-
-    // --- LOGIC TÍNH PHẦN THƯỞNG (Reward) ---
+    // Time Penalty nhân shapingFactor (sàn 0.1) để phase cuối không bị lấn át Kill/Death
+    // Phase 1 (SF=1.0): -0.002 × 8000 = -16 | Phase 10 (SF=0.05→sàn 0.1): -0.0002 × 8000 = -1.6
+    float reward = -0.002f * std::max(0.1f, shapingFactor);
 
     myTank = nullptr;
     enemyTank = nullptr;
@@ -232,23 +247,26 @@ public:
     // 2. Kiểm tra trạng thái AI (index 0)
     bool p0Alive = (myTank != nullptr && !myTank->isDestroyed);
 
-    // 0. Thưởng Tịnh Tiến (Approaching Reward): Chỉ thưởng khi phá vỡ kỷ lục khoảng cách gần nhất
+    // 0. Thưởng Tịnh Tiến (Approaching Reward)
+    //    Đơn vị: LUÔN dùng Box2D units (1 grid cell = 90px / 30 SCALE = 3.0 units)
     float currentDistToTarget = 0.0f;
     if (game->mapEnabled && p0Alive && enemyTank && !enemyTank->isDestroyed) {
         int pathDist = 0;
         game->map.GetNextWaypoint(game->world, myTank->body->GetPosition(), enemyTank->body->GetPosition(), pathDist);
-        currentDistToTarget = pathDist;
+        currentDistToTarget = pathDist * 3.0f; // Chuyển grid cells → Box2D units (90px / SCALE)
     } else if (p0Alive && enemyTank && !enemyTank->isDestroyed) {
         currentDistToTarget = (myTank->body->GetPosition() - enemyTank->body->GetPosition()).Length();
     }
 
     if (p0Alive && enemyTank && !enemyTank->isDestroyed) {
+        // Thưởng LIÊN TỤC khi khoảng cách giảm (so với step trước)
+        if (lastDistanceToTarget > 0.1f && currentDistToTarget < lastDistanceToTarget) {
+            reward += 0.005f * shapingFactor;
+        }
+        // Thưởng BONUS khi phá kỷ lục khoảng cách gần nhất
         if (currentDistToTarget < minDistanceReached) {
-            // Thưởng dựa trên mức độ cải thiện khoảng cách, CHỈ KHI ĐANG TIẾN LÊN
-            if (minDistanceReached < 9000.0f) { 
-                if (action0.size() == 3 && action0[0] == 1) {
-                    reward += (minDistanceReached - currentDistToTarget) * 0.1f;
-                }
+            if (minDistanceReached < 9000.0f) {
+                reward += (minDistanceReached - currentDistToTarget) * 0.02f * shapingFactor;
             }
             minDistanceReached = currentDistToTarget;
         }
@@ -266,17 +284,17 @@ public:
         if (historyCount == 60) {
             b2Vec2 oldPos = posHistory[historyIndex];
             float displacement = (currentPos - oldPos).Length() * SCALE;
-            if (displacement < 50.0f) {
+            if (displacement < 30.0f) { // Giảm threshold: chỉ phạt khi THỰC SỰ đứng im (trước: 50px)
                 float distToEnemy = getRawDistanceToEnemy(0);
                 if (distToEnemy > 240.0f) {
-                    // Enhanced: nếu ĐỊCH CŨNG đứng yên → phạt gấp 4x
+                    // Enhanced: nếu ĐỊCH CŨNG đứng yên → phạt CỰC NẶNG
                     float enemySpd = 0.f;
                     if (enemyTank && !enemyTank->isDestroyed)
                         enemySpd = enemyTank->body->GetLinearVelocity().Length();
                     if (enemySpd < 0.15f)
-                        reward -= 0.02f;  // 4x penalty: cả 2 camping = bế tắc
+                        reward -= 0.02f * shapingFactor;  // Phạt gãy cổ: cả 2 camping = bế tắc
                     else
-                        reward -= 0.005f; // Penalty bình thường
+                        reward -= 0.01f * shapingFactor;  // Phạt nặng: chỉ mình AI camping
                 }
             }
         }
@@ -288,14 +306,14 @@ public:
            edge = edge->next) {
         if (edge->contact->IsTouching() &&
             edge->other->GetType() == b2_staticBody) {
-          reward -= 0.02f;
+          reward -= 0.005f * shapingFactor;
 
           // Stuck Penalty: Nếu nhấn tiến/lùi mà không di chuyển được (vận tốc
           // thấp) khi chạm tường
           float speed = myTank->body->GetLinearVelocity().Length();
           if (speed < 0.2f && action0.size() == 3 &&
               (action0[0] == 1 || action0[0] == 2)) {
-            reward -= 0.03f; // Phạt nặng để AI học cách lùi ra hoặc xoay đi
+            reward -= 0.01f * shapingFactor; // Phạt nặng để AI học cách lùi ra hoặc xoay đi
                              // hướng khác
           }
           break;
@@ -306,10 +324,10 @@ public:
     // Phạt thay đổi hướng liên tục (Jerky Movement Penalty)
     if (action0.size() == 3 && lastAction0.size() == 3) {
         if (action0[1] != lastAction0[1] && action0[1] != 0 && lastAction0[1] != 0) {
-            reward -= 0.005f; // Phạt giật trái phải liên tục
+            reward -= 0.001f * shapingFactor; // Phạt giật trái phải liên tục
         }
         if (action0[0] != lastAction0[0] && action0[0] != 0 && lastAction0[0] != 0) {
-            reward -= 0.005f; // Phạt giật tiến lùi liên tục
+            reward -= 0.001f * shapingFactor; // Phạt giật tiến lùi liên tục
         }
     }
 
@@ -336,7 +354,7 @@ public:
             if (perpDist < 2.5f) {
                 float proximity = 1.0f - std::min(1.0f, perpDist / 2.5f);
                 float closeness = 1.0f - std::min(1.0f, dist / 8.0f);
-                reward -= 0.015f * proximity * closeness;
+                reward -= 0.005f * proximity * closeness * shapingFactor;
             }
         }
     }
@@ -353,29 +371,20 @@ public:
                 toEnemy.x /= dist; toEnemy.y /= dist;
                 float facingEnemy = myFwd.x * toEnemy.x + myFwd.y * toEnemy.y;
                 if (facingEnemy > 0.5f)
-                    reward += 0.03f;
+                    reward += 0.01f * shapingFactor;
             }
         }
     }
 
-    // === ACTIVE MOVEMENT BONUS ===
-    // Thưởng di chuyển khi có đạn địch bay → phá bounce calculation của bot
-    if (p0Alive && myTank) {
-        bool hasEnemyBullet = false;
-        for (auto b : game->bullets) {
-            if (b && b->time > 0 && b->ownerPlayerIndex != 0) {
-                hasEnemyBullet = true; break;
-            }
-        }
-        float mySpeed = myTank->body->GetLinearVelocity().Length();
-        if (hasEnemyBullet && mySpeed > 0.5f)
-            reward += 0.01f;
-    }
+    // [ĐÃ XÓA] Active Movement Bonus — thừa vì:
+    //   1. Bullet Proximity Penalty đã incentivize né đạn (gradient mượt)
+    //   2. Reward này thưởng di chuyển BẤT KỲ hướng nào khi có đạn, kể cả chạy VÀO đạn
+    //   3. Tạo noise: AI học rằng "cứ chạy là tốt" thay vì "né đúng hướng"
 
-    // 1. Thưởng khi GIẾT (score tăng) = +100
+    // 1. Thưởng khi GIẾT (score tăng) = +5 (giảm từ +100 để cân bằng scale)
     int scoreDiff = game->playerScores[0] - lastScores[0];
     if (scoreDiff > 0) {
-      reward += 100.0f * scoreDiff;
+      reward += 5.0f * scoreDiff;
       lastScores[0] = game->playerScores[0];
     }
 
@@ -388,9 +397,9 @@ public:
             }
         }
         if (suicided) {
-            reward -= 250.0f; // Phạt tự sát nặng
+            reward -= 10.0f; // Phạt tự sát nặng (giảm từ -250)
         } else {
-            reward -= 100.0f; // Bị địch giết
+            reward -= 5.0f; // Bị địch giết (giảm từ -100)
         }
     }
 
@@ -398,7 +407,7 @@ public:
     if (p0Alive && enemyTank && !enemyTank->isDestroyed) {
       for (b2ContactEdge *edge = myTank->body->GetContactList(); edge; edge = edge->next) {
         if (edge->contact->IsTouching() && edge->other == enemyTank->body) {
-          reward -= 0.02f; // Phạt ôm địch
+          reward -= 0.005f * shapingFactor; // Phạt ôm địch
           break;
         }
       }
@@ -410,9 +419,9 @@ public:
       float currentDist = getRawDistanceToEnemy(0);
       if (p0Alive && currentDist < 1000.0f) {
         if (currentDist > 350.0f) {
-          reward -= 0.02f;
+          reward -= 0.005f * shapingFactor;
         } else if (currentDist < 80.0f) {
-          reward -= 0.05f;
+          reward -= 0.015f * shapingFactor;
         }
       }
 
@@ -432,21 +441,14 @@ public:
 
       // Thưởng khi hướng về waypoint VÀ đang tiến tới
       if (wpFacing > 0.7f && action0.size() == 3 && action0[0] == 1) {
-        reward += 0.025f; // Tăng lại mức thưởng (từ 0.005) để tạo động lực mạnh kéo Agent đi theo A*
+        reward += 0.008f * shapingFactor; // Thưởng đi theo waypoint A*
       }
     }
 
-    // 4. Facing Reward: Thưởng khi hướng mặt đúng về phía địch VÀ THẤY ĐỊCH (không xương tường)
-    if (p0Alive && enemyTank && !enemyTank->isDestroyed && isEnemyInSight) {
-      b2Vec2 toEnemy =
-          enemyTank->body->GetPosition() - myTank->body->GetPosition();
-      float absAngle = atan2f(-toEnemy.x, toEnemy.y);
-      float relAngle = absAngle - myTank->body->GetAngle();
-      float facingScore = cosf(relAngle);
-      if (facingScore > 0.85f) {
-        reward += 0.004f;
-      }
-    }
+    // [ĐÃ XÓA] Facing Reward — thừa vì:
+    //   1. Shoot reward (+0.02~0.04) đã thưởng khi ngắm đúng VÀ bắn → tín hiệu mạnh hơn
+    //   2. +0.002 × SF quá nhỏ (nhỏ hơn time penalty), gần như không ảnh hưởng gradient
+    //   3. Rush Reward đã thưởng facing + forward khi địch đứng yên
 
 
 
@@ -456,11 +458,12 @@ public:
 
     if (isTimeout && p0Alive) {
       if (trainingMode == 2) {
-        reward += 100.0f; // CHẾ ĐỘ NÉ TRÁNH: Sống sót = THẮNG!
+        reward += 5.0f; // CHẾ ĐỘ NÉ TRÁNH: Sống sót = THẮNG!
       } else {
-        // Scale penalty theo khoảng cách: gần địch = đang cố gắng (-30), xa địch = đang trốn (-100)
+        // Scale penalty theo khoảng cách: gần địch = đang cố gắng, xa địch = đang trốn
+        // Giảm bớt để tránh AI học rằng "chết sớm tốt hơn timeout" (kết hợp time penalty tích lũy)
         float dist = getRawDistanceToEnemy(0);
-        float penalty = -30.0f - 70.0f * std::min(1.0f, dist / 500.0f);
+        float penalty = -1.0f - 2.0f * std::min(1.0f, dist / 500.0f); // Range: -1.0 (gần) → -3.0 (xa)
         reward += penalty;
       }
     }
@@ -631,10 +634,10 @@ public:
           b2Vec2 toBullet = enemyBullets[i].pos - myPos;
           float localX = toBullet.x * rightDir.x + toBullet.y * rightDir.y;
           float localY = toBullet.x * forwardDir.x + toBullet.y * forwardDir.y;
-          state.push_back(localX / rayLength); // [13, 17]
-          state.push_back(localY / rayLength); // [14, 18]
-          state.push_back(enemyBullets[i].ttc); // [15, 19]
-          state.push_back(enemyBullets[i].missDist); // [16, 20]
+          state.push_back(localX / rayLength); // [15, 19] Bullet Local X
+          state.push_back(localY / rayLength); // [16, 20] Bullet Local Y
+          state.push_back(enemyBullets[i].ttc); // [17, 21] Time To Contact
+          state.push_back(enemyBullets[i].missDist); // [18, 22] Miss Distance
         } else {
           state.push_back(0.0f);
           state.push_back(0.0f);
@@ -650,7 +653,7 @@ public:
         b2Vec2 p2 = myPos + rayLength * b2Vec2(-sinf(rad), cosf(rad));
         RadarRayCastCallback cb;
         game->world.RayCast(&cb, myPos, p2);
-        state.push_back(cb.closestFraction); // [21-28]
+        state.push_back(cb.closestFraction); // [23-30]
       }
 
       // Nhóm 5: A* Navigation (3 Tham số)
@@ -661,28 +664,28 @@ public:
         float localX = toWP.x * rightDir.x + toWP.y * rightDir.y;
         float localY = toWP.x * forwardDir.x + toWP.y * forwardDir.y;
         
-        state.push_back(localX / rayLength); // [29] Waypoint Local X
-        state.push_back(localY / rayLength); // [30] Waypoint Local Y
-        state.push_back(std::min(1.0f, pathDist / 48.0f)); // [31] Waypoint Dist
+        state.push_back(localX / rayLength); // [31] Waypoint Local X
+        state.push_back(localY / rayLength); // [32] Waypoint Local Y
+        state.push_back(std::min(1.0f, pathDist / 48.0f)); // [33] Waypoint Dist
       } else {
-        state.push_back(0.0f); // [29]
-        state.push_back(0.0f); // [30]
-        state.push_back(1.0f); // [31]
+        state.push_back(0.0f); // [31]
+        state.push_back(0.0f); // [32]
+        state.push_back(1.0f); // [33]
       }
 
       // Nhóm 6: Status (5 Tham số)
-      state.push_back(myTank->currentWeapon != ItemType::NORMAL ? std::min(1.0f, myTank->ammo / 5.0f) : 0.0f); // [32] My Ammo
-      state.push_back(std::max(0.0f, 1.0f - myTank->shootCooldownTimer / 0.5f)); // [33] My Shoot Cooldown
-      state.push_back(enemyTank && enemyTank->currentWeapon != ItemType::NORMAL ? std::min(1.0f, enemyTank->ammo / 5.0f) : 0.0f); // [34] Enemy Ammo
-      state.push_back(myTank->hasShield ? 1.0f : 0.0f); // [35] Shield Active
-      state.push_back(std::max(0.0f, 1.0f - myTank->shieldCooldownTimer / 15.0f)); // [36] Shield Cooldown
+      state.push_back(myTank->currentWeapon != ItemType::NORMAL ? std::min(1.0f, myTank->ammo / 5.0f) : 0.0f); // [34] My Ammo
+      state.push_back(std::max(0.0f, 1.0f - myTank->shootCooldownTimer / 0.5f)); // [35] My Shoot Cooldown
+      state.push_back(enemyTank && enemyTank->currentWeapon != ItemType::NORMAL ? std::min(1.0f, enemyTank->ammo / 5.0f) : 0.0f); // [36] Enemy Ammo
+      state.push_back(myTank->hasShield ? 1.0f : 0.0f); // [37] Shield Active
+      state.push_back(std::max(0.0f, 1.0f - myTank->shieldCooldownTimer / 15.0f)); // [38] Shield Cooldown
 
       // Nhóm 6b: Weapon Type One-Hot (5 Tham số: NORMAL, GATLING, FRAG, MISSILE, DEATH_RAY)
-      state.push_back(myTank->currentWeapon == ItemType::NORMAL    ? 1.0f : 0.0f); // [37]
-      state.push_back(myTank->currentWeapon == ItemType::GATLING   ? 1.0f : 0.0f); // [38]
-      state.push_back(myTank->currentWeapon == ItemType::FRAG      ? 1.0f : 0.0f); // [39]
-      state.push_back(myTank->currentWeapon == ItemType::MISSILE   ? 1.0f : 0.0f); // [40]
-      state.push_back(myTank->currentWeapon == ItemType::DEATH_RAY ? 1.0f : 0.0f); // [41]
+      state.push_back(myTank->currentWeapon == ItemType::NORMAL    ? 1.0f : 0.0f); // [39]
+      state.push_back(myTank->currentWeapon == ItemType::GATLING   ? 1.0f : 0.0f); // [40]
+      state.push_back(myTank->currentWeapon == ItemType::FRAG      ? 1.0f : 0.0f); // [41]
+      state.push_back(myTank->currentWeapon == ItemType::MISSILE   ? 1.0f : 0.0f); // [42]
+      state.push_back(myTank->currentWeapon == ItemType::DEATH_RAY ? 1.0f : 0.0f); // [43]
 
       // Nhóm 7: Previous Action One-Hot (8 Tham số)
       std::vector<int> lastAct = (playerIdx == 0) ? lastAction0 : lastAction1;
@@ -691,18 +694,18 @@ public:
       int mShoot = lastAct[2];
       
       // Move (0, 1, 2)
-      state.push_back(mMove == 0 ? 1.0f : 0.0f); // [42]
-      state.push_back(mMove == 1 ? 1.0f : 0.0f); // [43]
-      state.push_back(mMove == 2 ? 1.0f : 0.0f); // [44]
+      state.push_back(mMove == 0 ? 1.0f : 0.0f); // [44]
+      state.push_back(mMove == 1 ? 1.0f : 0.0f); // [45]
+      state.push_back(mMove == 2 ? 1.0f : 0.0f); // [46]
       
       // Turn (0, 1, 2)
-      state.push_back(mTurn == 0 ? 1.0f : 0.0f); // [45]
-      state.push_back(mTurn == 1 ? 1.0f : 0.0f); // [46]
-      state.push_back(mTurn == 2 ? 1.0f : 0.0f); // [47]
+      state.push_back(mTurn == 0 ? 1.0f : 0.0f); // [47]
+      state.push_back(mTurn == 1 ? 1.0f : 0.0f); // [48]
+      state.push_back(mTurn == 2 ? 1.0f : 0.0f); // [49]
       
       // Shoot (0, 1)
-      state.push_back(mShoot == 0 ? 1.0f : 0.0f); // [48]
-      state.push_back(mShoot == 1 ? 1.0f : 0.0f); // [49]
+      state.push_back(mShoot == 0 ? 1.0f : 0.0f); // [50]
+      state.push_back(mShoot == 1 ? 1.0f : 0.0f); // [51]
 
     } else {
       // Tank dead -> fill 52 zeros
@@ -739,10 +742,11 @@ public:
 PYBIND11_MODULE(azgame_env, m) {
   m.doc() = "Môi trường học tăng cường Pybind11 cho AZGame xe tăng";
   py::class_<RLEnv>(m, "RLEnv")
-      .def(py::init<int, bool, bool, int>(), py::arg("num_players") = 2,
+      .def(py::init<int, bool, bool, int, float>(), py::arg("num_players") = 2,
            py::arg("map_enabled") = true, py::arg("items_enabled") = true,
-           py::arg("training_mode") = 0)
+           py::arg("training_mode") = 0, py::arg("shaping_factor") = 1.0f)
       .def("reset", &RLEnv::reset)
+      .def("seed", &RLEnv::seed, py::arg("seed"))
       .def("step", &RLEnv::step, py::arg("action0"),
            py::arg("action1") = std::vector<int>())
       .def("get_state", &RLEnv::getState, py::arg("playerIdx"))

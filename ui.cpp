@@ -234,7 +234,7 @@ void UI::ShowKeyBindingScreen(int& fw, int& bw, int& tl, int& tr, int& sh, int& 
 // Màn hình Cài đặt chính (Settings Screen)
 // ========================================================================
 void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEnabled,
-    bool& shieldsEnabled, std::vector<PlayerConfig>& configs, std::vector<bool>& isBot) {
+    bool& shieldsEnabled, std::vector<PlayerConfig>& configs, std::vector<bool>& isBot, std::vector<bool>& isAI) {
 
     SetExitKey(0);
 
@@ -289,7 +289,14 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
                 if (i < numPlayers) {
                     Rectangle botBtn = {keyBtns[i].x + 150, keyBtns[i].y + 6, 70, 28};
                     if (CheckCollisionPointRec(mouse, botBtn)) {
-                        isBot[i] = !isBot[i];
+                        // Cycle: NGUOI → BOT → AI → NGUOI
+                        if (!isBot[i]) {
+                            isBot[i] = true; isAI[i] = false; // → BOT
+                        } else if (!isAI[i]) {
+                            isAI[i] = true;                    // → AI
+                        } else {
+                            isBot[i] = false; isAI[i] = false; // → NGUOI
+                        }
                     } else if (CheckCollisionPointRec(mouse, keyBtns[i]) && !isBot[i]) {
                         ShowKeyBindingScreen(configs[i].fw, configs[i].bw, configs[i].tl,
                             configs[i].tr, configs[i].sh, configs[i].shieldKey, i + 1);
@@ -391,10 +398,17 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
             if (active) {
                 Rectangle botBtn = {keyBtns[i].x + 150, keyBtns[i].y + 6, 70, 28};
                 bool hBot = CheckCollisionPointRec(mouse, botBtn);
-                Color botBg = isBot[i] ? Color{180, 50, 50, 255} : Color{50, 150, 50, 255};
+                Color botBg;
+                const char* bTxt;
+                if (!isBot[i]) {
+                    botBg = {50, 150, 50, 255}; bTxt = "NGUOI";
+                } else if (!isAI[i]) {
+                    botBg = {180, 50, 50, 255}; bTxt = "BOT";
+                } else {
+                    botBg = {50, 80, 200, 255}; bTxt = "AI";
+                }
                 if (hBot) { botBg.r = (unsigned char)fminf(botBg.r + 30, 255); botBg.g = (unsigned char)fminf(botBg.g + 30, 255); botBg.b = (unsigned char)fminf(botBg.b + 30, 255); }
                 DrawRectangleRounded(botBtn, 0.4f, 6, botBg);
-                const char* bTxt = isBot[i] ? "BOT" : "NGUOI";
                 int btw = MeasureGameText(bTxt, 16);
                 DrawGameText(bTxt, botBtn.x + botBtn.width / 2 - btw / 2.0f, botBtn.y + 6, 16, WHITE);
             }
@@ -411,10 +425,14 @@ void UI::ShowSettingsScreen(int& numPlayers, bool& portalsEnabled, bool& itemsEn
                 }
                 int sw = MeasureGameText(summary, 13);
                 DrawGameText(summary, keyBtns[i].x + keyBtns[i].width - sw - 15, keyBtns[i].y + 14, 13, {120, 125, 140, 255});
-            } else if (active && isBot[i]) {
-                const char* txt = "Pro Bot Level 5 (AI)";
+            } else if (active && isBot[i] && !isAI[i]) {
+                const char* txt = "Pro Bot Level 7";
                 int sw = MeasureGameText(txt, 14);
                 DrawGameText(txt, keyBtns[i].x + keyBtns[i].width - sw - 15, keyBtns[i].y + 13, 14, {180, 50, 50, 255});
+            } else if (active && isBot[i] && isAI[i]) {
+                const char* txt = "AI Neural Network";
+                int sw = MeasureGameText(txt, 14);
+                DrawGameText(txt, keyBtns[i].x + keyBtns[i].width - sw - 15, keyBtns[i].y + 13, 14, {50, 80, 200, 255});
             }
         }
 

@@ -5,6 +5,7 @@
 #include "renderer.h"
 #include "ui.h"
 #include "bot.h"
+#include "ai_bot.h"
 
 /**
  * @brief Entry point cho chế độ human play (có đồ họa).
@@ -28,6 +29,7 @@ int main() {
     game.configs[3] = {KEY_KP_8, KEY_KP_5, KEY_KP_4, KEY_KP_6, KEY_KP_7, KEY_KP_9};
 
     std::vector<bool> isBot = {false, true, false, false}; // P1 là người, P2 mặc định là Bot
+    std::vector<bool> isAI  = {false, false, false, false}; // Không ai là AI mặc định
 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "AZ Game");
     SetTargetFPS(60);
@@ -35,22 +37,31 @@ int main() {
 
     // Khởi tạo các Bot bên ngoài vòng lặp chính để chúng không bị "mất trí nhớ" mỗi frame
     std::vector<Bot*> bots(4, nullptr);
+    std::vector<AIBot*> aiBots(4, nullptr);
     if (isBot[1]) bots[1] = new Bot(7, 1); // Bot Level 7 (Full Sniper nảy tường)
 
     while (!WindowShouldClose()) {
         // --- Xử lý Settings UI ---
         if (UI::CheckSettingsButtonClicked()) {
             int oldNumPlayers = game.numPlayers;
-            UI::ShowSettingsScreen(game.numPlayers, game.portalsEnabled, game.itemsEnabled, game.shieldsEnabled, game.configs, isBot);
+            UI::ShowSettingsScreen(game.numPlayers, game.portalsEnabled, game.itemsEnabled, game.shieldsEnabled, game.configs, isBot, isAI);
             if (game.numPlayers != oldNumPlayers) {
                 for (int i = 0; i < 4; i++) game.playerScores[i] = 0;
             }
             // Cập nhật lại danh sách bot nếu có thay đổi trong cài đặt
             for (int i = 0; i < 4; i++) {
-                if (isBot[i]) {
-                    if (!bots[i]) bots[i] = new Bot(7, i); // Bot Level 7
-                } else {
+                if (isBot[i] && !isAI[i]) {
+                    // Rule-based Bot
+                    if (!bots[i]) bots[i] = new Bot(7, i);
+                    if (aiBots[i]) { delete aiBots[i]; aiBots[i] = nullptr; }
+                } else if (isBot[i] && isAI[i]) {
+                    // AI Neural Network Bot
+                    if (!aiBots[i]) aiBots[i] = new AIBot(i);
                     if (bots[i]) { delete bots[i]; bots[i] = nullptr; }
+                } else {
+                    // Người chơi
+                    if (bots[i]) { delete bots[i]; bots[i] = nullptr; }
+                    if (aiBots[i]) { delete aiBots[i]; aiBots[i] = nullptr; }
                 }
             }
             game.needsRestart = true;
@@ -73,9 +84,14 @@ int main() {
         // --- Xử lý Input / Bot AI ---
         std::vector<TankActions> actions(game.numPlayers);
         for (int i = 0; i < game.numPlayers; i++) {
-            if (isBot[i] && bots[i]) {
+            if (isBot[i] && isAI[i] && aiBots[i]) {
+                // AI Neural Network Bot
+                actions[i] = aiBots[i]->GetAction(&game);
+            } else if (isBot[i] && bots[i]) {
+                // Rule-based Bot
                 actions[i] = bots[i]->GetAction(&game);
             } else {
+                // Người chơi
                 PlayerConfig& cfg = game.configs[i];
                 actions[i].forward = IsKeyDown(cfg.fw);
                 actions[i].backward = IsKeyDown(cfg.bw);
@@ -104,6 +120,7 @@ int main() {
     // Dọn dẹp bộ nhớ
     for (int i = 0; i < 4; i++) {
         if (bots[i]) delete bots[i];
+        if (aiBots[i]) delete aiBots[i];
     }
     UI::Cleanup();
     CloseWindow();
