@@ -38,6 +38,7 @@ public:
 
     // ---- Cấu hình phím (chỉ dùng cho human play) ----
     std::vector<PlayerConfig> configs;
+    std::vector<b2Vec2> botPaths[4]; // Lưu đường đi A* để debug đồ họa
 
     // ---- Sự kiện dùng cho hiệu ứng đồ họa (Renderer đọc) ----
     std::vector<DeathEvent> recentDeaths;  ///< Xe tăng bị tiêu diệt frame này

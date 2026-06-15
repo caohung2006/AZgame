@@ -27,7 +27,7 @@ add_subdirectory(box2d)
 
 find_package(raylib CONFIG REQUIRED)
 
-add_executable(AZgame main.cpp game.cpp map.cpp renderer.cpp tank.cpp bullet.cpp ui.cpp portal.cpp item.cpp)
+add_executable(AZgame main.cpp game.cpp map.cpp renderer.cpp tank.cpp bullet.cpp ui.cpp portal.cpp item.cpp bot.cpp)
 
 # 4. Liên kết AZgame với thư viện box2d vừa được biên dịch từ thư mục con
 target_link_libraries(AZgame PRIVATE box2d raylib)
@@ -39,6 +39,6 @@ target_include_directories(AZgame PRIVATE include)
 # KẾT NỐI RL (REINFORCEMENT LEARNING) BẰNG PYBIND11
 # ========================================================
 # Build thư viện azgame_env độc lập (không cần UI/Renderer)
-pybind11_add_module(azgame_env rl_env_wrapper.cpp game.cpp map.cpp tank.cpp bullet.cpp portal.cpp item.cpp renderer.cpp)
+pybind11_add_module(azgame_env rl_env_wrapper.cpp game.cpp map.cpp tank.cpp bullet.cpp portal.cpp item.cpp renderer.cpp bot.cpp)
 target_link_libraries(azgame_env PRIVATE box2d raylib)
 target_include_directories(azgame_env PRIVATE include)
