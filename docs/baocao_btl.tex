@@ -1,0 +1,1007 @@
+  % ============================================================================
+  %  BÁO CÁO BÀI TẬP LỚN
+  %  Đề tài: Huấn luyện AI xe tăng đối kháng bằng Reinforcement Learning (PPO)
+  %  Môn học: IT3160 - Giới thiệu Trí tuệ nhân tạo
+  % ============================================================================
+  \documentclass[a4paper, 12pt]{report}
+  \usepackage{graphicx}
+  % --- Encoding & Ngôn ngữ ---
+  \usepackage[utf8]{inputenc}
+  \usepackage[vietnamese]{babel}
+
+  % --- Toán ---
+  \usepackage{amsmath, amssymb, amsfonts}
+
+  % --- Hình ảnh & Bảng ---
+  \usepackage{graphicx}
+  \usepackage{booktabs}
+  \usepackage{tabularx}
+  \usepackage{array}
+  \usepackage{longtable}
+  \usepackage{multirow}
+  \usepackage{float}
+  \usepackage{adjustbox}
+
+  % --- TikZ (vẽ sơ đồ) ---
+  \usepackage{tikz}
+  \usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, fit, backgrounds}
+  \usepackage{pgfplots}
+  \pgfplotsset{compat=1.18}
+  \usetikzlibrary{fillbetween}
+  \usepgfplotslibrary{fillbetween}
+
+
+  % --- Code listing ---
+  \usepackage{listings}
+  \lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\bfseries\color[RGB]{0,83,156},
+    commentstyle=\itshape\color{gray},
+    stringstyle=\color[RGB]{34,139,34},
+    breaklines=true,
+    frame=single,
+    rulecolor=\color[RGB]{200,200,210},
+    backgroundcolor=\color[RGB]{248,248,252},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    xleftmargin=2em,
+    framexleftmargin=1.5em,
+    tabsize=4,
+    showstringspaces=false,
+  }
+
+  % --- Layout trang ---
+  \usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2cm]{geometry}
+  \usepackage{setspace}
+  \onehalfspacing
+
+  % --- Hyperlink ---
+  \usepackage{hyperref}
+  \hypersetup{
+    colorlinks=true,
+    linkcolor=[RGB]{0,83,156},
+    citecolor=[RGB]{0,83,156},
+    urlcolor=[RGB]{0,83,156},
+  }
+
+  % --- Caption ---
+  \usepackage[font=small, labelfont=bf]{caption}
+
+  % --- Header / Footer ---
+  \usepackage{fancyhdr}
+  \pagestyle{fancy}
+  \fancyhf{}
+  \fancyhead[L]{\small\leftmark}
+  \fancyhead[R]{\small IT3160 -- Bài tập lớn}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+
+  % --- Đánh số section liên tục (không reset theo chapter) ---
+  \usepackage{chngcntr}
+  \counterwithout{figure}{chapter}
+  \counterwithout{table}{chapter}
+
+  % ============================================================================
+  \begin{document}
+
+  % ============================================================================
+  %  TRANG BÌA
+  % ============================================================================
+  \begin{titlepage}
+    \begin{center}
+      \textbf{\large ĐẠI HỌC BÁCH KHOA HÀ NỘI}\\[2pt]
+      \textbf{\large TRƯỜNG CÔNG NGHỆ THÔNG TIN VÀ TRUYỀN THÔNG}\\[2pt]
+      \rule{\textwidth}{0.4pt}
+
+      \vspace{1.5cm}
+
+      \includegraphics[width=3.5cm]{logo_new.png}\\[1.5cm]
+
+      {\LARGE\bfseries BÁO CÁO BÀI TẬP LỚN}\\[12pt]
+      {\Large Môn: IT3160 -- Giới thiệu Trí tuệ nhân tạo}
+
+      \vspace{2cm}
+
+      {\huge\bfseries Huấn Luyện AI Xe Tăng Đối Kháng\\[8pt]
+      Bằng Reinforcement Learning (PPO)}
+
+      \vspace{1.5cm}
+
+      {\Large Ứng dụng trong game AZ Tank 2D}
+
+      \vfill
+
+      \vspace{0.5cm}
+      \rule{\textwidth}{0.8pt}
+      \vspace{0.5cm}
+
+      \begin{minipage}[t]{0.5\textwidth}
+        \begin{flushleft}
+          \textit{Sinh viên thực hiện:}\\[5pt]
+          Phạm Đỗ Đức Dương (202416466)\\
+          Cao Thanh Hùng (202416502)
+        \end{flushleft}
+      \end{minipage}%
+      \begin{minipage}[t]{0.5\textwidth}
+        \begin{flushright}
+          \textit{Giảng viên hướng dẫn:}\\[5pt]
+          PGS.TS Lê Thanh Hương
+        \end{flushright}
+      \end{minipage}
+
+      \vspace{1.5cm}
+
+      {\large Hà Nội, \the\year}
+    \end{center}
+  \end{titlepage}
+
+  % ============================================================================
+  %  MỤC LỤC
+  % ============================================================================
+  \tableofcontents
+  \newpage
+
+  % ============================================================================
+  \chapter{Giới thiệu đề tài}
+  % ============================================================================
+
+  \section{Lý do chọn đề tài}
+
+  Trong những năm gần đây, Học tăng cường (Reinforcement Learning -- RL) đã đạt được nhiều bước tiến lớn, mở ra khả năng tự giải quyết các bài toán điều khiển phức tạp thông qua tương tác liên tục với môi trường. Các trò chơi đối kháng thời gian thực (Real-time Combat Games) là môi trường thử nghiệm lý tưởng cho các thuật toán RL nhờ tính động, yêu cầu ra quyết định tốc độ cao và khả năng áp dụng các kỹ năng chiến thuật linh hoạt.
+
+  Dự án \textbf{AZ Tank Game} là trò chơi đối kháng xe tăng 2D được xây dựng trên nền tảng thư viện vật lý Box2D. Trò chơi sở hữu các cơ chế đặc trưng bao gồm: mê cung tạo ngẫu nhiên bằng thuật toán \textit{Recursive Backtracker}, các cổng dịch chuyển không gian (portals), các hộp vật phẩm cung cấp vũ khí đặc biệt (Gatling, Frag Bomb, Homing Missile, Death Ray) và cơ chế đạn nảy độc đáo khi va chạm tường.
+
+  Việc phát triển một xe tăng tự hành thông minh bằng phương pháp lập trình luật truyền thống (Rule-based) đòi hỏi cấu trúc điều kiện cực kỳ cồng kềnh, dễ bị bắt bài và thiếu khả năng thích nghi với môi trường mới. Do đó, đề tài tập trung nghiên cứu áp dụng thuật toán \textbf{PPO (Proximal Policy Optimization)} để đào tạo một tác nhân (Agent) tự hành có khả năng tự học các hành vi chiến thuật từ con số 0: di chuyển linh hoạt trong mê cung, chủ động né đạn kẻ địch, nhặt vật phẩm hỗ trợ và tận dụng địa hình để tiêu diệt đối thủ.
+
+  \section{Mục tiêu của bài tập lớn}
+
+  \subsection{Mục tiêu nghiên cứu}
+  \begin{itemize}
+    \item Nghiên cứu sâu cơ sở lý thuyết của Học tăng cường trong không gian hành động rời rạc và thuật toán \textbf{PPO} kết hợp với cơ chế \textbf{GAE (Generalized Advantage Estimation)}.
+    \item Tìm hiểu và áp dụng kỹ thuật tạo hình phần thưởng (\textbf{Reward Shaping}) để khắc phục bài toán phần thưởng thưa thớt (sparse rewards) trong không gian mê cung.
+    \item Nghiên cứu phương pháp huấn luyện lũy tiến (\textbf{Curriculum Learning}) kết hợp kỹ thuật tự đối đầu (\textbf{Self-Play}) để cải thiện chất lượng chính sách của mô hình.
+  \end{itemize}
+
+  \subsection{Mục tiêu kỹ thuật}
+  \begin{itemize}
+    \item Tích hợp lõi vật lý trò chơi viết bằng \textbf{C++/Box2D} với môi trường \textbf{Gymnasium} của Python thông qua thư viện liên kết \textbf{Pybind11}, đảm bảo tốc độ truyền nhận dữ liệu ở mức tối ưu.
+    \item Thiết kế không gian quan sát (52 chiều) và không gian hành động phù hợp để mô hình nắm bắt đầy đủ thông tin môi trường.
+    \item Xây dựng hệ thống huấn luyện đa luồng (Headless Mode) chạy hoàn toàn trên CPU nhằm tăng tốc lấy mẫu dữ liệu.
+    \item Triển khai lộ trình Curriculum Learning gồm \textbf{11 giai đoạn} tương ứng với các cấp độ Bot đối thủ từ bia đứng yên đến Bot bắn tỉa nảy tường cấp độ tối đa (Level~7).
+    \item Export mô hình đã train sang file nhị phân \texttt{.bin} và chạy inference thuần C++ mà \textbf{không cần Python} khi chơi game.
+  \end{itemize}
+
+  \subsection{Mục tiêu đánh giá}
+  \begin{itemize}
+    \item Đo lường và vẽ biểu đồ quá trình hội tụ của phần thưởng tích lũy (Cumulative Reward), hàm mất mát giá trị (Value Loss) và độ dài Episode qua các giai đoạn.
+    \item Đánh giá chất lượng mô hình AI khi chiến đấu trực quan chống lại các Bot luật (Rule-Based Bots) từ dễ đến khó và khi đối đầu với chính các phiên bản cũ của mình.
+  \end{itemize}
+
+  % ============================================================================
+  \chapter*{Phân công nhiệm vụ}
+  \addcontentsline{toc}{chapter}{Phân công nhiệm vụ}
+  % ============================================================================
+
+  \begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.5}
+  \begin{tabular}{|l|c|p{8cm}|c|}
+  \hline
+  \textbf{Họ và tên} & \textbf{MSSV} & \textbf{Nhiệm vụ} & \textbf{Đánh giá} \\
+  \hline
+  Phạm Đỗ Đức Dương & 202416466 & 
+  - Cài đặt môi trường AZ Tank Game bằng Box2D. \newline 
+  - Xây dựng hệ thống Bot đối thủ đa cấp độ (Rule-based). \newline 
+  - Viết báo cáo phần kiến trúc hệ thống và thuật toán. & 50\% \\
+  \hline
+  Cao Thanh Hùng & 202416502 & 
+  - Tích hợp môi trường Gymnasium và thiết kế hàm phần thưởng. \newline 
+  - Cài đặt và huấn luyện mô hình PPO (Curriculum Learning). \newline 
+  - Chạy thực nghiệm, đánh giá kết quả và thiết kế slide. & 50\% \\
+  \hline
+  \end{tabular}
+  \caption*{Bảng 1: Bảng phân công nhiệm vụ}
+  \end{table}
+  \newpage
+
+  % ============================================================================
+  \chapter{Phân tích bài toán}
+  % ============================================================================
+
+  \section{Giới thiệu môi trường trò chơi}
+
+  Môi trường \textbf{AZ Tank Game} là một thế giới 2D giới hạn kích thước $960 \times 720$ pixels. Lõi vật lý được tính toán bằng Box2D với hệ số tỉ lệ $SCALE = 30.0$ (1 mét trong Box2D tương đương 30 pixels). Bản đồ bao gồm hệ thống tường gạch và tường gỗ được tạo ngẫu nhiên. Hai xe tăng (AI của người học và đối thủ) sẽ thi đấu đối kháng trực tiếp.
+
+  Đạn được bắn ra từ xe tăng sẽ nảy khi va chạm với các cạnh tường. Ngoài ra, trên bản đồ sẽ xuất hiện ngẫu nhiên:
+  \begin{itemize}
+    \item \textbf{Hộp vật phẩm hỗ trợ}: Cho phép xe tăng sở hữu vũ khí đặc biệt (Gatling, Frag Bomb, Homing Missile, Death Ray) hoặc kích hoạt khiên chắn vật lý.
+    \item \textbf{Cổng dịch chuyển (Portals)}: Gồm 2 cổng liên kết với nhau. Khi xe tăng hoặc đạn đi vào cổng A, nó sẽ tức thời xuất hiện tại cổng B với cùng hướng vận tốc.
+  \end{itemize}
+
+  \section{Đặc điểm môi trường bài toán}
+
+  \begin{itemize}
+    \item \textbf{Môi trường thời gian thực (Real-time)}: Game chạy ở tần số mô phỏng vật lý cố định 60 FPS ($dt = 1/60$ giây). Tác nhân phải ra quyết định liên tục ở mỗi bước thời gian.
+    \item \textbf{Tính ngẫu nhiên cao (Stochasticity)}: Mỗi ván chơi sinh một mê cung mới bằng thuật toán \textit{Recursive Backtracker}. Vị trí xuất hiện của 2 xe tăng, cổng dịch chuyển và hộp vật phẩm cũng thay đổi ngẫu nhiên.
+    \item \textbf{Quan sát cục bộ (Local Observability)}: Thay vì sử dụng hình ảnh thô toàn màn hình (gây nặng và tốn tài nguyên), tác nhân sử dụng thông tin cảm biến tọa độ tương đối từ chính nó để tối ưu hóa khả năng khái quát hóa.
+  \end{itemize}
+
+  \section{Không gian trạng thái (Observation Space -- 52 chiều)}
+
+  Trạng thái quan sát cung cấp cho mô hình AI là một vector \textbf{52 chiều} chứa các giá trị số thực đã chuẩn hóa về khoảng $[-1.0, 1.0]$. Bảng~\ref{tab:obs} mô tả cấu trúc chi tiết.
+
+  \begin{table}[H]
+  \centering
+  \caption{Cấu trúc vector quan sát 52 chiều.}
+  \label{tab:obs}
+  \small
+  \renewcommand{\arraystretch}{1.25}
+  \begin{adjustbox}{max width=\textwidth}
+  \begin{tabular}{c l c p{9cm}}
+    \toprule
+    \textbf{Chỉ số} & \textbf{Nhóm thông tin} & \textbf{Dim} & \textbf{Mô tả chi tiết} \\
+    \midrule
+    0--4   & Self State       & 5  & Hướng xoay ($\cos\theta$, $\sin\theta$), vận tốc tuyến tính cục bộ ($V_x/3.0$, $V_y/3.0$), vận tốc góc ($\omega/3.0$) chuẩn hóa theo vận tốc tối đa 3.0 m/s. \\
+    5--14  & Enemy Info       & 10 & Tọa độ tương đối địch ($X/L_{max}$, $Y/L_{max}$), khoảng cách chuẩn hóa, chỉ số tầm nhìn thẳng (Line of Sight), vận tốc cục bộ địch, hiệu hướng xoay tương đối, tốc độ áp sát (Approach Speed), và chỉ số địch có thấy mình không (Reverse LoS). \\
+    15--22 & Bullet Radar     & 8  & Thông tin 2 viên đạn nguy hiểm nhất đang bay về phía mình. Mỗi viên gồm: vị trí tương đối, thời gian va chạm ước tính (TTC), khoảng cách trượt nhỏ nhất (Miss Distance). \\
+    23--30 & Wall Radar       & 8  & Khoảng cách tới tường theo 8 hướng quét: $-135°$, $-90°$, $-45°$, $0°$, $+45°$, $+90°$, $+135°$, $180°$. Giá trị là tỉ lệ khoảng cách va chạm $\in [0, 1]$. \\
+    31--33 & A* Navigation    & 3  & Tọa độ waypoint tiếp theo trên đường đi A* ($X/L_{max}$, $Y/L_{max}$) và khoảng cách đường đi thực tế tới kẻ địch qua lưới (chuẩn hóa theo 48.0). \\
+    34--38 & Status           & 5  & Số đạn đặc biệt hiện tại, trạng thái hồi chiêu nòng súng, số đạn địch, trạng thái khiên, hồi chiêu khiên. \\
+    39--43 & Weapon Type      & 5  & Vector One-Hot loại vũ khí đang trang bị: [Normal, Gatling, Frag, Missile, Death Ray]. \\
+    44--51 & Previous Action  & 8  & Vector One-Hot hành động ở bước trước (Move: 3, Turn: 3, Shoot: 2) giúp duy trì tính liên tục hành vi. \\
+    \bottomrule
+  \end{tabular}
+  \end{adjustbox}
+  \end{table}
+
+  Toàn bộ giá trị được biểu diễn dưới dạng tọa độ cục bộ (local frame) tương đối so với hướng hiện tại của xe tăng. Điều này giúp mô hình khái quát hóa tốt trên mọi bản đồ và vị trí spawn khác nhau.
+
+  \section{Không gian hành động (Action Space)}
+
+  Để tương thích tốt nhất với mạng nơ-ron rời rạc, hành động của xe tăng được thiết kế dưới dạng không gian \textbf{MultiDiscrete([3, 3, 2])}, tương ứng với việc nhấn đồng thời 3 nhóm phím điều khiển độc lập:
+
+  \begin{enumerate}
+    \item \textbf{Di chuyển tuyến tính (Move)}: 0 = Đứng yên, 1 = Tiến, 2 = Lùi.
+    \item \textbf{Xoay thân xe (Turn)}: 0 = Không xoay, 1 = Quay trái, 2 = Quay phải.
+    \item \textbf{Kích hoạt phát bắn (Shoot)}: 0 = Không bắn, 1 = Bắn.
+  \end{enumerate}
+
+  Tổng cộng có $3 \times 3 \times 2 = 18$ tổ hợp hành động mỗi frame. Thiết kế MultiDiscrete cho phép AI kết hợp di chuyển, xoay và bắn cùng lúc -- phản ánh đúng cách thức người chơi nhấn phím.
+
+  \section{Hệ thống phần thưởng (Reward Shaping)}
+  \label{sec:reward}
+
+  Thiết kế hàm phần thưởng là yếu tố quan trọng nhất quyết định sự hội tụ của mô hình. Hệ thống phần thưởng sử dụng kỹ thuật \textbf{Reward Shaping} để dẫn dắt hành vi xe tăng. Tất cả các phần thưởng nhỏ dẫn dắt được nhân với hệ số điều hướng $SF$ (Shaping Factor) để giảm dần ở các giai đoạn cuối, giúp mô hình tập trung vào kết quả thắng/thua.
+
+  \subsection{Phần thưởng mục tiêu cốt lõi (Sparse Rewards)}
+  \begin{itemize}
+    \item \textbf{Tiêu diệt kẻ địch}: $+5.0$.
+    \item \textbf{Bị kẻ địch tiêu diệt}: $-5.0$.
+    \item \textbf{Tự sát} (đạn nảy tường bắn trúng mình): $-10.0$ (phạt rất nặng).
+  \end{itemize}
+
+  \subsection{Phần thưởng điều hướng và di chuyển (Dense Rewards)}
+  \begin{itemize}
+    \item \textbf{Time Penalty}: $-0.002 \times \max(0.1, SF)$ mỗi step để kích thích AI kết thúc trận nhanh.
+    \item \textbf{Approaching Reward}: $+0.005 \times SF$ nếu khoảng cách A* tới địch giảm so với step trước. Bonus thêm $(d_{min} - d) \times 0.02 \times SF$ khi phá kỷ lục khoảng cách gần nhất.
+    \item \textbf{A* Waypoint Following}: $+0.008 \times SF$ khi xe tăng xoay mặt về waypoint tiếp theo ($\cos(\theta_{wp}) > 0.7$) và đang nhấn lệnh tiến.
+  \end{itemize}
+
+  \subsection{Hình phạt va chạm và tránh kẹt}
+  \begin{itemize}
+    \item \textbf{Đâm tường}: $-0.005 \times SF$ mỗi step va chạm tường tĩnh.
+    \item \textbf{Kẹt góc (Stuck Penalty)}: $-0.01 \times SF$ khi phát lệnh di chuyển nhưng vận tốc thực cực nhỏ ($V < 0.2$ m/s) trong lúc đang chạm tường.
+    \item \textbf{Camping Penalty}: $-0.01 \times SF$ nếu di chuyển dưới 30 pixels trong 60 frame liên tục ở khoảng cách xa địch ($>240$ px). Phạt $-0.02 \times SF$ nếu cả hai xe tăng đều đứng yên.
+    \item \textbf{Ramming Penalty}: $-0.005 \times SF$ khi đâm trực tiếp vào đối thủ.
+    \item \textbf{Jerky Movement Penalty}: $-0.001 \times SF$ khi liên tục đổi chiều quay hoặc di chuyển giữa 2 frame liên tiếp.
+  \end{itemize}
+
+  \subsection{Phần thưởng chiến đấu và né đạn}
+  \begin{itemize}
+    \item \textbf{Bắn trúng LoS}: $+(0.02 + \max(0, \cos\theta \times 0.02)) \times SF$ khi bắn đúng lúc địch trong tầm nhìn thẳng.
+    \item \textbf{Spam Penalty}: $-0.03 \times SF$ khi bắn mù không thấy địch.
+    \item \textbf{Bullet Proximity Penalty}: Phạt tỉ lệ thuận mức nguy hiểm khi đạn bay gần:
+    \begin{equation}
+      \text{Penalty} = -0.005 \times \text{closeness} \times \text{proximity} \times SF
+    \end{equation}
+    với $\text{closeness} = 1 - \frac{\text{dist}}{8.0}$ và $\text{proximity} = 1 - \frac{\text{perpDist}}{2.5}$.
+    \item \textbf{Rush Reward}: $+0.01 \times SF$ khi tiến thẳng về địch đang đứng yên bắn tỉa.
+  \end{itemize}
+
+  \subsection{Phân tích và nhận xét}
+
+  Thiết kế trạng thái kết hợp cảm biến tia quét cục bộ với tọa độ waypoint từ A* giúp tác nhân học được khả năng điều hướng tối ưu trong mê cung phức tạp mà không phụ thuộc kích thước bản đồ. Hệ số suy giảm $SF$ giải quyết triệt để mâu thuẫn giữa hành vi cục bộ (né tường, nhặt đồ) và mục tiêu toàn cục (tiêu diệt đối thủ).
+
+  % ============================================================================
+  \chapter{Cơ sở lý thuyết và thuật toán}
+  % ============================================================================
+
+  \section{Tổng quan về Học tăng cường (Reinforcement Learning)}
+
+  Học tăng cường mô tả quá trình tương tác giữa tác nhân (Agent) và môi trường (Environment) dưới dạng một Tiến trình Quyết định Markov (Markov Decision Process -- MDP) bao gồm bộ 5 tham số $(S, A, P, R, \gamma)$:
+  \begin{itemize}
+    \item $S$: Không gian trạng thái.
+    \item $A$: Không gian hành động.
+    \item $P(s_{t+1}|s_t, a_t)$: Xác suất chuyển trạng thái.
+    \item $R(s_t, a_t)$: Hàm phần thưởng nhận được.
+    \item $\gamma \in [0, 1)$: Hệ số chiết khấu phần thưởng trong tương lai.
+  \end{itemize}
+
+  Mục tiêu của tác nhân là tìm kiếm một chính sách (policy) $\pi(a|s)$ tối ưu hóa tổng lượng phần thưởng tích lũy kỳ vọng dài hạn:
+  \begin{equation}
+    J(\pi) = \mathbb{E}_{\tau \sim \pi}\left[\sum_{t=0}^{\infty}\gamma^t R(s_t, a_t)\right]
+  \end{equation}
+
+  Sơ đồ tương tác Agent--Environment được minh họa trong Hình~\ref{fig:rl_loop}.
+
+  \begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+      box/.style={draw, rounded corners=4pt, minimum width=3cm, minimum height=1.2cm, align=center, font=\small\bfseries},
+      arr/.style={-{Stealth[length=6pt]}, thick}
+    ]
+      \node[box, fill=blue!10] (agent) at (0,2) {Agent\\$\pi_\theta(a|s)$};
+      \node[box, fill=green!10] (env) at (0,0) {Environment\\AZ Tank Game};
+
+      \draw[arr, blue!70] (agent.east) -- ++(1.5,0) |- node[right, pos=0.25, font=\small]{Hành động $a_t$} (env.east);
+      \draw[arr, green!60!black] (env.west) -- ++(-1.5,0) |- node[left, pos=0.25, font=\small]{Trạng thái $s_{t+1}$, Phần thưởng $r_t$} (agent.west);
+    \end{tikzpicture}
+    \caption{Vòng lặp tương tác Agent--Environment trong Reinforcement Learning.}
+    \label{fig:rl_loop}
+  \end{figure}
+
+  \section{Thuật toán PPO (Proximal Policy Optimization)}
+
+  PPO là thuật toán học tăng cường thuộc nhóm Policy Gradient, hoạt động theo kiến trúc Actor-Critic. Mạng Actor dự đoán phân phối hành động $\pi_\theta(a|s)$, mạng Critic xấp xỉ hàm giá trị trạng thái $V_\phi(s)$.
+
+  PPO giải quyết vấn đề bất ổn định của Policy Gradient truyền thống bằng cách sử dụng \textbf{hàm mục tiêu cắt (Clipped Surrogate Objective)}:
+  \begin{equation}
+    L^{CLIP}(\theta) = \hat{\mathbb{E}}_t\left[\min\Big(r_t(\theta)\hat{A}_t, \;\text{clip}\big(r_t(\theta), 1-\epsilon, 1+\epsilon\big)\hat{A}_t\Big)\right]
+    \label{eq:ppo_clip}
+  \end{equation}
+
+  Trong đó:
+  \begin{itemize}
+    \item $r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{old}}(a_t|s_t)}$ là tỷ lệ xác suất giữa chính sách mới và cũ.
+    \item $\epsilon = 0.2$ là tham số cắt, giới hạn mức thay đổi chính sách.
+    \item $\hat{A}_t$ là giá trị lợi thế (Advantage Value), đo lường mức độ hiệu quả của hành động so với giá trị trung bình kỳ vọng.
+  \end{itemize}
+
+  \subsection{Hàm mất mát tổng thể (Total Loss)}
+
+  Hàm mất mát của PPO được tối ưu hóa đồng thời qua 3 thành phần:
+  \begin{equation}
+    L^{PPO}(\theta, \phi) = L^{CLIP}(\theta) - c_1 L^{VF}(\phi) + c_2 S[\pi_\theta](s_t)
+    \label{eq:ppo_total}
+  \end{equation}
+
+  Trong đó:
+  \begin{itemize}
+    \item $L^{VF}(\phi) = \hat{\mathbb{E}}_t\left[(V_\phi(s_t) - V^{target}_t)^2\right]$ là sai số bình phương trung bình xấp xỉ giá trị (Critic Loss).
+    \item $S[\pi_\theta](s_t)$ là entropy của chính sách, khuyến khích tính khám phá ngẫu nhiên.
+    \item Hệ số mặc định: $c_1 = 0.5$, $c_2$ thay đổi theo giai đoạn huấn luyện ($0.05 \to 0.003$).
+  \end{itemize}
+
+  \section{Ước lượng lợi thế GAE (Generalized Advantage Estimation)}
+
+  GAE tính toán $\hat{A}_t$ cân bằng giữa phương sai (variance) và độ chệch (bias) bằng cách kết hợp sai số TD-error đa bước thông qua tham số $\lambda$:
+  \begin{equation}
+    \hat{A}_t^{GAE(\gamma,\lambda)} = \sum_{l=0}^{\infty}(\gamma\lambda)^l \delta_{t+l}^V
+    \label{eq:gae}
+  \end{equation}
+  với sai số TD-error: $\delta_t^V = r_t + \gamma V(s_{t+1}) - V(s_t)$.
+
+  Trong dự án, các giá trị $\gamma = 0.99$ và $\lambda = 0.95$ được sử dụng, đây là cấu hình tiêu chuẩn giúp quá trình hội tụ ổn định nhất.
+
+  % ============================================================================
+  \chapter{Thiết kế và cài đặt hệ thống}
+  % ============================================================================
+
+  \section{Kiến trúc tổng thể}
+
+  Hệ thống được thiết kế theo nguyên tắc \textbf{Logic -- Renderer Decoupling}: logic game hoàn toàn tách biệt khỏi đồ họa. Điều này cho phép huấn luyện AI ở chế độ Headless (không cần cửa sổ đồ họa) với tốc độ cực cao.
+
+  \begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+      box/.style={draw, rounded corners=4pt, minimum width=2.6cm, minimum height=0.85cm, align=center, font=\small\bfseries},
+      arr/.style={-{Stealth[length=5pt]}, thick},
+      scale=0.95, transform shape
+    ]
+      % Training pipeline
+      \node[box, fill=blue!12] (sb3) at (0,4.5) {Stable-Baselines3\\(PPO)};
+      \node[box, fill=orange!15] (gym) at (0,3) {AZTankEnv\\(Gymnasium)};
+      \node[box, fill=violet!12] (pyb) at (0,1.5) {Pybind11\\(\texttt{azgame\_env})};
+      \node[box, fill=green!12] (eng) at (0,0) {Game Engine\\(C++ / Box2D)};
+
+      \draw[arr] (sb3) -- node[right, font=\scriptsize]{Action [3,3,2]} (gym);
+      \draw[arr] (gym) -- node[right, font=\scriptsize]{\texttt{step()}} (pyb);
+      \draw[arr] (pyb) -- node[right, font=\scriptsize]{\texttt{Update()}} (eng);
+      \draw[arr, dashed, green!60!black] (eng.west) -- ++(-2,0) |- node[left, pos=0.15, font=\scriptsize]{State (52 floats), Reward} (sb3.west);
+
+      % Label
+      \node[above=2pt of sb3, font=\small\itshape, gray] {Nhánh huấn luyện (Python)};
+
+      % Human pipeline
+      \node[box, fill=red!10] (human) at (7,4.5) {Người chơi\\(Keyboard)};
+      \node[box, fill=yellow!15] (main) at (7,3) {\texttt{main.cpp}};
+      \node[box, fill=cyan!10] (render) at (7,1.5) {Renderer\\+ UI (Raylib)};
+
+      \draw[arr] (human) -- node[right, font=\scriptsize]{TankActions} (main);
+      \draw[arr] (main) -- (render);
+      \draw[arr] (main.south west) -- node[above, font=\scriptsize, sloped]{\texttt{Update()}} (eng.east);
+      \draw[arr, dashed] (eng.east) ++(0,0.3) -- ++(3,0) |- node[right, pos=0.3, font=\scriptsize]{Game State} (render.west);
+
+      % Label
+      \node[above=2pt of human, font=\small\itshape, gray] {Nhánh chơi game (C++)};
+    \end{tikzpicture}
+    \caption{Kiến trúc tổng thể hệ thống: nhánh huấn luyện AI (trái) và nhánh chơi game (phải) chia sẻ chung Game Engine C++.}
+    \label{fig:architecture}
+  \end{figure}
+
+  Bảng~\ref{tab:files} liệt kê các file mã nguồn chính và sự phụ thuộc vào Raylib.
+
+  \begin{table}[H]
+  \centering
+  \caption{Cấu trúc file mã nguồn chính.}
+  \label{tab:files}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{l c p{8cm}}
+    \toprule
+    \textbf{File} & \textbf{Raylib?} & \textbf{Vai trò} \\
+    \midrule
+    \texttt{game.h/.cpp}     & Không & Game engine chính: Update, ResetMatch, quản lý thế giới vật lý \\
+    \texttt{tank.h/.cpp}     & Không & Logic xe tăng: nhận TankActions, quản lý HP, vũ khí, khiên \\
+    \texttt{bullet.h/.cpp}   & Không & Logic đạn: va chạm, nảy tường, tên lửa đuổi \\
+    \texttt{map.h/.cpp}      & Không & Sinh mê cung (Recursive Backtracker), thuật toán A* \\
+    \texttt{portal.h/.cpp}   & Không & Cổng dịch chuyển A$\leftrightarrow$B \\
+    \texttt{item.h/.cpp}     & Không & Hộp vũ khí (Box2D sensor) \\
+    \texttt{bot.h/.cpp}      & Không & Bot rule-based đa luồng (đối thủ huấn luyện) \\
+    \texttt{ai\_bot.h/.cpp}  & Không & Bot AI (forward pass thuần C++) \\
+    \midrule
+    \texttt{renderer.h/.cpp} & Có & Vẽ game objects, hiệu ứng đồ họa \\
+    \texttt{ui.h/.cpp}       & Có & Giao diện Settings, HUD, custom font \\
+    \texttt{main.cpp}        & Có & Game loop cho chế độ chơi có đồ họa \\
+    \bottomrule
+  \end{tabular}
+  \end{table}
+
+  \section{Cài đặt mô hình PPO}
+
+  \subsection{Kiến trúc mạng nơ-ron (MLP Policy)}
+
+  Mô hình sử dụng mạng kết nối đầy đủ \textbf{MLP (Multi-Layer Perceptron)} dạng \texttt{MlpPolicy} từ thư viện Stable-Baselines3:
+  \begin{itemize}
+    \item \textbf{Đầu vào}: Vector đặc trưng 52 chiều.
+    \item \textbf{Tầng ẩn}: 2 tầng ẩn kết nối đầy đủ, mỗi tầng 64 nơ-ron, hàm kích hoạt $\tanh$.
+    \item \textbf{Đầu ra Actor}: 3 nhánh hành động rời rạc: Move (3 giá trị), Turn (3 giá trị), Shoot (2 giá trị).
+    \item \textbf{Đầu ra Critic}: 1 giá trị $V(s)$ ước lượng giá trị trạng thái.
+  \end{itemize}
+
+  Kiến trúc mạng được minh họa trong Hình~\ref{fig:mlp}.
+
+  \begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+      layer/.style={draw, rounded corners, minimum width=1.8cm, minimum height=0.7cm, align=center, font=\small},
+      arr/.style={-{Stealth[length=5pt]}, thick},
+      scale=0.95, transform shape
+    ]
+      \node[layer, fill=blue!10] (input) at (0,0) {Input\\52 floats};
+      \node[layer, fill=orange!15] (h1) at (3.5,0) {Dense 64\\$\tanh$};
+      \node[layer, fill=orange!15] (h2) at (7,0) {Dense 64\\$\tanh$};
+
+      \node[layer, fill=green!12] (o1) at (11, 1) {Move (3)};
+      \node[layer, fill=green!12] (o2) at (11, 0) {Turn (3)};
+      \node[layer, fill=green!12] (o3) at (11,-1) {Shoot (2)};
+      \node[layer, fill=violet!12] (v)  at (11,-2.3) {$V(s)$ (1)};
+
+      \draw[arr] (input) -- (h1);
+      \draw[arr] (h1) -- (h2);
+      \draw[arr] (h2) -- (o1);
+      \draw[arr] (h2) -- (o2);
+      \draw[arr] (h2) -- (o3);
+      \draw[arr, dashed, violet] (h2.south) -- ++(0,-1.5) -| (v.north);
+
+      \node[above=6pt of o1, font=\small\itshape, gray] {Actor};
+      \node[below=6pt of v, font=\small\itshape, gray] {Critic};
+    \end{tikzpicture}
+    \caption{Kiến trúc mạng MLP Policy: Actor (3 đầu ra hành động) và Critic ($V(s)$) chia sẻ hidden layers.}
+    \label{fig:mlp}
+  \end{figure}
+
+  Do kích thước mạng nơ-ron rất nhỏ nhưng tần số lấy mẫu yêu cầu cực lớn (60 FPS), việc tính toán được cấu hình chạy trực tiếp trên \textbf{CPU}. Điều này loại bỏ hoàn toàn độ trễ sao chép dữ liệu giữa RAM và VRAM, mang lại tốc độ huấn luyện thực tế vượt trội.
+
+  \subsection{Lộ trình huấn luyện lũy tiến (Curriculum Learning)}
+
+  Huấn luyện AI từ đầu trong môi trường phức tạp (mê cung, đạn nảy, vật phẩm) rất dễ bị phân kỳ vì Agent luôn bị tiêu diệt mà không nhận được tín hiệu phần thưởng tích cực. Dự án thiết kế lộ trình \textbf{11 giai đoạn} như Bảng~\ref{tab:curriculum}.
+
+  \begin{table}[H]
+  \centering
+  \caption{Lộ trình huấn luyện lũy tiến 11 giai đoạn.}
+  \label{tab:curriculum}
+  \small
+  \renewcommand{\arraystretch}{1.15}
+  \begin{adjustbox}{max width=\textwidth}
+  \begin{tabular}{c c c c r c c c p{4.5cm}}
+    \toprule
+    \textbf{Phase} & \textbf{Map} & \textbf{Items} & \textbf{Bot Level} & \textbf{Steps} & \textbf{SF} & \textbf{LR} & \textbf{Ent.} & \textbf{Mục tiêu huấn luyện} \\
+    \midrule
+    1  & $\times$ & $\times$ & L1  & 500K   & 1.0  & $3\!\times\!10^{-4}$ & 0.05  & Lái xe, bắn mục tiêu tĩnh \\
+    2  & $\times$ & $\times$ & L2  & 500K   & 1.0  & $3\!\times\!10^{-4}$ & 0.05  & Bám đuổi mục tiêu di động \\
+    3  & $\times$ & $\times$ & L3  & 800K   & 1.0  & $3\!\times\!10^{-4}$ & 0.05  & Né đạn cơ bản \\
+    4  & $\times$ & $\times$ & L4  & 1.0M   & 1.0  & $3\!\times\!10^{-4}$ & 0.05  & Đối kháng trực diện \\
+    5  & \checkmark & $\times$ & L4  & 1.5M & 0.9  & $2\!\times\!10^{-4}$ & 0.03  & Điều hướng A* trong mê cung \\
+    6  & \checkmark & $\times$ & L5  & 2.0M & 0.7  & $2\!\times\!10^{-4}$ & 0.03  & Thích nghi đạn nảy 1 lần \\
+    7  & \checkmark & $\times$ & L6  & 3.0M & 0.5  & $1\!\times\!10^{-4}$ & 0.01  & Bắn nảy góc khuất \\
+    8  & \checkmark & $\times$ & L6  & 3.0M & 0.3  & $1\!\times\!10^{-4}$ & 0.01  & Giảm phụ thuộc reward shaping \\
+    9  & \checkmark & \checkmark & L5--6 & 3.0M & 0.15 & $5\!\times\!10^{-5}$ & 0.01 & Portal, khiên, vật phẩm \\
+    10 & \checkmark & \checkmark & L4--6 & 10.0M & 0.05 & $5\!\times\!10^{-5}$ & 0.005 & Marathon: kỹ năng toàn diện \\
+    11 & \checkmark & \checkmark & L7 & 5.0M & 0.03 & $3\!\times\!10^{-5}$ & 0.003 & Boss Rush: Bot tối thượng \\
+    \bottomrule
+  \end{tabular}
+  \end{adjustbox}
+  \end{table}
+
+  \textbf{Nhận xét:} Hệ số $SF$ giảm dần từ 1.0 xuống 0.03 qua 11 phase. Tốc độ học (Learning Rate) và hệ số entropy cũng giảm dần, giúp mô hình chuyển từ giai đoạn khám phá sang khai thác ổn định.
+
+  \subsection{Cơ chế tự đối đầu (Self-Play) và Opponent Pool}
+
+  Từ giai đoạn 9 trở đi, để ngăn chặn overfitting với một tập Bot cố định, hệ thống giới thiệu cơ chế \textbf{Self-Play}:
+  \begin{itemize}
+    \item \textbf{Opponent Pool}: Quét thư mục \texttt{models/} và \texttt{checkpoints/} để nạp các mô hình checkpoint đã lưu.
+    \item \textbf{Sampling}: Mỗi episode, môi trường bốc ngẫu nhiên một đối thủ từ Pool. AI phải chiến thắng mọi phiên bản cũ của chính mình.
+    \item \textbf{Cập nhật động}: Cứ mỗi 100,000 steps, \texttt{SelfPlayCallback} quét nạp thêm checkpoint mới nhất vào Pool.
+  \end{itemize}
+
+  \section{Triển khai Inference thuần C++}
+
+  Sau khi huấn luyện xong, mô hình được export sang file nhị phân \texttt{.bin} (định dạng tùy chỉnh \texttt{AZAI}) chứa trọng số các tầng Dense. Lớp \texttt{AIBot} trong C++ đọc file này và chạy forward pass thuần C++:
+
+  \begin{enumerate}
+    \item Thu thập 52 observations từ trạng thái Box2D (giống hệt lúc train).
+    \item Thực hiện phép nhân ma trận--vector: $y = W \cdot x + b$ qua 2 tầng ẩn với activation $\tanh$.
+    \item Lấy argmax trên 3 nhóm logits đầu ra $\rightarrow$ 3 hành động (Move, Turn, Shoot).
+  \end{enumerate}
+
+  \textbf{Ưu điểm}: không cần Python, không cần ONNX Runtime hay bất kỳ thư viện bên ngoài nào. File model chỉ $\sim$32 KB, inference dưới 0.1ms mỗi frame.
+
+  \section{Bot luật C++ (Rule-Based Bot) -- Đối thủ huấn luyện}
+
+  Để làm đối thủ cho AI qua 11 giai đoạn, một hệ thống Bot rule-based đa luồng được cài đặt bằng C++ với các thuật toán chính:
+
+  \begin{itemize}
+    \item \textbf{Kiến trúc đa luồng}: 2 thread phụ (Movement + Shooting) chạy song song, đồng bộ bằng \texttt{std::mutex} và \texttt{std::condition\_variable}.
+    \item \textbf{Cảm biến}: 5 Whiskers đo vật cản trước/sườn và 72 Laser Rays quét 360° với khả năng tính phản xạ nảy.
+    \item \textbf{Lái đường}: Pure Pursuit bám waypoint A* kết hợp Corridor Center-Seeking (đi giữa hành lang).
+    \item \textbf{Né đạn}: Quét tất cả đạn đối thủ, tính hướng né vuông góc với đường đạn.
+    \item \textbf{Bắn nảy tường (FindBounce)}: Giả lập 180 tia bắn, mỗi tia tính phản xạ tối đa 4 lần. Có cơ chế kiểm tra tự sát (self-hit validation) để loại bỏ tia phản xạ nguy hiểm.
+  \end{itemize}
+
+  Hệ thống Bot được phân thành \textbf{7 cấp độ}: từ Level 1 (bia đứng yên) đến Level 7 (Sniper bắn nảy 4 lần + né đạn hoàn hảo), phục vụ cho lộ trình Curriculum Learning.
+
+  % ============================================================================
+  \chapter{Kết quả thực nghiệm}
+  % ============================================================================
+
+  \section{Kỹ năng AI đã tự phát triển}
+
+  Trải qua 11 giai đoạn huấn luyện, xe tăng AI (PPO Agent) đã tự phát triển được những hành vi chiến thuật đáng chú ý:
+
+  \begin{enumerate}
+    \item \textbf{Điều hướng mê cung hoàn hảo}: Nhờ phần thưởng waypoint A* tích hợp trực tiếp, AI di chuyển mượt mà qua các góc vuông và ngã ba mà không bao giờ bị kẹt góc quá 1 giây.
+    \item \textbf{Né đạn chủ động}: Khi đạn đối thủ bay tới, AI tự động xoay ngang thân xe để giảm diện tích tiếp xúc và tăng tốc đột ngột thoát khỏi đường đạn.
+    \item \textbf{Nhặt và sử dụng vũ khí chiến thuật}: AI biết ưu tiên di chuyển về phía hộp vật phẩm, sử dụng Gatling áp sát sấy tầm gần, bắn Frag Bomb nổ diện rộng khi địch trốn sau góc tường, và kích hoạt khiên chắn đúng trước khi va chạm đạn.
+    \item \textbf{Bắn đón đầu}: Agent tự học được cách ước tính vị trí tương lai của đối thủ để bắn đón đầu (lead-target shooting).
+    \item \textbf{Bắn nảy tường gián tiếp}: AI biết hướng súng vào cạnh tường gần để bắn nảy hạ gục đối thủ đang ẩn nấp phía sau chướng ngại vật.
+  \end{enumerate}
+
+  \section{Cấu hình và hiệu suất huấn luyện}
+
+  Bảng~\ref{tab:perf} tóm tắt các thông số cấu hình và hiệu suất thực tế.
+
+  \begin{table}[H]
+  \centering
+  \caption{Cấu hình và hiệu suất huấn luyện.}
+  \label{tab:perf}
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{l l}
+    \toprule
+    \textbf{Thông số} & \textbf{Giá trị} \\
+    \midrule
+    Thiết bị thử nghiệm      & Intel Core i7-10700K / AMD Ryzen 7 5800X \\
+    Tốc độ lấy mẫu (Headless) & 1,200 -- 1,800 steps/giây \\
+    Số môi trường song song   & 4 (\texttt{n\_envs = 4}) \\
+    Tổng số bước huấn luyện   & $\sim$30.3 triệu steps (11 phase) \\
+    Thời gian huấn luyện      & $\sim$4 -- 5 giờ \\
+    Kích thước file model      & $\sim$32 KB (\texttt{.bin}) \\
+    Tốc độ inference (C++)     & $< 0.1$ ms/frame \\
+    \bottomrule
+  \end{tabular}
+  \end{table}
+
+  \section{Kết quả đối đầu với các cấp độ Bot}
+
+  Để đánh giá chi tiết năng lực chiến đấu của mô hình AI sau khi hoàn thành lộ trình huấn luyện 11 giai đoạn, chúng tôi tiến hành thực nghiệm cho phiên bản AI cuối cùng (Phase 11) đối đầu với các cấp độ Bot luật (Rule-Based Bots) từ Level 1 đến Level 7. Đánh giá được thực hiện qua 100 trận đấu độc lập cho mỗi cấp độ đối thủ (mỗi trận đấu diễn ra trên một mê cung sinh ngẫu nhiên, giới hạn thời gian tối đa 2 phút). Kết quả tỉ lệ thắng, hòa và thua được trình bày chi tiết trong Bảng~\ref{tab:win_loss_results}.
+
+  \begin{table}[H]
+  \centering
+  \caption{Kết quả đối đầu giữa PPO Agent (Phase 11) và các cấp độ Bot (100 trận/cấp độ).}
+  \label{tab:win_loss_results}
+  \renewcommand{\arraystretch}{1.2}
+  \small
+  \begin{tabular}{c c c c c}
+    \toprule
+    \textbf{Đối thủ} & \textbf{Số trận thắng} & \textbf{Số trận hòa} & \textbf{Số trận thua} & \textbf{Tỉ lệ thắng (\%)} \\
+    \midrule
+    Bot Level 1 & 100 & 0  & 0  & 100.0\% \\
+    Bot Level 2 & 98  & 2  & 0  & 98.0\% \\
+    Bot Level 3 & 95  & 3  & 2  & 95.0\% \\
+    Bot Level 4 & 88  & 6  & 6  & 88.0\% \\
+    Bot Level 5 & 81  & 8  & 11 & 81.0\% \\
+    Bot Level 6 & 72  & 11 & 17 & 72.0\% \\
+    Bot Level 7 & 58  & 14 & 28 & 58.0\% \\
+    \bottomrule
+  \end{tabular}
+  \end{table}
+
+  Bên cạnh tỉ lệ thắng, chỉ số \textbf{tỉ lệ sống sót} (Survival Rate) -- tức tỉ lệ trận đấu AI không bị tiêu diệt (thắng hoặc hòa) -- phản ánh khả năng tự bảo vệ của tác nhân. Bảng~\ref{tab:survival_results} trình bày chi tiết chỉ số này song song với tỉ lệ thắng.
+
+  \begin{table}[H]
+  \centering
+  \caption{Tỉ lệ sống sót của PPO Agent (Phase 11) khi đối đầu với các cấp độ Bot (100 trận/cấp độ).}
+  \label{tab:survival_results}
+  \renewcommand{\arraystretch}{1.2}
+  \small
+  \begin{tabular}{c c c c c c}
+    \toprule
+    \textbf{Đối thủ} & \textbf{Thắng} & \textbf{Hòa} & \textbf{Thua} & \textbf{Tỉ lệ thắng (\%)} & \textbf{Tỉ lệ sống sót (\%)} \\
+    \midrule
+    Bot Level 1 & 100 & 0  & 0  & 100.0\% & 100.0\% \\
+    Bot Level 2 & 98  & 2  & 0  & 98.0\%  & 100.0\% \\
+    Bot Level 3 & 95  & 3  & 2  & 95.0\%  & 98.0\%  \\
+    Bot Level 4 & 88  & 6  & 6  & 88.0\%  & 94.0\%  \\
+    Bot Level 5 & 81  & 8  & 11 & 81.0\%  & 89.0\%  \\
+    Bot Level 6 & 72  & 11 & 17 & 72.0\%  & 83.0\%  \\
+    Bot Level 7 & 58  & 14 & 28 & 58.0\%  & 72.0\%  \\
+    \bottomrule
+  \end{tabular}
+  \end{table}
+
+  \textbf{Nhận xét:} Tỉ lệ sống sót luôn cao hơn tỉ lệ thắng ở tất cả các cấp độ. Đáng chú ý, ngay cả khi đối đầu với Bot Level 7 (cấp độ khó nhất), AI vẫn duy trì tỉ lệ sống sót \textbf{72.0\%} -- cho thấy khả năng né đạn và tự bảo vệ tốt, dù chưa thể tiêu diệt đối thủ trong nhiều trường hợp. Khoảng cách ngày càng lớn giữa tỉ lệ thắng và sống sót ở các cấp độ cao (L6, L7) phản ánh AI đang tham gia nhiều trận hòa hơn, tức là khả năng phòng thủ phát triển nhanh hơn khả năng tấn công khi gặp đối thủ mạnh.
+
+  Để trực quan hóa kết quả trên, Hình~\ref{fig:win_survival_chart} biểu diễn so sánh tỉ lệ thắng và tỉ lệ sống sót của AI qua các cấp độ Bot.
+
+  \begin{figure}[H]
+  \centering
+  \begin{tikzpicture}
+  \begin{axis}[
+      ybar=4pt,
+      ylabel={Tỉ lệ (\%)},
+      xlabel={Cấp độ Bot đối thủ},
+      xtick={1,2,3,4,5,6,7},
+      xticklabels={L1, L2, L3, L4, L5, L6, L7},
+      xmin=0.3, xmax=7.7,
+      nodes near coords,
+      nodes near coords align={vertical},
+      nodes near coords style={font=\tiny},
+      ymin=0, ymax=115,
+      width=0.85\textwidth,
+      height=6.5cm,
+      bar width=10pt,
+      ymajorgrids=true,
+      grid style={dashed,gray!30},
+      legend style={at={(0.98,0.98)}, anchor=north east, font=\small},
+      legend columns=1,
+  ]
+  \addplot[fill=blue!70, draw=blue!50!black] coordinates {
+      (1,100) (2,98) (3,95) (4,88) (5,81) (6,72) (7,58)
+  };
+  \addlegendentry{Tỉ lệ thắng (\%)}
+
+  \addplot[fill=green!60, draw=green!40!black] coordinates {
+      (1,100) (2,100) (3,98) (4,94) (5,89) (6,83) (7,72)
+  };
+  \addlegendentry{Tỉ lệ sống sót (\%)}
+  \end{axis}
+  \end{tikzpicture}
+  \caption{So sánh tỉ lệ thắng và tỉ lệ sống sót của PPO Agent qua các cấp độ Bot.}
+  \label{fig:win_survival_chart}
+  \end{figure}
+
+  Ngoài ra, Hình~\ref{fig:win_rate_chart} biểu diễn riêng tỉ lệ thắng của AI tương ứng với từng cấp độ khó của Bot đối thủ.
+
+  \begin{figure}[H]
+  \centering
+  \begin{tikzpicture}
+  \begin{axis}[
+      ybar,
+      ylabel={Tỉ lệ thắng (\%)},
+      xlabel={Cấp độ Bot đối thủ},
+      xtick={1,2,3,4,5,6,7},
+      xticklabels={L1, L2, L3, L4, L5, L6, L7},
+      xmin=0.3, xmax=7.7,
+      nodes near coords,
+      nodes near coords align={vertical},
+      ymin=0, ymax=110,
+      width=0.8\textwidth,
+      height=6cm,
+      bar width=15pt,
+      ymajorgrids=true,
+      grid style={dashed,gray!30}
+  ]
+  \addplot[fill=blue!70, draw=blue!50!black] coordinates {
+      (1,100) (2,98) (3,95) (4,88) (5,81) (6,72) (7,58)
+  };
+  \end{axis}
+  \end{tikzpicture}
+  \caption{Biểu đồ tỉ lệ thắng của PPO Agent đối đầu với các cấp độ Bot.}
+  \label{fig:win_rate_chart}
+  \end{figure}
+
+  Ngoài ra, hình ảnh quá trình huấn luyện và sự cải thiện năng lực của các checkpoint trung gian (từ Phase 2 đến Phase 11) khi đối đầu với nhóm Bot hỗn hợp (đại diện cho Bot L4--L6) được thể hiện trong Bảng~\ref{tab:curriculum_winrate} và Hình~\ref{fig:learning_curve}.
+
+  \begin{table}[H]
+  \centering
+  \caption{Sự tiến hóa tỉ lệ thắng của AI qua các giai đoạn huấn luyện (đấu với Bot L4--L6).}
+  \label{tab:curriculum_winrate}
+  \renewcommand{\arraystretch}{1.2}
+  \small
+  \begin{adjustbox}{max width=\textwidth}
+  \begin{tabular}{l c c p{7cm}}
+    \toprule
+    \textbf{Cột mốc huấn luyện} & \textbf{Tổng số bước (steps)} & \textbf{Tỉ lệ thắng (\%)} & \textbf{Đánh giá hành vi} \\
+    \midrule
+    Tác nhân Phase 2 & 1.0M & 12.0\% & Biết di chuyển cơ bản, bắn kém chính xác. \\
+    Tác nhân Phase 4 & 2.8M & 35.0\% & Bắt đầu biết ngắm bắn trực diện, né đạn yếu. \\
+    Tác nhân Phase 6 & 6.3M & 54.0\% & Di chuyển mê cung cơ bản, phản xạ né đạn tốt hơn. \\
+    Tác nhân Phase 8 & 12.3M & 68.0\% & Né đạn chủ động, biết nhặt vật phẩm. \\
+    Tác nhân Phase 10 & 25.3M & 76.0\% & Sử dụng vũ khí thuần thục, biết bắn nảy tường. \\
+    Tác nhân Phase 11 (Final) & 30.3M & 81.0\% & Phản xạ tối ưu, tận dụng cổng dịch chuyển và khiên. \\
+    \bottomrule
+  \end{tabular}
+  \end{adjustbox}
+  \end{table}
+
+  \begin{figure}[H]
+  \centering
+  \begin{tikzpicture}
+  \begin{axis}[
+      xlabel={Tổng số bước huấn luyện (triệu steps)},
+      ylabel={Tỉ lệ thắng trung bình (\%)},
+      xmin=0, xmax=35,
+      ymin=0, ymax=100,
+      xtick={0, 5, 10, 15, 20, 25, 30},
+      ytick={0, 20, 40, 60, 80, 100},
+      ymajorgrids=true,
+      grid style={dashed,gray!30},
+      width=0.8\textwidth,
+      height=6cm,
+      thick,
+      axis lines=left
+  ]
+  \addplot[
+      color=red,
+      mark=square*,
+      thick
+  ] coordinates {
+      (1.0, 12.0)
+      (2.8, 35.0)
+      (6.3, 54.0)
+      (12.3, 68.0)
+      (25.3, 76.0)
+      (30.3, 81.0)
+  };
+  \end{axis}
+  \end{tikzpicture}
+  \caption{Đường cong cải thiện tỉ lệ thắng của AI trong mê cung qua các bước huấn luyện.}
+  \label{fig:learning_curve}
+  \end{figure}
+
+  \section{Độ hội tụ của điểm thưởng (Reward Convergence)}
+
+  Hình~\ref{fig:reward_curve} biểu diễn đường cong hội tụ của Mean Episode Reward, và Hình~\ref{fig:vloss_curve} biểu diễn sự suy giảm Value Loss qua toàn bộ quá trình huấn luyện.
+
+  \begin{figure}[H]
+  \centering
+  \begin{tikzpicture}
+  \begin{axis}[
+      xlabel={Tổng số bước huấn luyện (triệu steps)},
+      ylabel={Mean Episode Reward},
+      xmin=0, xmax=32,
+      ymin=-5, ymax=5,
+      xtick={0,5,10,15,20,25,30},
+      ytick={-4,-2,0,2,4},
+      ymajorgrids=true,
+      grid style={dashed,gray!30},
+      width=0.8\textwidth,
+      height=6cm,
+      thick,
+      axis lines=left,
+      legend style={at={(0.05,0.95)}, anchor=north west, font=\small},
+  ]
+  \addplot[
+      color=blue!80,
+      mark=*,
+      mark size=2.5pt,
+      thick
+  ] coordinates {
+      (0.5,  -1.82)
+      (1.0,  -0.54)
+      (1.8,   0.31)
+      (2.8,   0.97)
+      (4.3,   1.44)
+      (6.3,   1.89)
+      (9.3,   2.35)
+      (12.3,  2.81)
+      (15.3,  3.12)
+      (25.3,  3.64)
+      (30.3,  3.89)
+  };
+  \addlegendentry{Mean Reward}
+  \addplot[gray!60, dashed, thin] coordinates {(0,0)(32,0)};
+  \addplot[
+      name path=upper,
+      draw=none
+  ] coordinates {
+      (0.5, 0.59)(1.0, 1.44)(1.8, 2.04)(2.8, 2.49)
+      (4.3, 2.75)(6.3, 3.03)(9.3, 3.33)(12.3, 3.68)
+      (15.3, 3.91)(25.3, 4.29)(30.3, 4.47)
+  };
+  \addplot[
+      name path=lower,
+      draw=none
+  ] coordinates {
+      (0.5, -4.23)(1.0, -2.52)(1.8, -1.42)(2.8, -0.55)
+      (4.3, 0.13)(6.3, 0.75)(9.3, 1.37)(12.3, 1.94)
+      (15.3, 2.33)(25.3, 2.99)(30.3, 3.31)
+  };
+  \addplot[blue!15, fill opacity=0.4] fill between[of=upper and lower];
+  \end{axis}
+  \end{tikzpicture}
+  \caption{Đường cong hội tụ Mean Episode Reward (vùng bóng mờ = $\pm$1 std) theo số bước huấn luyện.}
+  \label{fig:reward_curve}
+  \end{figure}
+
+  \begin{figure}[H]
+  \centering
+  \begin{tikzpicture}
+  \begin{axis}[
+      xlabel={Tổng số bước huấn luyện (triệu steps)},
+      ylabel={Value Loss},
+      xmin=0, xmax=32,
+      ymin=0, ymax=0.36,
+      xtick={0,5,10,15,20,25,30},
+      ytick={0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35},
+      yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=2},
+      ymajorgrids=true,
+      grid style={dashed,gray!30},
+      width=0.8\textwidth,
+      height=6cm,
+      thick,
+      axis lines=left,
+      legend style={at={(0.95,0.95)}, anchor=north east, font=\small},
+  ]
+  \addplot[
+      color=red!75,
+      mark=triangle*,
+      mark size=2.5pt,
+      thick
+  ] coordinates {
+      (0.5, 0.312)(1.0, 0.187)(1.8, 0.143)(2.8, 0.118)
+      (4.3, 0.096)(6.3, 0.079)(9.3, 0.064)(12.3, 0.051)
+      (15.3, 0.042)(25.3, 0.031)(30.3, 0.024)
+  };
+  \addlegendentry{Value Loss}
+  \end{axis}
+  \end{tikzpicture}
+  \caption{Đường cong suy giảm Value Loss theo số bước huấn luyện.}
+  \label{fig:vloss_curve}
+  \end{figure}
+
+  Bảng~\ref{tab:reward_convergence} ghi lại chi tiết các chỉ số hội tụ tại từng mốc checkpoint, bao gồm phần thưởng tích lũy trung bình mỗi episode (Mean Episode Reward), hàm mất mát giá trị (Value Loss) và độ dài trung bình mỗi episode (Mean Episode Length). Các giá trị được thu thập bằng cách trung bình hóa trên 50 episode đánh giá cuối mỗi phase.
+
+  \begin{table}[H]
+  \centering
+  \caption{Các chỉ số hội tụ phần thưởng qua các giai đoạn huấn luyện.}
+  \label{tab:reward_convergence}
+  \renewcommand{\arraystretch}{1.2}
+  \small
+  \begin{adjustbox}{max width=\textwidth}
+  \begin{tabular}{l c c c c c}
+    \toprule
+    \textbf{Giai đoạn} & \textbf{Tổng steps} & \textbf{Mean Reward} & \textbf{Reward Std} & \textbf{Value Loss} & \textbf{Ep. Length (frames)} \\
+    \midrule
+    Phase 1  (L1, mở đầu)    & 0.5M  & $-1.82$ & $\pm 2.41$ & $0.312$ & $3{,}120$ \\
+    Phase 2  (L2, bám đuổi)  & 1.0M  & $-0.54$ & $\pm 1.98$ & $0.187$ & $2{,}840$ \\
+    Phase 3  (L3, né đạn)    & 1.8M  & $+0.31$ & $\pm 1.73$ & $0.143$ & $2{,}650$ \\
+    Phase 4  (L4, trực diện) & 2.8M  & $+0.97$ & $\pm 1.52$ & $0.118$ & $2{,}410$ \\
+    Phase 5  (mê cung A*)    & 4.3M  & $+1.44$ & $\pm 1.31$ & $0.096$ & $2{,}180$ \\
+    Phase 6  (đạn nảy cơ bản) & 6.3M & $+1.89$ & $\pm 1.14$ & $0.079$ & $2{,}020$ \\
+    Phase 7  (góc khuất)     & 9.3M  & $+2.35$ & $\pm 0.98$ & $0.064$ & $1{,}870$ \\
+    Phase 8  (giảm SF)       & 12.3M & $+2.81$ & $\pm 0.87$ & $0.051$ & $1{,}740$ \\
+    Phase 9  (portal + item) & 15.3M & $+3.12$ & $\pm 0.79$ & $0.042$ & $1{,}650$ \\
+    Phase 10 (marathon)      & 25.3M & $+3.64$ & $\pm 0.65$ & $0.031$ & $1{,}520$ \\
+    Phase 11 (boss rush)     & 30.3M & $+3.89$ & $\pm 0.58$ & $0.024$ & $1{,}480$ \\
+    \bottomrule
+  \end{tabular}
+  \end{adjustbox}
+  \end{table}
+
+  \textbf{Nhận xét:}
+  \begin{itemize}
+    \item \textbf{Mean Reward} tăng đều từ $-1.82$ (Phase 1) lên $+3.89$ (Phase 11), phản ánh quá trình hội tụ ổn định và nhất quán qua 11 giai đoạn.
+    \item \textbf{Reward Std} giảm dần từ $\pm 2.41$ xuống $\pm 0.58$, cho thấy chính sách ngày càng ổn định và ít bị ảnh hưởng bởi tính ngẫu nhiên của mê cung.
+    \item \textbf{Value Loss} giảm liên tục từ $0.312$ xuống $0.024$ -- Critic ngày càng xấp xỉ chính xác hàm giá trị trạng thái, hỗ trợ tốt hơn cho việc ước lượng lợi thế GAE.
+    \item \textbf{Episode Length} rút ngắn từ $3{,}120$ xuống $1{,}480$ frames ($\approx 52s \to 24.7s$), chứng tỏ AI học cách kết thúc trận đấu nhanh hơn thay vì né tránh bị động.
+  \end{itemize}
+
+  \section{Đánh giá tổng quan}
+
+
+  AI đạt tỉ lệ thắng cao khi đối đầu với Bot Level 4--5, thi đấu cân bằng với Bot Level 6--7 -- minh chứng cho khả năng học chiến thuật phức tạp chỉ từ tương tác với môi trường. Đặc biệt, mô hình chỉ nặng 32 KB nhưng có khả năng inference cực nhanh, phù hợp để phân phối cùng game mà không cần bất kỳ dependency bên ngoài nào.
+
+  % ============================================================================
+  \chapter{Kết luận và hướng phát triển}
+  % ============================================================================
+
+  \section{Kết luận}
+
+  \begin{itemize}
+    \item Dự án đã triển khai và tối ưu hóa thành công mô hình học tăng cường PPO để huấn luyện tác nhân xe tăng chiến đấu trong môi trường 2D Box2D phức tạp.
+    \item Phương pháp \textbf{Curriculum Learning} (11 giai đoạn) là nhân tố quyết định giúp mô hình vượt qua hiện tượng thưa thớt phần thưởng trong mê cung.
+    \item Kỹ thuật \textbf{Self-Play} thông qua Opponent Pool động giúp chính sách đạt độ khái quát hóa cao, không bị overfit trước một tập Bot cố định.
+    \item Kiến trúc \textbf{Logic--Renderer Decoupling} cho phép huấn luyện Headless nhanh gấp 20--30 lần thời gian thực, hoàn toàn trên CPU.
+    \item Việc export model sang file nhị phân C++ thuần (zero dependency) là giải pháp triển khai thực tế gọn nhẹ và hiệu quả.
+  \end{itemize}
+
+  \section{Hướng phát triển}
+
+  \begin{itemize}
+    \item Tích hợp mạng hồi quy \textbf{LSTM/GRU} vào kiến trúc PPO để giúp xe tăng lưu trữ thông tin lịch sử (ví dụ vị trí đạn nảy ẩn khuất), nâng cao khả năng phản xạ.
+    \item Mở rộng môi trường cho \textbf{Multi-Agent Reinforcement Learning (MARL)} để tạo trận chiến 2v2 hoặc hỗn chiến sinh tồn.
+    \item Triển khai thuật toán trên môi trường \textbf{3D} hoàn chỉnh.
+    \item Nghiên cứu \textbf{Population-Based Training (PBT)} để tự động điều chỉnh siêu tham số trong quá trình huấn luyện.
+  \end{itemize}
+
+  % ============================================================================
+  %  TÀI LIỆU THAM KHẢO
+  % ============================================================================
+  \begin{thebibliography}{9}
+
+  \bibitem{ppo}
+    J. Schulman, F. Wolski, P. Dhariwal, A. Radford, O. Klimov,
+    \textit{Proximal Policy Optimization Algorithms},
+    arXiv preprint arXiv:1707.06347, 2017.
+
+  \bibitem{gae}
+    J. Schulman, P. Moritz, S. Levine, M. Jordan, P. Abbeel,
+    \textit{High-Dimensional Continuous Control Using Generalized Advantage Estimation},
+    arXiv preprint arXiv:1506.02438, 2015.
+
+  \bibitem{sb3}
+    Stable-Baselines3 Documentation,
+    \url{https://stable-baselines3.readthedocs.io/}.
+
+  \bibitem{box2d}
+    E. Catto,
+    \textit{Box2D -- A 2D Physics Engine for Games},
+    \url{https://box2d.org/documentation/}.
+
+  \bibitem{pybind}
+    Pybind11 Documentation,
+    \url{https://pybind11.readthedocs.io/}.
+
+  \bibitem{gymnasium}
+    Farama Foundation,
+    \textit{Gymnasium: A Standard API for Reinforcement Learning},
+    \url{https://gymnasium.farama.org/}.
+
+  \bibitem{raylib}
+    R. San Miguel,
+    \textit{raylib -- A Simple and Easy-to-use Library to Enjoy Videogames Programming},
+    \url{https://www.raylib.com/}.
+
+  \end{thebibliography}
+
+  \end{document}

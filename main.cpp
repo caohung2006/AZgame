@@ -7,6 +7,16 @@
 #include "bot.h"
 #include "ai_bot.h"
 
+#ifdef _WIN32
+// Khai báo trực tiếp 2 hàm Win32 cần dùng thay vì #include <windows.h>
+// để tránh xung đột tên (Rectangle, CloseWindow, ShowCursor) với Raylib.
+extern "C" {
+    __declspec(dllimport) unsigned long __stdcall GetModuleFileNameA(void* hModule, char* lpFilename, unsigned long nSize);
+    __declspec(dllimport) int __stdcall SetCurrentDirectoryA(const char* lpPathName);
+}
+#define MAX_PATH 260
+#endif
+
 /**
  * @brief Entry point cho chế độ human play (có đồ họa).
  * 
@@ -19,6 +29,26 @@
  * Để train RL, viết main khác: chỉ dùng Game + TankActions, không cần Renderer/UI.
  */
 int main() {
+    // ================================================================
+    // Tự động chuyển CWD về thư mục chứa file exe.
+    // Khi exe nằm trong build/, các đường dẫn fallback "../fonts/",
+    // "../models/" sẽ đúng trỏ về thư mục gốc dự án.
+    // Giải quyết lỗi "không tìm thấy file" khi chạy từ VS Code.
+    // ================================================================
+#ifdef _WIN32
+    {
+        char exePath[MAX_PATH];
+        unsigned long len = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+        if (len > 0 && len < MAX_PATH) {
+            char* lastSlash = strrchr(exePath, '\\');
+            if (lastSlash) {
+                *lastSlash = '\0';
+                SetCurrentDirectoryA(exePath);
+            }
+        }
+    }
+#endif
+
     srand((unsigned int)time(NULL));
 
     Game game;

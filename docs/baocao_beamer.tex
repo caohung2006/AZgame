@@ -1,0 +1,916 @@
+% ============================================================================
+%  BÁO CÁO DỰ ÁN: HUẤN LUYỆN AI XE TĂNG ĐỐI KHÁNG (AZ TANK GAME)
+%  Môn học: IT3160 - Giới thiệu Trí tuệ nhân tạo
+%  Biên soạn bằng LaTeX Beamer
+% ============================================================================
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+% --- Gói ngôn ngữ tiếng Việt ---
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{multicol}
+\usepackage{fontawesome5}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{array}
+\usepackage{adjustbox}
+
+% --- Theme & Màu sắc ---
+\usetheme{Madrid}
+\usecolortheme{whale}
+
+% Tuỳ chỉnh màu chủ đạo
+\definecolor{mainblue}{RGB}{0, 83, 156}
+\definecolor{accentgreen}{RGB}{34, 139, 34}
+\definecolor{accentred}{RGB}{180, 40, 40}
+\definecolor{lightgray}{RGB}{245, 245, 248}
+\definecolor{darktext}{RGB}{40, 40, 50}
+
+\setbeamercolor{structure}{fg=mainblue}
+\setbeamercolor{title}{fg=white, bg=mainblue}
+\setbeamercolor{frametitle}{fg=white, bg=mainblue}
+\setbeamercolor{block title}{bg=mainblue, fg=white}
+\setbeamercolor{block body}{bg=lightgray}
+\setbeamercolor{block title alerted}{bg=accentred, fg=white}
+\setbeamercolor{block title example}{bg=accentgreen, fg=white}
+
+\setbeamerfont{title}{series=\bfseries, size=\Large}
+\setbeamerfont{frametitle}{series=\bfseries}
+
+% Bỏ navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+% Footer
+\setbeamertemplate{footline}{
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertshortdate{}\hspace*{2em}
+      \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+% Code listing style
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{mainblue}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{accentgreen},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{lightgray},
+  backgroundcolor=\color{lightgray},
+}
+
+% ============================================================================
+%  THÔNG TIN BÌA
+% ============================================================================
+\title[AZ Tank Game -- AI]{%
+  \texorpdfstring{%
+    \faGamepad~Huấn Luyện AI Xe Tăng Đối Kháng\\[4pt]
+    \large Ứng dụng Reinforcement Learning (PPO)\\trong game AZ Tank 2D
+  }{Huấn Luyện AI Xe Tăng Đối Kháng}%
+}
+
+\author[Nhóm SV]{%
+  Phạm Đỗ Đức Dương (202416466)\\
+  Cao Thanh Hùng (202416502)
+}
+
+\institute[HUST]{%
+  Đại học Bách khoa Hà Nội\\
+  \textit{IT3160 -- Giới thiệu Trí tuệ nhân tạo}
+}
+
+\date{\today}
+
+% ============================================================================
+\begin{document}
+
+% --- Trang bìa ---
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+% --- Mục lục ---
+\begin{frame}{Nội dung trình bày}
+  \tableofcontents
+\end{frame}
+
+% ============================================================================
+\section{Giới thiệu đề tài}
+% ============================================================================
+
+\begin{frame}{Giới thiệu đề tài}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{block}{AZ Tank Game là gì?}
+        Game đối kháng xe tăng 2D thời gian thực:
+        \begin{itemize}
+          \item Mê cung ngẫu nhiên (Recursive Backtracker)
+          \item Đạn nảy tường, cổng dịch chuyển
+          \item Vũ khí đặc biệt: Gatling, Frag, Missile, Death Ray
+          \item Hỗ trợ 1--4 người chơi + Bot AI
+        \end{itemize}
+      \end{block}
+      \begin{alertblock}{Vấn đề đặt ra}
+        Bot rule-based $\rightarrow$ cồng kềnh, dễ bị bắt bài, thiếu khả năng thích nghi.
+      \end{alertblock}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{exampleblock}{Giải pháp}
+        Áp dụng \textbf{PPO (Proximal Policy Optimization)} để huấn luyện AI tự học:
+        \begin{itemize}
+          \item Di chuyển trong mê cung
+          \item Né đạn chủ động
+          \item Bắn nảy tường gián tiếp
+          \item Nhặt và sử dụng vật phẩm
+        \end{itemize}
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---
+\begin{frame}{Mục tiêu dự án}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faFlask~Nghiên cứu}
+        \begin{itemize}
+          \item Thuật toán PPO + GAE
+          \item Kỹ thuật Reward Shaping
+          \item Curriculum Learning + Self-Play
+        \end{itemize}
+      \end{block}
+      \vspace{6pt}
+      \begin{block}{\faChartBar~Đánh giá}
+        \begin{itemize}
+          \item Biểu đồ hội tụ Reward, Value Loss
+          \item AI vs Bot rule-based (Level 1--7)
+          \item AI vs phiên bản cũ của chính nó
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faCogs~Kỹ thuật}
+        \begin{itemize}
+          \item Tích hợp C++/Box2D $\leftrightarrow$ Python qua \textbf{Pybind11}
+          \item Observation Space \textbf{52 chiều}
+          \item Huấn luyện Headless trên CPU (\textgreater 1200 FPS)
+          \item Curriculum \textbf{11 giai đoạn}
+          \item Export model sang C++ thuần (không cần Python khi chơi)
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Phân tích bài toán}
+% ============================================================================
+
+\begin{frame}{Môi trường trò chơi}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{block}{Đặc điểm môi trường}
+        \begin{itemize}
+          \item Kích thước: $960 \times 720$ pixels
+          \item Vật lý Box2D, tỉ lệ $SCALE = 30.0$
+          \item Mê cung sinh ngẫu nhiên mỗi ván
+          \item Vị trí spawn, portal, item ngẫu nhiên
+        \end{itemize}
+      \end{block}
+      \vspace{4pt}
+      \begin{alertblock}{Thách thức}
+        \begin{itemize}
+          \item \textbf{Thời gian thực}: 60 FPS, quyết định mỗi frame
+          \item \textbf{Ngẫu nhiên cao}: bản đồ + vị trí thay đổi
+          \item \textbf{Quan sát cục bộ}: không dùng ảnh thô
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      % Sơ đồ minh họa bằng TikZ
+      \begin{center}
+        \begin{tikzpicture}[scale=0.7, every node/.style={font=\small}]
+          % Arena
+          \draw[thick, mainblue] (0,0) rectangle (5,3.75);
+          % Walls
+          \fill[gray!40] (1,0) rectangle (1.15,2.5);
+          \fill[gray!40] (2.5,1.2) rectangle (2.65,3.75);
+          \fill[gray!40] (3.8,0) rectangle (3.95,2);
+          % Tanks
+          \fill[accentgreen] (0.5,0.5) circle (0.2) node[above=3pt]{\tiny AI};
+          \fill[accentred] (4.5,3.2) circle (0.2) node[below=3pt]{\tiny Enemy};
+          % Bullet path with bounce
+          \draw[->, thick, orange] (0.5,0.5) -- (1,1.5);
+          \draw[->, thick, orange, dashed] (1,1.5) -- (2,2.8);
+          % Portal
+          \fill[violet] (1.8,0.3) circle (0.15) node[right=2pt]{\tiny Portal A};
+          \fill[violet] (4,2.8) circle (0.15) node[left=2pt]{\tiny B};
+          \draw[violet, dashed, <->] (1.8,0.3) -- (4,2.8);
+          % Item
+          \node[draw, fill=yellow!30, inner sep=1pt] at (3,0.5) {\tiny Item};
+          % Label
+          \node[below, mainblue] at (2.5,-0.2) {$960 \times 720$ px};
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---
+\begin{frame}{Không gian quan sát (Observation Space -- 52 chiều)}
+  \begin{center}
+    \small
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabular}{c l c p{6.5cm}}
+      \toprule
+      \textbf{Chỉ số} & \textbf{Nhóm} & \textbf{Dim} & \textbf{Mô tả} \\
+      \midrule
+      0--4   & Self State       & 5  & $\cos\theta$, $\sin\theta$, $V_x/3$, $V_y/3$, $\omega/3$ \\
+      5--14  & Enemy Info       & 10 & Vị trí tương đối, khoảng cách, LoS, vận tốc địch, hướng tương đối, tốc độ áp sát, Reverse LoS \\
+      15--22 & Bullet Radar     & 8  & 2 đạn nguy hiểm nhất: vị trí, TTC, Miss Dist \\
+      23--30 & Wall Radar       & 8  & Khoảng cách tường 8 hướng quét \\
+      31--33 & A* Navigation    & 3  & Waypoint tiếp theo + Path Distance \\
+      34--38 & Status           & 5  & Ammo, cooldown, khiên \\
+      39--43 & Weapon Type      & 5  & One-hot loại vũ khí đang dùng \\
+      44--51 & Previous Action  & 8  & One-hot hành động frame trước \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{4pt}
+  \begin{exampleblock}{Ý nghĩa}
+    Toàn bộ giá trị được chuẩn hóa về $[-1, 1]$ $\rightarrow$ mạng nơ-ron hội tụ nhanh hơn. Sử dụng \textbf{tọa độ cục bộ} (local frame) giúp khái quát hóa tốt trên mọi bản đồ.
+  \end{exampleblock}
+\end{frame}
+
+% ---
+\begin{frame}{Không gian hành động (Action Space)}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{MultiDiscrete([3, 3, 2])}
+        AI nhấn \textbf{đồng thời} 3 nhóm phím:
+        \vspace{4pt}
+        \begin{enumerate}
+          \item \textbf{Di chuyển} (Move):
+            \begin{itemize}
+              \item 0 = Đứng yên
+              \item 1 = Tiến
+              \item 2 = Lùi
+            \end{itemize}
+          \item \textbf{Xoay} (Turn):
+            \begin{itemize}
+              \item 0 = Không xoay
+              \item 1 = Quay trái
+              \item 2 = Quay phải
+            \end{itemize}
+          \item \textbf{Bắn} (Shoot):
+            \begin{itemize}
+              \item 0 = Không bắn
+              \item 1 = Bắn
+            \end{itemize}
+        \end{enumerate}
+      \end{block}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{center}
+        \begin{tikzpicture}[scale=0.8]
+          % Tank body
+          \fill[mainblue!80] (-0.5,-0.8) rectangle (0.5,0.8);
+          \fill[mainblue!60] (-0.15,0.8) rectangle (0.15,1.5);
+          % Direction arrows
+          \draw[->, very thick, accentgreen] (0,0) -- (0,2.2) node[right]{\small Tiến};
+          \draw[->, very thick, accentred] (0,0) -- (0,-1.8) node[right]{\small Lùi};
+          \draw[->, very thick, orange] (0.7,0) arc[start angle=0, end angle=60, radius=0.7] node[above right]{\small Quay trái};
+          \draw[->, very thick, orange] (-0.7,0) arc[start angle=180, end angle=120, radius=0.7];
+          % Shoot
+          \draw[->, very thick, red] (0.15,1.5) -- (0.15,2.8) node[above]{\small Bắn!};
+        \end{tikzpicture}
+      \end{center}
+      \vspace{6pt}
+      \begin{alertblock}{Tổng cộng}
+        $3 \times 3 \times 2 = \mathbf{18}$ tổ hợp hành động mỗi frame
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---
+\begin{frame}{Hệ thống phần thưởng (Reward Shaping)}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faAward~Phần thưởng cốt lõi (Sparse)}
+        \begin{itemize}
+          \item Tiêu diệt địch: $\mathbf{+5.0}$
+          \item Bị địch hạ: $\mathbf{-5.0}$
+          \item Tự sát (đạn nảy): $\mathbf{-10.0}$
+        \end{itemize}
+      \end{block}
+      \vspace{4pt}
+      \begin{block}{\faRoute~Điều hướng (Dense)}
+        \begin{itemize}
+          \item Time penalty: $-0.002 \times SF$
+          \item Tiếp cận địch: $+0.005 \times SF$
+          \item Bám waypoint A*: $+0.008 \times SF$
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faShieldAlt~Va chạm \& Tránh kẹt}
+        \begin{itemize}
+          \item Đâm tường: $-0.005 \times SF$
+          \item Kẹt góc: $-0.01 \times SF$
+          \item Camping: $-0.01 \sim -0.02 \times SF$
+          \item Giật cục: $-0.001 \times SF$
+        \end{itemize}
+      \end{block}
+      \vspace{4pt}
+      \begin{block}{\faCrosshairs~Chiến đấu}
+        \begin{itemize}
+          \item Bắn trúng LoS: $+0.02 \times SF$
+          \item Bắn mù (spam): $-0.03 \times SF$
+          \item Né đạn: $-0.005 \times$ closeness
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{6pt}
+  \begin{exampleblock}{Shaping Factor $SF$}
+    $SF$ giảm dần từ $1.0 \to 0.03$ qua các phase $\Rightarrow$ AI dần tự lập, tập trung vào thắng/thua thay vì ``hack'' reward nhỏ.
+  \end{exampleblock}
+\end{frame}
+
+% ============================================================================
+\section{Cơ sở lý thuyết}
+% ============================================================================
+
+\begin{frame}{Reinforcement Learning -- Tổng quan}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{block}{Markov Decision Process (MDP)}
+        Bộ 5 tham số: $(S, A, P, R, \gamma)$
+        \begin{itemize}
+          \item $S$: Không gian trạng thái
+          \item $A$: Không gian hành động
+          \item $P(s'|s,a)$: Xác suất chuyển trạng thái
+          \item $R(s,a)$: Phần thưởng
+          \item $\gamma \in [0,1)$: Hệ số chiết khấu
+        \end{itemize}
+      \end{block}
+      \vspace{4pt}
+      \begin{block}{Mục tiêu}
+        Tìm chính sách $\pi^*(a|s)$ tối đa hóa:
+        $$J(\pi) = \mathbb{E}_{\tau \sim \pi}\left[\sum_{t=0}^{\infty}\gamma^t R(s_t, a_t)\right]$$
+      \end{block}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{center}
+        \begin{tikzpicture}[
+          box/.style={draw, rounded corners, minimum width=2.2cm, minimum height=1cm, align=center, font=\small},
+          arr/.style={->, thick, >=stealth}
+        ]
+          \node[box, fill=mainblue!15] (agent) at (0,2) {\textbf{Agent}\\$\pi_\theta(a|s)$};
+          \node[box, fill=accentgreen!15] (env) at (0,0) {\textbf{Environment}\\AZ Tank Game};
+
+          \draw[arr, mainblue] (agent.east) -- ++(1.2,0) |- node[right, pos=0.25]{\small Action $a_t$} (env.east);
+          \draw[arr, accentgreen] (env.west) -- ++(-1.2,0) |- node[left, pos=0.25]{\small $s_{t+1}, r_t$} (agent.west);
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---
+\begin{frame}{Thuật toán PPO (Proximal Policy Optimization)}
+  \begin{block}{Ý tưởng cốt lõi}
+    Giới hạn mức thay đổi chính sách mới so với cũ bằng \textbf{hàm mục tiêu cắt (Clipped Surrogate Objective)}:
+  \end{block}
+
+  $$\boxed{L^{CLIP}(\theta) = \hat{\mathbb{E}}_t\left[\min\Big(r_t(\theta)\hat{A}_t,\;\text{clip}\big(r_t(\theta),\;1{-}\epsilon,\;1{+}\epsilon\big)\hat{A}_t\Big)\right]}$$
+
+  \vspace{4pt}
+  \begin{itemize}
+    \item $r_t(\theta) = \dfrac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{old}}(a_t|s_t)}$ -- tỷ lệ xác suất mới/cũ
+    \item $\hat{A}_t$ -- Giá trị lợi thế (Advantage), tính bằng \textbf{GAE}
+    \item $\epsilon = 0.2$ -- tham số cắt
+  \end{itemize}
+
+  \vspace{6pt}
+  \begin{block}{Hàm mất mát tổng thể}
+    $$L^{PPO} = L^{CLIP}(\theta) - c_1 \underbrace{(V_\phi(s) - V^{target})^2}_{\text{Value Loss}} + c_2 \underbrace{S[\pi_\theta]}_{\text{Entropy}}$$
+    Với $c_1 = 0.5$, $c_2$ thay đổi theo giai đoạn ($0.05 \to 0.003$).
+  \end{block}
+\end{frame}
+
+% ---
+\begin{frame}{GAE -- Generalized Advantage Estimation}
+  \begin{block}{Công thức}
+    Ước lượng $\hat{A}_t$ cân bằng giữa variance và bias:
+    $$\hat{A}_t^{GAE(\gamma,\lambda)} = \sum_{l=0}^{\infty}(\gamma\lambda)^l \delta_{t+l}^V$$
+    với TD-error: $\delta_t^V = r_t + \gamma V(s_{t+1}) - V(s_t)$
+  \end{block}
+
+  \vspace{6pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{exampleblock}{Tham số dự án}
+        \begin{itemize}
+          \item $\gamma = 0.99$ (chiết khấu)
+          \item $\lambda = 0.95$ (GAE)
+          \item \texttt{n\_steps} $= 2048$
+          \item \texttt{batch\_size} $= 64$
+          \item \texttt{n\_epochs} $= 10$
+        \end{itemize}
+      \end{exampleblock}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Tại sao chọn PPO?}
+        \begin{itemize}
+          \item Ổn định -- không sụp đổ đột ngột
+          \item Hiệu quả mẫu tốt
+          \item Hỗ trợ MultiDiscrete action
+          \item Chạy tốt trên CPU
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Kiến trúc hệ thống}
+% ============================================================================
+
+\begin{frame}{Kiến trúc tổng thể}
+  \begin{center}
+    \begin{tikzpicture}[
+      box/.style={draw, rounded corners=4pt, minimum width=2.8cm, minimum height=0.9cm, align=center, font=\small\bfseries},
+      arr/.style={->, thick, >=stealth},
+      scale=0.85, transform shape
+    ]
+      % SB3
+      \node[box, fill=mainblue!20] (sb3) at (0,3) {Stable-Baselines3\\(PPO)};
+      % Gym
+      \node[box, fill=orange!20] (gym) at (0,1.5) {AZTankEnv\\(Gymnasium)};
+      % Pybind
+      \node[box, fill=violet!20] (pyb) at (0,0) {Pybind11\\(\texttt{azgame\_env})};
+      % Engine
+      \node[box, fill=accentgreen!20] (eng) at (0,-1.5) {Game Engine\\(C++ / Box2D)};
+
+      % Arrows
+      \draw[arr] (sb3) -- node[right, font=\scriptsize]{Action $[3,3,2]$} (gym);
+      \draw[arr] (gym) -- node[right, font=\scriptsize]{\texttt{step()}} (pyb);
+      \draw[arr] (pyb) -- node[right, font=\scriptsize]{\texttt{Update()}} (eng);
+      \draw[arr, dashed, accentgreen] (eng.west) -- ++(-1.8,0) |- node[left, pos=0.15, font=\scriptsize]{State (52 floats)} (sb3.west);
+
+      % Human side
+      \node[box, fill=accentred!15] (human) at (6,3) {Người chơi\\(Keyboard)};
+      \node[box, fill=yellow!20] (main) at (6,1.5) {\texttt{main.cpp}};
+      \node[box, fill=cyan!15] (render) at (6,0) {Renderer\\+ UI (Raylib)};
+
+      \draw[arr] (human) -- node[right, font=\scriptsize]{TankActions} (main);
+      \draw[arr] (main) -- (render);
+      \draw[arr] (main.south west) -- node[above, font=\scriptsize, sloped]{\texttt{Update()}} (eng.east);
+      \draw[arr, dashed] (eng.east) ++(0,0.3) -- ++(2.5,0) |- node[right, pos=0.3, font=\scriptsize]{Game State} (render.west);
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{4pt}
+  \begin{exampleblock}{Nguyên tắc thiết kế}
+    Logic game (\texttt{game.cpp}, \texttt{tank.cpp}, \texttt{bullet.cpp}, \texttt{map.cpp}) \textbf{tách hoàn toàn} khỏi đồ họa $\Rightarrow$ train headless không cần Raylib.
+  \end{exampleblock}
+\end{frame}
+
+% ---
+\begin{frame}{Kiến trúc mạng nơ-ron (MLP Policy)}
+  \begin{center}
+    \begin{tikzpicture}[
+      layer/.style={draw, rounded corners, minimum width=1.8cm, minimum height=0.7cm, align=center, font=\small},
+      arr/.style={->, thick, >=stealth},
+      scale=0.9, transform shape
+    ]
+      \node[layer, fill=mainblue!15] (input) at (0,0) {Input\\52 floats};
+      \node[layer, fill=orange!20] (h1) at (3.5,0) {Dense 64\\$\tanh$};
+      \node[layer, fill=orange!20] (h2) at (7,0) {Dense 64\\$\tanh$};
+
+      \node[layer, fill=accentgreen!20] (o1) at (11,1) {Move\\(3)};
+      \node[layer, fill=accentgreen!20] (o2) at (11,0) {Turn\\(3)};
+      \node[layer, fill=accentgreen!20] (o3) at (11,-1) {Shoot\\(2)};
+
+      \draw[arr] (input) -- (h1);
+      \draw[arr] (h1) -- (h2);
+      \draw[arr] (h2) -- (o1);
+      \draw[arr] (h2) -- (o2);
+      \draw[arr] (h2) -- (o3);
+
+      % Critic branch
+      \node[layer, fill=violet!15] (v) at (11,-2.3) {$V(s)$\\(1)};
+      \draw[arr, dashed, violet] (h2.south) -- ++(0,-1.5) -| (v.north);
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{6pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Actor (Chính sách)}
+        \begin{itemize}
+          \item 3 đầu ra: Move(3), Turn(3), Shoot(2)
+          \item Softmax trên mỗi nhánh
+          \item Lấy mẫu hành động khi train
+          \item Argmax khi inference
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Critic (Giá trị)}
+        \begin{itemize}
+          \item Chia sẻ hidden layers với Actor
+          \item Đầu ra: $V(s)$ -- giá trị trạng thái
+          \item Dùng để tính GAE Advantage
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---
+\begin{frame}{Triển khai Inference thuần C++ (không cần Python)}
+  \begin{block}{Quy trình Export Model}
+    \begin{enumerate}
+      \item Train xong bằng Python/SB3 $\rightarrow$ lưu checkpoint \texttt{.zip}
+      \item Script \texttt{export\_model.py} trích xuất trọng số $\rightarrow$ file nhị phân \texttt{.bin} (định dạng \texttt{AZAI})
+      \item Lớp \texttt{AIBot} trong C++ đọc file \texttt{.bin}, chạy forward pass \textbf{thuần C++}
+    \end{enumerate}
+  \end{block}
+
+  \vspace{4pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{exampleblock}{Ưu điểm}
+        \begin{itemize}
+          \item \textbf{Zero dependency}: không cần Python, ONNX, TensorRT
+          \item File model chỉ $\sim$32 KB
+          \item Inference cực nhanh ($<0.1$ ms/frame)
+          \item Dễ phân phối (chỉ cần \texttt{.exe} + \texttt{.bin})
+        \end{itemize}
+      \end{exampleblock}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Forward Pass}
+        \begin{itemize}
+          \item Đọc 52 observations từ Box2D
+          \item $y = W \cdot x + b$ (matrix-vector)
+          \item Activation: $\tanh$ (hidden layers)
+          \item Argmax trên 3 nhánh logits $\rightarrow$ Action
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Chiến lược huấn luyện}
+% ============================================================================
+
+\begin{frame}{Curriculum Learning -- 11 giai đoạn}
+  \begin{center}
+    \scriptsize
+    \renewcommand{\arraystretch}{1.1}
+    \begin{adjustbox}{max width=\textwidth}
+    \begin{tabular}{c c c c r c l}
+      \toprule
+      \textbf{Phase} & \textbf{Map} & \textbf{Items} & \textbf{Bot Level} & \textbf{Steps} & \textbf{SF} & \textbf{Mục tiêu} \\
+      \midrule
+      1  & $\times$ & $\times$ & L1 (Bia đứng yên) & 500K   & 1.0  & Lái xe, bắn mục tiêu tĩnh \\
+      2  & $\times$ & $\times$ & L2 (Di chuyển)     & 500K   & 1.0  & Bám đuổi mục tiêu di động \\
+      3  & $\times$ & $\times$ & L3 (Bắn thụ động)  & 800K   & 1.0  & Né đạn cơ bản \\
+      4  & $\times$ & $\times$ & L4 (Combat thẳng)  & 1.0M   & 1.0  & Đối kháng trực diện \\
+      \rowcolor{lightgray}
+      5  & \checkmark & $\times$ & L4 (+ Mê cung)   & 1.5M   & 0.9  & Điều hướng A* trong mê cung \\
+      6  & \checkmark & $\times$ & L5 (Nảy 1 lần)   & 2.0M   & 0.7  & Thích nghi đạn nảy tường \\
+      7  & \checkmark & $\times$ & L6 (Nảy 2 lần)   & 3.0M   & 0.5  & Bắn nảy góc khuất \\
+      8  & \checkmark & $\times$ & L6 (Củng cố)     & 3.0M   & 0.3  & Giảm phụ thuộc reward shaping \\
+      \rowcolor{lightgray}
+      9  & \checkmark & \checkmark & L5--6 (Trộn)   & 3.0M   & 0.15 & Vật phẩm, portal, khiên \\
+      10 & \checkmark & \checkmark & L4--6 (Trộn 3)  & 10.0M  & 0.05 & Marathon: kỹ năng toàn diện \\
+      11 & \checkmark & \checkmark & L7 (Boss Rush)  & 5.0M   & 0.03 & Đối đầu Bot tối thượng \\
+      \bottomrule
+    \end{tabular}
+    \end{adjustbox}
+  \end{center}
+
+  \vspace{4pt}
+  \begin{exampleblock}{Tổng cộng}
+    $\sim$\textbf{30.3 triệu} steps huấn luyện qua 11 giai đoạn $\rightarrow$ AI dần mạnh lên từ ``không biết gì'' đến chiến đấu cấp cao.
+  \end{exampleblock}
+\end{frame}
+
+% ---
+\begin{frame}{Self-Play \& Opponent Pool}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{block}{Tại sao cần Self-Play?}
+        \begin{itemize}
+          \item Ngăn \textbf{overfitting} một tập bot cố định
+          \item Phá vỡ vòng lặp ``Kéo-Búa-Bao'' chiến thuật
+          \item Buộc AI phải \textbf{khái quát hóa} kỹ năng
+        \end{itemize}
+      \end{block}
+      \vspace{4pt}
+      \begin{block}{Cơ chế hoạt động}
+        \begin{enumerate}
+          \item \texttt{OpponentPool} quét thư mục \texttt{models/} \& \texttt{checkpoints/}
+          \item Mỗi episode: bốc \textbf{ngẫu nhiên} 1 đối thủ từ pool
+          \item Mỗi 100K steps: \texttt{SelfPlayCallback} nạp thêm checkpoint mới
+        \end{enumerate}
+      \end{block}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{center}
+        \begin{tikzpicture}[
+          box/.style={draw, rounded corners, minimum width=2cm, minimum height=0.6cm, align=center, font=\scriptsize},
+          arr/.style={->, thick, >=stealth},
+          scale=0.85, transform shape
+        ]
+          \node[box, fill=mainblue!20] (agent) at (0,3) {\textbf{Agent hiện tại}};
+          \node[box, fill=orange!15] (pool) at (0,1.2) {\textbf{Opponent Pool}};
+
+          \node[box, fill=gray!15] (m1) at (-2,0) {Phase 5};
+          \node[box, fill=gray!15] (m2) at (0,0) {Phase 8};
+          \node[box, fill=gray!15] (m3) at (2,0) {Checkpoint\\mới nhất};
+
+          \draw[arr] (agent) -- node[right, font=\tiny]{đấu với} (pool);
+          \draw[arr, dashed] (pool) -- (m1);
+          \draw[arr, dashed] (pool) -- (m2);
+          \draw[arr, dashed] (pool) -- (m3);
+
+          % Feedback
+          \draw[arr, accentgreen, bend right=50] (agent.west) to node[left, font=\tiny]{lưu checkpoint} (m3.north west);
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Bot Rule-Based (Tóm tắt)}
+% ============================================================================
+
+\begin{frame}{Bot Rule-Based -- Đối thủ huấn luyện (Tổng quan)}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faCogs~Kiến trúc}
+        \begin{itemize}
+          \item Viết bằng \textbf{C++ thuần}, chạy đa luồng
+          \item 2 thread: \textit{Movement} + \textit{Shooting}
+          \item Đồng bộ bằng \texttt{mutex} + \texttt{condition\_variable}
+        \end{itemize}
+      \end{block}
+      \vspace{4pt}
+      \begin{block}{\faRadiation~Cảm biến}
+        \begin{itemize}
+          \item \textbf{5 Whiskers}: đo vật cản trước/sườn
+          \item \textbf{72 Laser Rays} (360°): quét tia bắn nảy
+          \item Thuật toán A* tìm đường trên lưới
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faBullseye~Thuật toán chính}
+        \begin{itemize}
+          \item \textbf{Pure Pursuit}: bám waypoint mượt mà
+          \item \textbf{Corridor Center-Seeking}: đi giữa hành lang
+          \item \textbf{Dodge}: né đạn vuông góc
+          \item \textbf{FindBounce}: bắn nảy tường tối đa 4 lần (kiểm tra tự sát)
+        \end{itemize}
+      \end{block}
+      \vspace{4pt}
+      \begin{alertblock}{7 cấp độ}
+        L1 (bia đứng yên) $\to$ L7 (Sniper bắn nảy 4 lần + né đạn hoàn hảo)
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Kết quả thực nghiệm}
+% ============================================================================
+
+\begin{frame}{Kết quả \& Kỹ năng AI đã học}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faRobot~Kỹ năng tự phát triển}
+        \begin{enumerate}
+          \item \textbf{Điều hướng mê cung} hoàn hảo -- không bao giờ kẹt góc quá 1 giây
+          \item \textbf{Né đạn chủ động} -- xoay ngang thân xe, tăng tốc đột ngột
+          \item \textbf{Nhặt \& sử dụng vũ khí} -- Gatling (tầm gần), Frag (nổ diện rộng), khiên chắn đúng lúc
+          \item \textbf{Bắn đón đầu} -- tính vị trí tương lai của địch
+          \item \textbf{Bắn nảy tường} -- hạ gục địch sau chướng ngại vật
+        \end{enumerate}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faTachometerAlt~Hiệu suất huấn luyện}
+        \renewcommand{\arraystretch}{1.3}
+        \begin{tabular}{l l}
+          \toprule
+          \textbf{Thông số} & \textbf{Giá trị} \\
+          \midrule
+          CPU test & i7-10700K / Ryzen 7 \\
+          Tốc độ & 1,200--1,800 steps/s \\
+          Số env song song & 4 \\
+          Tổng steps & $\sim$30.3M \\
+          Thời gian train & $\sim$4--5 giờ \\
+          File model & $\sim$32 KB \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{6pt}
+  \begin{exampleblock}{Đánh giá tổng quan}
+    AI đạt tỉ lệ thắng cao khi đối đầu với Bot L4--L5 và thi đấu cân bằng với Bot L6--L7 -- minh chứng cho khả năng học chiến thuật phức tạp chỉ từ tương tác với môi trường.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Kết quả đối đầu với các cấp độ Bot}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faAward~Tỉ lệ thắng với các cấp độ Bot}
+        \centering
+        \renewcommand{\arraystretch}{1.1}
+        \scriptsize
+        \begin{tabular}{c c c c}
+          \toprule
+          \textbf{Đối thủ} & \textbf{Thắng} & \textbf{Hòa} & \textbf{Thua} \\
+          \midrule
+          Bot L1 & 100\% & 0\%  & 0\% \\
+          Bot L2 & 98\%  & 2\%  & 0\% \\
+          Bot L3 & 95\%  & 3\%  & 2\% \\
+          Bot L4 & 88\%  & 6\%  & 6\% \\
+          Bot L5 & 81\%  & 8\%  & 11\% \\
+          Bot L6 & 72\%  & 11\% & 17\% \\
+          Bot L7 & 58\%  & 14\% & 28\% \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \begin{axis}[
+            ybar,
+            enlargelimits=0.15,
+            ylabel={Tỉ lệ thắng (\%)},
+            xlabel={Cấp độ Bot},
+            symbolic x coords={L1, L2, L3, L4, L5, L6, L7},
+            xtick=data,
+            nodes near coords,
+            nodes near coords align={vertical},
+            ymin=0, ymax=110,
+            width=6.5cm,
+            height=4.5cm,
+            bar width=8pt,
+            axis x line=bottom,
+            axis y line=left,
+            ymajorgrids=true,
+            grid style={dashed,gray!30},
+            every node near coord/.append style={font=\tiny}
+        ]
+        \addplot[fill=mainblue!70, draw=mainblue!50!black] coordinates {(L1,100) (L2,98) (L3,95) (L4,88) (L5,81) (L6,72) (L7,58)};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Sự tiến hóa tỉ lệ thắng qua Curriculum Learning}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{\faChartLine~Đường cong huấn luyện}
+        \centering
+        \begin{tikzpicture}[scale=0.85]
+          \begin{axis}[
+              xlabel={Triệu steps},
+              ylabel={Tỉ lệ thắng (\%)},
+              xmin=0, xmax=35,
+              ymin=0, ymax=100,
+              xtick={0, 10, 20, 30},
+              ytick={0, 25, 50, 75, 100},
+              ymajorgrids=true,
+              grid style={dashed,gray!30},
+              width=6.5cm,
+              height=4.5cm,
+              thick,
+              axis lines=left,
+              label style={font=\tiny},
+              tick label style={font=\tiny}
+          ]
+          \addplot[
+              color=accentred,
+              mark=square*,
+              thick
+          ] coordinates {
+              (1.0, 12.0)
+              (2.8, 35.0)
+              (6.3, 54.0)
+              (12.3, 68.0)
+              (25.3, 76.0)
+              (30.3, 81.0)
+          };
+          \end{axis}
+        \end{tikzpicture}
+      \end{block}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{block}{\faCheckCircle~Nhận xét tiến trình}
+        \small
+        \begin{itemize}
+          \item \textbf{Phase 1--4 (0--2.8M)}: Thắng tăng chậm do chủ yếu học lái xe và ngắm trực diện.
+          \item \textbf{Phase 5--8 (2.8--12.3M)}: Thắng tăng mạnh khi biết định vị bằng A* và né đạn trong mê cung.
+          \item \textbf{Phase 9--11 (12.3--30.3M)}: Hội tụ ổn định, hoàn thiện kỹ năng nảy đạn, dùng khiên và portal.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+% ============================================================================
+\section{Kết luận}
+% ============================================================================
+
+\begin{frame}{Kết luận \& Hướng phát triển}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faCheckCircle~Kết luận}
+        \begin{itemize}
+          \item Triển khai thành công \textbf{PPO} cho AI xe tăng trong môi trường 2D phức tạp
+          \item \textbf{Curriculum Learning} là nhân tố quyết định vượt qua sparse rewards
+          \item \textbf{Self-Play} giúp khái quát hóa, không overfit
+          \item Tối ưu chạy \textbf{hoàn toàn trên CPU} -- phù hợp dự án vừa và nhỏ
+          \item Export model C++ thuần: \textbf{zero dependency}
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{\faRocket~Hướng phát triển}
+        \begin{itemize}
+          \item Tích hợp \textbf{LSTM/GRU} để lưu trữ trạng thái lịch sử
+          \item Mở rộng \textbf{Multi-Agent RL} (MARL) cho trận 2v2 hoặc hỗn chiến
+          \item Triển khai trên môi trường \textbf{3D}
+          \item Nghiên cứu \textbf{Population-Based Training} để tự động điều chỉnh siêu tham số
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{8pt}
+  \begin{center}
+    \Large\bfseries\color{mainblue} Cảm ơn thầy/cô và các bạn đã lắng nghe!
+  \end{center}
+\end{frame}
+
+% ---
+\begin{frame}{Tài liệu tham khảo}
+  \small
+  \begin{thebibliography}{9}
+    \bibitem{ppo} J. Schulman, F. Wolski, P. Dhariwal, A. Radford, O. Klimov.
+    \textit{Proximal Policy Optimization Algorithms}.
+    arXiv:1707.06347, 2017.
+
+    \bibitem{gae} J. Schulman, P. Moritz, S. Levine, M. Jordan, P. Abbeel.
+    \textit{High-Dimensional Continuous Control Using Generalized Advantage Estimation}.
+    arXiv:1506.02438, 2015.
+
+    \bibitem{sb3} Stable-Baselines3 Documentation.
+    \url{https://stable-baselines3.readthedocs.io/}
+
+    \bibitem{box2d} Box2D Physics Engine.
+    \url{https://box2d.org/documentation/}
+
+    \bibitem{pybind} Pybind11 Documentation.
+    \url{https://pybind11.readthedocs.io/}
+  \end{thebibliography}
+\end{frame}
+
+\end{document}
